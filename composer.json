@@ -1,0 +1,7 @@
+{
+ "name": "it490/capstone-group-01",
+ "require": {},
+ "scripts": {
+   "start-db": "bash ./database/start_db.sh"
+   }
+}
