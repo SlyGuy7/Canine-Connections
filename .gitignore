@@ -1,10 +1,11 @@
-<<<<<<< HEAD
+# PHP / Backend ignores
 **/storage/
 **/*.log
 .env
+/vendor/
+/composer.lock
 
-=======
-# Logs
+# Node.js / Frontend ignores
 logs
 *.log
 npm-debug.log*
@@ -28,4 +29,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
->>>>>>> fdfb1fc (Milestone 1 Frontend)
