@@ -2,7 +2,7 @@
 
 case "$1" in
     start)
-        echo "Strarting Rabbit service..."
+        echo "Starting Rabbit service..."  
         sudo systemctl start rabbitmq-server
         ;;
     stop)
@@ -15,22 +15,22 @@ case "$1" in
         ;;
     status) 
         echo "RabbitMQ server status."
-        sudo systemctl status sabbitmq-server
+        sudo systemctl status rabbitmq-server 
         ;;
     enable)
         echo "Enabling RabbitMQ to start on boot..."
         sudo systemctl enable rabbitmq-server
         ;;
     disable)
-        echo "Disabling RabbitMQ to start on boot.."
+        echo "Disabling RabbitMQ to start on boot..."
         sudo systemctl disable rabbitmq-server
         ;;
     plugin-enable)
         echo "Enabling management plugin..."
-        sudo rabbitmq-plugins enable rabbit_management
+        sudo rabbitmq-plugins enable rabbitmq_management 
         ;;
     *)
-        echo "Usage: $0 (start|stop|restart|status|enable|disable|plugin-enable)"
+        echo "Usage: $0 {start|stop|restart|status|enable|disable|plugin-enable}"
         exit 1
         ;;
 esac
