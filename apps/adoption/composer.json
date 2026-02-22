@@ -1,7 +1,9 @@
-
 {
 	"scripts": {
-		"dev": "bash scripts/dev.sh"
+		"dev": "bash scripts/dev.sh",
+		"rabbit:status": "bash scripts/rabbitmq.sh status",
+		"rabbit:start": "bash scripts/rabbitmq.sh start",
+		"rabbit:stop": "bash scripts/rabbitmq.sh stop",
+		"rabbit:restart": "bash scripts/rabbitmq.sh restart"
 	}
 }
-
