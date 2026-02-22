@@ -1,6 +1,8 @@
 {
   "name": "svernikov/it490-project",
-  "require": {},
+  "require": {
+    "php-amqplib/php-amqplib": "^3.7"
+  },
   "scripts": {
     "start": "npm start"
   }
