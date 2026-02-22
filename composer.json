@@ -1,4 +1,5 @@
 {
+<<<<<<< HEAD
     "name": "svernikov/it490-project",
     "require": {
         "php-amqplib/php-amqplib": "^3.7"
@@ -28,4 +29,14 @@
         
         "start": "npm start"
     }
+=======
+ "name": "it490/capstone-group-01",
+ "require": {
+  "vlucas/phpdotenv": "^5.6",
+  "php-amqplib/php-amqplib": "^3.7"
+ },
+ "scripts": {
+   "start-db": "bash ./database/start_db.sh"
+   }
+>>>>>>> b610e0a (Project)
 }
