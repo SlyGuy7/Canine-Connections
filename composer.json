@@ -1,9 +1,31 @@
 {
-  "name": "svernikov/it490-project",
-  "require": {
-    "php-amqplib/php-amqplib": "^3.7"
-  },
-  "scripts": {
-    "start": "npm start"
-  }
+    "name": "svernikov/it490-project",
+    "require": {
+        "php-amqplib/php-amqplib": "^3.7"
+    },
+    "scripts": {
+        "dev": "bash scripts/dev.sh",
+        
+        "rabbit:start": "bash scripts/rabbitmq.sh start",
+        "rabbit:stop": "bash scripts/rabbitmq.sh stop",
+        "rabbit:restart": "bash scripts/rabbitmq.sh restart",
+        "rabbit:status": "bash scripts/rabbitmq.sh status",
+        "rabbit:enable": "bash scripts/rabbitmq.sh enable",
+        "rabbit:disable": "bash scripts/rabbitmq.sh disable",
+        "rabbit:plugin": "bash scripts/rabbitmq.sh plugin-enable",
+        
+        "rabbit:url": "@php -r \"echo 'http://' . trim(shell_exec('hostname -I | cut -d\\' \\' -f1')) . ':15672\n';\"",
+        
+        "rabbit:setup": [
+            "@rabbit:start",
+            "@rabbit:plugin",
+            "@rabbit:url",
+            "@php -r \"echo 'RabbitMQ is ready!\\n';\""
+        ],
+        
+        "rabbit:queues": "sudo rabbitmqctl list_queues",
+        "rabbit:users": "sudo rabbitmqctl list_users",
+        
+        "start": "npm start"
+    }
 }
