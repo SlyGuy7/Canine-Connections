@@ -1,15 +1,8 @@
 {
-<<<<<<< HEAD
- "name": "it490/capstone-group-01",
- "require": {},
- "scripts": {
-   "start-db": "bash ./database/start_db.sh"
-   }
-=======
-  "name": "svernikov/it490-project",
-  "require": {},
-  "scripts": {
-    "start": "npm start"
-  }
->>>>>>> fdfb1fc (Milestone 1 Frontend)
+"name": "it490/capstone-group-01",
+"require": {},
+"scripts": {
+"start-frontend": "npm run dev -- --host 0.0.0.0 --port 7012 --strictPort",
+"start": "@start-frontend"
+}
 }
