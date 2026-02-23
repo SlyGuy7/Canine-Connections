@@ -1,41 +1,10 @@
 {
-    "name": "it490/capstone-group-01",
-    "require": {
-        "php-amqplib/php-amqplib": "^3.7",
-        "vlucas/phpdotenv": "^5.6"
-    },
-    "scripts": {
-        "dev": "bash scripts/dev.sh",
-        
-        "rabbit:start": "bash scripts/rabbitmq.sh start",
-        "rabbit:stop": "bash scripts/rabbitmq.sh stop",
-        "rabbit:restart": "bash scripts/rabbitmq.sh restart",
-        "rabbit:status": "bash scripts/rabbitmq.sh status",
-        "rabbit:enable": "bash scripts/rabbitmq.sh enable",
-        "rabbit:disable": "bash scripts/rabbitmq.sh disable",
-        "rabbit:plugin": "bash scripts/rabbitmq.sh plugin-enable",
-        
-        "rabbit:url": "@php -r \"echo 'http://' . trim(shell_exec('hostname -I | cut -d\\' \\' -f1')) . ':15672\n';\"",
-        
-        "rabbit:setup": [
-            "@rabbit:start",
-            "@rabbit:plugin",
-            "@rabbit:url",
-            "@php -r \"echo 'RabbitMQ is ready!\\n';\""
-        ],
-        
-        "rabbit:queues": "sudo rabbitmqctl list_queues",
-        "rabbit:users": "sudo rabbitmqctl list_users",
-        
-        "start": "npm start",
-        "start-db": "bash ./database/start_db.sh",
-        
-        "test:write": "php scripts/test-queue-write.php",
-        "test:read": "php scripts/test-queue-read.php",
-        "test:full-cycle": [
-            "@test:write",
-            "@test:read",
-            "@php -r \"echo '\\n Full test cycle complete!\\n';\""
-        ]
-    }
+	"require": {},
+	"scripts": {
+		"startrabbitmq" :	"sudo systemctl start rabbitmq-server",
+		"endrabbitmq" : 	"sudo systemctl stop rabbitmq-server",
+		"statusrabbitmq" : 	"sudo systemctl status rabbitmq-server",
+		"restartrabbitmq" : 	"sudo systemctl restart rabbitmq-server"
+
+	}
 }
