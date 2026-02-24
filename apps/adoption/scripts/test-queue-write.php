@@ -5,15 +5,19 @@ require_once __DIR__ . '/../vendor/autoload.php';
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
 
+// Load environmental variables
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
+$dotenv->load();
+
 echo "Testing RabbitMQ Write...\n";
 
 try {
     $connection = new AMQPStreamConnection(
-        'localhost',
-        5672,
-        'admin',
-        'REDACTED',
-        '/'
+        $_ENV['RABBITMQ_HOST'] ?? 'localhost',
+        $_ENV['RABBITMQ_PORT'] ?? 5672,
+        $_ENV['RABBITMQ_USER'] ?? 'guest',
+        $_ENV['RABBITMQ_PASSWORD'] ?? 'guest',
+        $_ENV['RABBITMQ_VHOST'] ?? '/'
     );
     
     $channel = $connection->channel();
