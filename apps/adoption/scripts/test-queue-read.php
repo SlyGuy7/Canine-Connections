@@ -11,7 +11,7 @@ try {
         'localhost',
         5672,
         'admin',
-        'your_password',
+        'REDACTED', // password
         '/'
     );
     
