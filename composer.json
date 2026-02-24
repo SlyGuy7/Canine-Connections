@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 {   "name": "it490/capstone-group-01",
     "require": {
         "php-amqplib/php-amqplib": "^3.7",
@@ -27,7 +26,6 @@
         "rabbit:queues": "sudo rabbitmqctl list_queues",
         "rabbit:users": "sudo rabbitmqctl list_users",
         
-        "start": "npm start",
         "start-db": "bash ./database/start_db.sh",
         
             "test:write": "php apps/adoption/scripts/test-queue-write.php",
@@ -36,15 +34,7 @@
             "@test:write",
             "@test:read",
             "@php -r \"echo '\\n Full test cycle complete!\\n';\""
-        ]
-    }
-=======
-{
-"name": "it490/capstone-group-01",
-"require": {},
-"scripts": {
-"start-frontend": "npm run dev -- --host 0.0.0.0 --port 7012 --strictPort",
-"start": "@start-frontend"
+	        ],
+	"start-frontend": "npm run dev -- --host 0.0.0.0 --port 7012 --strictPort"
 }
->>>>>>> frontend-server-vm
 }
