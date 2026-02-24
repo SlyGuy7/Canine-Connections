@@ -1,6 +1,6 @@
 #!/usr/bin/env php
 <?php
-require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 
@@ -14,8 +14,8 @@ try {
     $connection = new AMQPStreamConnection(
         $_ENV['RABBITMQ_HOST'] ?? 'localhost',
         $_ENV['RABBITMQ_PORT'] ?? 5672,
-        $_ENV['RABBITMQ_USER'] ?? 'admin',
-        $_ENV['RABBITMQ_PASSWORD'] ?? 'REDACTED',
+        $_ENV['RABBITMQ_USER'] ?? 'guest',
+        $_ENV['RABBITMQ_PASSWORD'] ?? 'guest',
         $_ENV['RABBITMQ_VHOST'] ?? '/'
     );
     
