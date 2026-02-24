@@ -29,8 +29,8 @@
         "start": "npm start",
         "start-db": "bash ./database/start_db.sh",
         
-        "test:write": "php scripts/test-queue-write.php",
-        "test:read": "php scripts/test-queue-read.php",
+            "test:write": "php apps/adoption/scripts/test-queue-write.php",
+            "test:read": "php apps/adoption/scripts/test-queue-read.php",
         "test:full-cycle": [
             "@test:write",
             "@test:read",
