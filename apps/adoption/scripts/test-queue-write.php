@@ -15,8 +15,8 @@ try {
     $connection = new AMQPStreamConnection(
         $_ENV['RABBITMQ_HOST'] ?? 'localhost',
         $_ENV['RABBITMQ_PORT'] ?? 5672,
-        $_ENV['RABBITMQ_USER'] ?? 'your_username_here',
-        $_ENV['RABBITMQ_PASSWORD'] ?? 'your_password_here',
+        $_ENV['RABBITMQ_USER'] ?? 'guest',
+        $_ENV['RABBITMQ_PASSWORD'] ?? 'guest',
         $_ENV['RABBITMQ_VHOST'] ?? '/'
     );
     
