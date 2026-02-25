@@ -11,15 +11,25 @@ set +a
 
 mkdir -p "$ROOT/storage"
 
-#start infra services
+#start mysql & rabbitmq services
+echo "Starting MySQL..."
 sudo systemctl start mysql
+sudo systemctl is-active --quiet mysql \
+    && echo "MySQL: ACTIVE" \
+    || echo "MySQL: FAILED"
+
+echo "Starting RabbitMQ..."
 sudo systemctl start rabbitmq-server
+sudo systemctl is-active --quiet rabbitmq-server \
+    && echo "RabbitMQ: ACTIVE" \
+    || echo "RabbitMQ: FAILED"
+
 
 #start backend
 
 if ! lsof -ti TCP:"$backend_port" >/dev/null 2>&1; then
 	(cd "$ROOT/backend" && composer install --no-interaction >/dev/null 2>&1 || true)
-	nohup php -S "backend_host:$backend_port" -t "$ROOT/backend/public" \
+	nohup php -S "$backend_host:$backend_port" -t "$ROOT/backend/public" \
 		> "$ROOT/storage/backend.log" 2>&1 &
 fi
 
@@ -35,4 +45,4 @@ VM_IP="$(hostname -I | awk '{print $1}')"
 echo "Frontend: http://$VM_IP:$frontend_port"
 echo "Backend: http://$VM_IP:$backend_port"
 echo "Logs: storage/frontend.log staorage/backend.log"
-how do i combine my file with your example without changing anything to it
+echo "Logs: storage/frontend.log storage/backend.log"
