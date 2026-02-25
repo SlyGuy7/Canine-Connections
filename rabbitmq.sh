@@ -2,7 +2,7 @@
 
 case "$1" in
     start)
-        echo "Strarting Rabbit service..."
+        echo "Starting RabbitMQ service..."
         sudo systemctl start rabbitmq-server
         ;;
     stop)
