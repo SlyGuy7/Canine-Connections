@@ -61,8 +61,8 @@ else
 fi
 
 
-xdg-open http://$VM_IP:$FRONTEND_PORT >/dev/null 2>&1
-xdg-open http://$VM_IP:$BACKEND_PORT >/dev/null 2>&1  #opens frontend and backend automatically
+xdg-open http://$VM_IP:$FRONTEND_PORT >/dev/null 2>&1 || true
+xdg-open http://$VM_IP:$BACKEND_PORT >/dev/null 2>&1 || true #opens frontend and backend automatically
 
 
 echo "Logs"

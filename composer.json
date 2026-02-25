@@ -6,13 +6,13 @@
     "scripts": {
         "dev": "bash apps/adoption/scripts/dev.sh",
         
-        "rabbit:start": "bash scripts/rabbitmq.sh start",
-        "rabbit:stop": "bash scripts/rabbitmq.sh stop",
-        "rabbit:restart": "bash scripts/rabbitmq.sh restart",
-        "rabbit:status": "bash scripts/rabbitmq.sh status",
-        "rabbit:enable": "bash scripts/rabbitmq.sh enable",
-        "rabbit:disable": "bash scripts/rabbitmq.sh disable",
-        "rabbit:plugin": "bash scripts/rabbitmq.sh plugin-enable",
+        "rabbit:start": "bash apps/adoption/scripts/rabbitmq.sh start",
+        "rabbit:stop": "bash apps/adoption/scripts/rabbitmq.sh stop",
+        "rabbit:restart": "bash apps/adoption/scripts/rabbitmq.sh restart",
+        "rabbit:status": "bash apps/adoption/scripts/rabbitmq.sh status",
+        "rabbit:enable": "bash apps/adoption/scripts/rabbitmq.sh enable",
+        "rabbit:disable": "bash apps/adoption/scripts/rabbitmq.sh disable",
+        "rabbit:plugin": "bash apps/adoption/scripts/rabbitmq.sh plugin-enable",
         
         "rabbit:url": "@php -r \"echo 'http://' . trim(shell_exec('hostname -I | cut -d\\' \\' -f1')) . ':15672\n';\"",
         
