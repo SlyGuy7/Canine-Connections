@@ -3,7 +3,7 @@
         'name' => 'it490/capstone-group-01',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '9ed2a603e2c56dab9c034bdcdba0307298d9c45c',
+        'reference' => '95b0920d36c6b0a454c591827e7935a53858bbb2',
         'type' => 'library',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -22,7 +22,7 @@
         'it490/capstone-group-01' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '9ed2a603e2c56dab9c034bdcdba0307298d9c45c',
+            'reference' => '95b0920d36c6b0a454c591827e7935a53858bbb2',
             'type' => 'library',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),
