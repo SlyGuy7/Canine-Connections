@@ -1,35 +1,35 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
-
-function App() {
-  const [count, setCount] = useState(0)
-
+function Milestone2_Frontend() {
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
+    <div style={{ padding: "35px", fontFamily: "Times New Roman" }}>
+      <h1>Canine Connections</h1>
+      <p>Find the next great addition to your family!</p>
+      <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
+        <div style={{ border: "1px solid #ccc", padding: "15px", width: "200px" }}>
+          <h3>Name: Candy</h3>
+          <p>Breed: Golden Retriever</p>
+          <p>Age: 2 years old</p>
+        </div>
+        <div style={{ border: "1px solid #ccc", padding: "15px", width: "200px" }}>
+          <h3>Name: Max</h3>
+          <p>Breed: German Shepherd</p>
+          <p>Age: 4 year old</p>
+        </div>
+
+        <div style={{ border: "1px solid #ccc", padding: "15px", width: "200px" }}>
+          <h3>Name: Daisy</h3>
+          <p>Breed: Boxer</p>
+          <p>Age: 10 months old</p>
+        </div>
+       </div>
       </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+)
+}
+	function App() {
+        return (
+	<div>
+	<Milestone2_Frontend />
+	</div>
+)
 }
 
 export default App
