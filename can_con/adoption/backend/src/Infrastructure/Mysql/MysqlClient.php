@@ -8,14 +8,22 @@ final class MysqlClient
 {
     private PDO $pdo;
 
-    public function __construct()
+    public function __construct(array $config = [])
     {
+        $host   = $config['host']     ?? $_ENV['DB_HOST'] ?? '100.80.193.50';
+        $port   = $config['port']     ?? $_ENV['DB_PORT'] ?? 3306;
+        $dbname = $config['dbname']   ?? $_ENV['DB_NAME'] ?? 'adoption_center';
+        $user   = $config['user']     ?? $_ENV['DB_USER'] ?? 'adoption_user';
+        $pass   = $config['password'] ?? $_ENV['DB_PASS'] ?? '';
+
         $this->pdo = new PDO(
-            "mysql:host=127.0.0.1;dbname=adoption_center;charset=utf8mb4",
-            "adoption_user",
-            "REDACTED",
+            "mysql:host={$host};port={$port};dbname={$dbname};charset=utf8mb4",
+            $user,
+            $pass,
             [
-                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION
+                PDO::ATTR_ERRMODE            => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                PDO::ATTR_EMULATE_PREPARES   => false,
             ]
         );
     }

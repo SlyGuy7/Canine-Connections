@@ -53,6 +53,8 @@ final class App
         // Health endpoint
         $r->get('/health', \App\Controllers\HealthController::class, 'index');
 
+        $r->post('/auth/login', \App\Controllers\AuthController::class, 'login');
+
         // Admin login
         $r->get('/admin/login', \App\Controllers\AdminController::class, 'login');
         $r->post('/admin/login', \App\Controllers\AdminController::class, 'authenticate');
