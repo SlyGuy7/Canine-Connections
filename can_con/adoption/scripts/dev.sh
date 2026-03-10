@@ -1,266 +1,178 @@
 #!/bin/bash
 
-if [ -f .env ]; then
-    echo "[DEBUG] Loading .env file..."
-    source .env
-    echo "[DEBUG] .env loaded successfully"
-else
-    echo "[ERROR] .env file not found"
-    echo "[INFO]  Run: create a .env file  then fill in your values"
-    exit 1
-fi
+[ -f .env ] && source .env || { echo "[ERROR] .env not found"; exit 1; }
 
-
-remote_exec() {
-    local host=$1
-    local user=$2
-    local key=$3
-    local cmd=$4
-
-    echo "[DEBUG] SSH into $user@$host -> $cmd"
-
-    ssh -i "$key" \
-        -o ControlMaster=auto \
-        -o ControlPersist=10m \
-        -o ControlPath=/tmp/ssh_mux_%h_%p_%r \
-        -o IdentitiesOnly=yes \
-        -o BatchMode=yes \
-        -o StrictHostKeyChecking=no \
-        -o ConnectTimeout=10 \
-        "$user@$host" "$cmd"
+kill_tunnels() {
+    echo "[DEBUG] Clearing existing tunnels..."
+    for port in $LOCAL_RABBITMQ_AMQP_PORT $LOCAL_RABBITMQ_UI_PORT $LOCAL_MYSQL_PORT $LOCAL_PHP_PORT $LOCAL_FRONTEND_PORT; do
+        fuser -k "${port}/tcp" &>/dev/null || true
+    done
+    for sock in /tmp/ssh_mux_*; do
+        [ -S "$sock" ] && ssh -O exit -o ControlPath="$sock" unused &>/dev/null || true
+    done
 }
 
+kill_tunnels
+
+# Shared SSH options — no mux for reliability
+SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=10"
+
+ssh_cmd() {
+    # $1=user $2=host ${@:3}=command
+    ssh $SSH_OPTS "$1@$2" "${@:3}"
+}
 
 check_ssh() {
-    local host=$1
-    local user=$2
-    local key=$3
-    local label=$4
-
-    echo "[DEBUG] Checking SSH connection to $label at $host..."
-
-    if remote_exec "$host" "$user" "$key" "echo ok" > /dev/null 2>&1; then
-        echo "[DEBUG] SSH connection to $label OK"
-        return 0
-    else
-        echo "[ERROR] Cannot reach $label at $host"
-        echo "[INFO]  Make sure Tailscale is running on that VM and your public key is in their authorized_keys"
-        return 1
-    fi
+    echo "[DEBUG] Connecting to $3..."
+    ssh_cmd "$1" "$2" "echo ok" &>/dev/null && return 0
+    echo "[ERROR] Cannot reach $3 at $2"
+    return 1
 }
 
+is_active()      { ssh_cmd "$1" "$2" "systemctl is-active --quiet $3" &>/dev/null; }
+port_listening() { ssh_cmd "$1" "$2" "ss -lnt | grep -q :$3" &>/dev/null; }
 
-open_tunnel() {
-    local key=$1
-    local user=$2
-    local host=$3
-    shift 3
-
-    for mapping in "$@"; do
-        local_port=$(echo "$mapping" | cut -d: -f1)
-        fuser -k ${local_port}/tcp 2>/dev/null || true
-    done
-
-    local ssh_args=()
-    for mapping in "$@"; do
-        ssh_args+=(-L "$mapping")
-    done
-
-    ssh -i "$key" \
-        -o StrictHostKeyChecking=no \
-        -N -f \
-        "${ssh_args[@]}" \
-        "$user@$host"
+tunnel() {
+    local user=$1 host=$2; shift 2
+    ssh $SSH_OPTS -N $(printf -- '-L %s ' "$@") "$user@$host" &>/dev/null & disown
 }
 
+wait_for() {
+    local fn=$1 label=$2 max=$3; shift 3
+    for i in $(seq 1 "$max"); do
+        $fn "$@" && return 0
+        echo "[DEBUG] $label not ready ($i/$max)..."; sleep 2
+    done
+    echo "[ERROR] $label failed to start"; return 1
+}
 
 start_rabbitmq() {
-    echo ""
-    echo "[INFO] ---- Starting RabbitMQ ----"
+    echo "[INFO] ---- RabbitMQ ----"
+    check_ssh "$RABBITMQ_USER" "$RABBITMQ_HOST" "RabbitMQ" || return 1
 
-    check_ssh "$RABBITMQ_HOST" "$RABBITMQ_USER" "$SSH_KEY" "RabbitMQ VM" || return 1
+    if is_active "$RABBITMQ_USER" "$RABBITMQ_HOST" "rabbitmq-server"; then
+        echo "[INFO] RabbitMQ already running"
+    else
+        ssh_cmd "$RABBITMQ_USER" "$RABBITMQ_HOST" \
+            "sudo systemctl enable rabbitmq-server && sudo systemctl start rabbitmq-server"
+        wait_for port_listening "RabbitMQ" 30 "$RABBITMQ_USER" "$RABBITMQ_HOST" 5672 || return 1
+    fi
 
-    echo "[DEBUG] Restarting RabbitMQ service..."
-
-    remote_exec "$RABBITMQ_HOST" "$RABBITMQ_USER" "$SSH_KEY" \
-        "sudo systemctl enable rabbitmq-server >/dev/null 2>&1 || true && \
-         sudo systemctl restart rabbitmq-server"
-
-    echo "[DEBUG] Waiting for RabbitMQ to become ready..."
-
-    for i in {1..30}; do
-        if remote_exec "$RABBITMQ_HOST" "$RABBITMQ_USER" "$SSH_KEY" \
-            "sudo rabbitmq-diagnostics ping" > /dev/null 2>&1; then
-            echo "[INFO] RabbitMQ is running"
-            break
-        fi
-
-        echo "[DEBUG] RabbitMQ not ready yet ($i/30)..."
-        sleep 2
-
-        if [[ $i -eq 30 ]]; then
-            echo "[ERROR] RabbitMQ failed to start"
-            return 1
-        fi
-    done
-
-    echo "[DEBUG] Enabling RabbitMQ management plugin..."
-
-    remote_exec "$RABBITMQ_HOST" "$RABBITMQ_USER" "$SSH_KEY" \
-        "sudo rabbitmq-plugins enable rabbitmq_management >/dev/null 2>&1 || true"
-
-    open_tunnel "$SSH_KEY" "$RABBITMQ_USER" "$RABBITMQ_HOST" \
+    ssh_cmd "$RABBITMQ_USER" "$RABBITMQ_HOST" \
+        "sudo rabbitmq-plugins enable rabbitmq_management &>/dev/null || true"
+    tunnel "$RABBITMQ_USER" "$RABBITMQ_HOST" \
         "${LOCAL_RABBITMQ_AMQP_PORT}:localhost:5672" \
         "${LOCAL_RABBITMQ_UI_PORT}:localhost:15672"
 
     echo "[INFO] RabbitMQ ready"
-    echo "[INFO]   AMQP -> localhost:$LOCAL_RABBITMQ_AMQP_PORT"
-    echo "[INFO]   UI   -> http://localhost:$LOCAL_RABBITMQ_UI_PORT"
+    echo "[INFO]   AMQP -> amqp://${RABBITMQ_HOST}:${LOCAL_RABBITMQ_AMQP_PORT}"
+    echo "[INFO]   UI   -> http://${RABBITMQ_HOST}:${LOCAL_RABBITMQ_UI_PORT}/"
 }
-
 
 start_mysql() {
-    echo ""
-    echo "[INFO] ---- Starting MySQL ----"
+    echo "[INFO] ---- MySQL ----"
+    check_ssh "$MYSQL_USER" "$MYSQL_HOST" "MySQL" || return 1
 
-    check_ssh "$MYSQL_HOST" "$MYSQL_USER" "$SSH_KEY" "MySQL VM" || return 1
+    if is_active "$MYSQL_USER" "$MYSQL_HOST" "mysql"; then
+        echo "[INFO] MySQL already running"
+    else
+        ssh_cmd "$MYSQL_USER" "$MYSQL_HOST" \
+            "sudo systemctl enable mysql && sudo systemctl start mysql"
+        wait_for is_active "MySQL" 10 "$MYSQL_USER" "$MYSQL_HOST" "mysql" || return 1
+    fi
 
-    remote_exec "$MYSQL_HOST" "$MYSQL_USER" "$SSH_KEY" \
-        "sudo systemctl enable mysql && sudo systemctl restart mysql"
-
-    for i in {1..10}; do
-        remote_exec "$MYSQL_HOST" "$MYSQL_USER" "$SSH_KEY" \
-            "sudo systemctl is-active mysql" > /dev/null 2>&1 && break
-        echo "[DEBUG] MySQL not ready yet ($i/10)..."
-        sleep 2
-        [[ $i -eq 10 ]] && { echo "[ERROR] MySQL failed to start"; return 1; }
-    done
-
-    open_tunnel "$SSH_KEY" "$MYSQL_USER" "$MYSQL_HOST" \
-        "${LOCAL_MYSQL_PORT}:localhost:3306"
-
-    echo "[INFO] MySQL ready"
+    tunnel "$MYSQL_USER" "$MYSQL_HOST" "${LOCAL_MYSQL_PORT}:localhost:3306"
+    echo "[INFO] MySQL ready -> ${MYSQL_HOST}:${LOCAL_MYSQL_PORT}"
 }
-
 
 start_php() {
-    echo ""
-    echo "[INFO] ---- Starting PHP Backend ----"
+    echo "[INFO] ---- PHP Backend ----"
+    check_ssh "$PHP_USER" "$PHP_HOST" "PHP" || return 1
 
-    check_ssh "$PHP_HOST" "$PHP_USER" "$SSH_KEY" "PHP VM" || return 1
+    if port_listening "$PHP_USER" "$PHP_HOST" "$PHP_PORT"; then
+        echo "[INFO] PHP already running"
+    else
+        ssh_cmd "$PHP_USER" "$PHP_HOST" "pkill -f 'php -S' || true"
+        echo "[DEBUG] Running composer install..."
+        # Run composer synchronously so we know it finished, then launch PHP detached
+        ssh_cmd "$PHP_USER" "$PHP_HOST" \
+            "cd ${PHP_DIR} && composer install --no-interaction --prefer-dist --optimize-autoloader -q 2>/dev/null"
+        echo "[DEBUG] Starting PHP server..."
+        ssh_cmd "$PHP_USER" "$PHP_HOST" \
+            "setsid nohup php -S 0.0.0.0:${PHP_PORT} -t ${PHP_DIR}/public > /tmp/php-server.log 2>&1 < /dev/null &"
+        wait_for port_listening "PHP" 10 "$PHP_USER" "$PHP_HOST" "$PHP_PORT" || return 1
+    fi
 
-    echo "[DEBUG] Killing any existing PHP server processes..."
-    remote_exec "$PHP_HOST" "$PHP_USER" "$SSH_KEY" \
-        "pkill -f 'php -S' 2>/dev/null || true"
-
-    echo "[DEBUG] Running composer install and starting PHP server..."
-    remote_exec "$PHP_HOST" "$PHP_USER" "$SSH_KEY" \
-        "cd ${PHP_DIR} && composer install --no-interaction --prefer-dist --optimize-autoloader && nohup php -S 0.0.0.0:${PHP_PORT} -t public > /tmp/php-server.log 2>&1 & disown"
-
-    echo "[DEBUG] Waiting for PHP server to respond..."
-
-    for i in {1..10}; do
-        if remote_exec "$PHP_HOST" "$PHP_USER" "$SSH_KEY" "ss -lnt | grep :${PHP_PORT}" > /dev/null 2>&1; then
-            echo "[INFO] PHP backend is running"
-            break
-        fi
-
-        echo "[DEBUG] PHP server not ready yet ($i/10)..."
-        sleep 2
-    done
-
-    open_tunnel "$SSH_KEY" "$PHP_USER" "$PHP_HOST" \
-        "127.0.0.1:${LOCAL_PHP_PORT}:localhost:${PHP_PORT}"
-
-    echo "[INFO] PHP backend ready"
-    echo "[INFO]   API -> http://localhost:$LOCAL_PHP_PORT"
+    tunnel "$PHP_USER" "$PHP_HOST" "127.0.0.1:${LOCAL_PHP_PORT}:localhost:${PHP_PORT}"
+    echo "[INFO] PHP ready -> http://${PHP_HOST}:${LOCAL_PHP_PORT}/"
 }
-
 
 start_frontend() {
-    echo ""
-    echo "[INFO] ---- Starting Frontend ----"
+    echo "[INFO] ---- Frontend ----"
+    check_ssh "$FRONTEND_USER" "$FRONTEND_HOST" "Frontend" || return 1
 
-    check_ssh "$FRONTEND_HOST" "$FRONTEND_USER" "$SSH_KEY" "Frontend VM" || return 1
+    if port_listening "$FRONTEND_USER" "$FRONTEND_HOST" "$FRONTEND_PORT"; then
+        echo "[INFO] Frontend already running"
+    else
+        ssh_cmd "$FRONTEND_USER" "$FRONTEND_HOST" "fuser -k ${FRONTEND_PORT}/tcp || true"
+        echo "[DEBUG] Running npm install..."
+        ssh_cmd "$FRONTEND_USER" "$FRONTEND_HOST" \
+            "cd ${FRONTEND_DIR} && npm install --silent 2>/dev/null"
+        echo "[DEBUG] Starting frontend server..."
+        ssh_cmd "$FRONTEND_USER" "$FRONTEND_HOST" \
+            "setsid nohup npm --prefix ${FRONTEND_DIR} run dev -- --host 0.0.0.0 --port ${FRONTEND_PORT} > /tmp/vite.log 2>&1 < /dev/null &"
+        wait_for port_listening "Frontend" 15 "$FRONTEND_USER" "$FRONTEND_HOST" "$FRONTEND_PORT" || return 1
+    fi
 
-    remote_exec "$FRONTEND_HOST" "$FRONTEND_USER" "$SSH_KEY" \
-        "fuser -k ${FRONTEND_PORT}/tcp 2>/dev/null || true"
-
-    remote_exec "$FRONTEND_HOST" "$FRONTEND_USER" "$SSH_KEY" \
-        "cd ${FRONTEND_DIR} && npm install --silent"
-
-    remote_exec "$FRONTEND_HOST" "$FRONTEND_USER" "$SSH_KEY" \
-        "cd ${FRONTEND_DIR} && nohup npm run dev -- --host 0.0.0.0 --port ${FRONTEND_PORT} > /tmp/vite.log 2>&1 &"
-
-    for i in {1..15}; do
-        remote_exec "$FRONTEND_HOST" "$FRONTEND_USER" "$SSH_KEY" \
-            "ss -lnt | grep :${FRONTEND_PORT}" > /dev/null 2>&1 && break
-        echo "[DEBUG] Frontend not ready yet ($i/15)..."
-        sleep 2
-    done
-
-    open_tunnel "$SSH_KEY" "$FRONTEND_USER" "$FRONTEND_HOST" \
-        "${LOCAL_FRONTEND_PORT}:localhost:${FRONTEND_PORT}"
-
-    echo "[INFO] Frontend ready"
+    tunnel "$FRONTEND_USER" "$FRONTEND_HOST" "${LOCAL_FRONTEND_PORT}:localhost:${FRONTEND_PORT}"
+    echo "[INFO] Frontend ready -> http://${FRONTEND_HOST}:${LOCAL_FRONTEND_PORT}/"
 }
-
 
 stop_all() {
     echo "[INFO] Stopping services..."
-
-    remote_exec "$RABBITMQ_HOST" "$RABBITMQ_USER" "$SSH_KEY" "sudo systemctl stop rabbitmq-server" || true
-    remote_exec "$MYSQL_HOST" "$MYSQL_USER" "$SSH_KEY" "sudo systemctl stop mysql" || true
-    remote_exec "$PHP_HOST" "$PHP_USER" "$SSH_KEY" "pkill -f 'php -S'" || true
-    remote_exec "$FRONTEND_HOST" "$FRONTEND_USER" "$SSH_KEY" "pkill -f vite" || true
-
-    for port in $LOCAL_RABBITMQ_AMQP_PORT $LOCAL_RABBITMQ_UI_PORT $LOCAL_MYSQL_PORT $LOCAL_PHP_PORT $LOCAL_FRONTEND_PORT; do
-        fuser -k "${port}/tcp" 2>/dev/null || true
-    done
-
-    echo "[INFO] Services stopped"
+    ssh_cmd "$RABBITMQ_USER" "$RABBITMQ_HOST" "sudo systemctl stop rabbitmq-server" || true
+    ssh_cmd "$MYSQL_USER"    "$MYSQL_HOST"    "sudo systemctl stop mysql"           || true
+    ssh_cmd "$PHP_USER"      "$PHP_HOST"      "pkill -f 'php -S'"                  || true
+    ssh_cmd "$FRONTEND_USER" "$FRONTEND_HOST" "pkill -f vite"                      || true
+    echo "[INFO] All services stopped"
 }
-
 
 status_all() {
     echo "[INFO] Checking services..."
-
-    remote_exec "$RABBITMQ_HOST" "$RABBITMQ_USER" "$SSH_KEY" "systemctl is-active rabbitmq-server" || true
-    remote_exec "$MYSQL_HOST" "$MYSQL_USER" "$SSH_KEY" "systemctl is-active mysql" || true
-    remote_exec "$PHP_HOST" "$PHP_USER" "$SSH_KEY" "ss -lnt | grep :${PHP_PORT} && echo PHP running" || true
-    remote_exec "$FRONTEND_HOST" "$FRONTEND_USER" "$SSH_KEY" "ss -lnt | grep :${FRONTEND_PORT} && echo Frontend running" || true
+    for svc in \
+        "RabbitMQ|$RABBITMQ_USER|$RABBITMQ_HOST|rabbitmq-server" \
+        "MySQL|$MYSQL_USER|$MYSQL_HOST|mysql"
+    do
+        IFS='|' read -r label user host service <<< "$svc"
+        printf "[INFO] %-12s -> %s\n" "$label" \
+            "$(ssh_cmd "$user" "$host" "systemctl is-active $service" 2>/dev/null || echo unreachable)"
+    done
+    for svc in \
+        "PHP|$PHP_USER|$PHP_HOST|$PHP_PORT" \
+        "Frontend|$FRONTEND_USER|$FRONTEND_HOST|$FRONTEND_PORT"
+    do
+        IFS='|' read -r label user host port <<< "$svc"
+        port_listening "$user" "$host" "$port" \
+            && printf "[INFO] %-12s -> running\n" "$label" \
+            || printf "[INFO] %-12s -> stopped\n" "$label"
+    done
 }
 
+start_all() {
+    start_rabbitmq; start_mysql; start_php; start_frontend
+    echo ""
+    echo "[INFO] All services started. Tunnels running in background."
+    echo "[INFO] Use './dev.sh stop' to shut everything down."
+}
 
 case "${1:-start}" in
-    start)
-        echo "[INFO] Starting all services..."
-        start_rabbitmq
-        start_mysql
-        start_php
-        start_frontend
-        echo "[INFO] All services started"
-        wait
-        ;;
-
-    stop)
-        stop_all
-        ;;
-
-    restart)
-        stop_all
-        sleep 2
-        start_rabbitmq
-        start_mysql
-        start_php
-        start_frontend
-        ;;
-
-    status)
-        status_all
-        ;;
-
-    *)
-        echo "Usage: $0 {start|stop|restart|status}"
-        ;;
+    start)          start_all       ;;
+    rabbitmq)       start_rabbitmq  ;;
+    mysql)          start_mysql     ;;
+    php|backend)    start_php       ;;
+    frontend)       start_frontend  ;;
+    stop)           stop_all        ;;
+    restart)        stop_all; sleep 2; start_all ;;
+    status)         status_all      ;;
+    *) echo "Usage: $0 {start|stop|restart|status|rabbitmq|mysql|php|backend|frontend}" ;;
 esac
