@@ -2,30 +2,10 @@ DROP DATABASE IF EXISTS adoption_center;
 CREATE DATABASE IF NOT EXISTS adoption_center;
 USE adoption_center;
 
--- MySQL dump 10.13  Distrib 8.0.45, for Linux (aarch64)
---
--- Host: localhost    Database: adoption_center
--- ------------------------------------------------------
--- Server version	8.0.45-0ubuntu0.24.04.1
-
-/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
-/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
-/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
-/*!50503 SET NAMES utf8mb4 */;
-/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
-/*!40103 SET TIME_ZONE='+00:00' */;
-/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
-/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
-/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
-/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
-
---
 -- Table structure for table `adoption_applications`
---
+
 
 DROP TABLE IF EXISTS `adoption_applications`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `adoption_applications` (
   `application_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
@@ -58,15 +38,10 @@ CREATE TABLE `adoption_applications` (
   CONSTRAINT `adoption_applications_ibfk_2` FOREIGN KEY (`dog_id`) REFERENCES `dogs` (`dog_id`),
   CONSTRAINT `adoption_applications_ibfk_3` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
 -- Table structure for table `adoptions`
---
 
 DROP TABLE IF EXISTS `adoptions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `adoptions` (
   `adoption_id` int NOT NULL AUTO_INCREMENT,
   `application_id` int NOT NULL,
@@ -84,15 +59,11 @@ CREATE TABLE `adoptions` (
   CONSTRAINT `adoptions_ibfk_2` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `adoptions_ibfk_3` FOREIGN KEY (`dog_id`) REFERENCES `dogs` (`dog_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
 -- Table structure for table `api_keys`
---
+
 
 DROP TABLE IF EXISTS `api_keys`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `api_keys` (
   `key_id` int NOT NULL AUTO_INCREMENT,
   `shelter_id` int NOT NULL,
@@ -109,15 +80,10 @@ CREATE TABLE `api_keys` (
   KEY `idx_active` (`is_active`),
   CONSTRAINT `api_keys_ibfk_1` FOREIGN KEY (`shelter_id`) REFERENCES `shelters` (`shelter_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
 -- Table structure for table `api_logs`
---
 
 DROP TABLE IF EXISTS `api_logs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `api_logs` (
   `log_id` int NOT NULL AUTO_INCREMENT,
   `key_id` int NOT NULL,
@@ -134,21 +100,10 @@ CREATE TABLE `api_logs` (
   KEY `idx_called_at` (`called_at`),
   KEY `idx_response_status` (`response_status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
-/*!50100 PARTITION BY RANGE (year(`called_at`))
-(PARTITION p2024 VALUES LESS THAN (2025) ENGINE = InnoDB,
- PARTITION p2025 VALUES LESS THAN (2026) ENGINE = InnoDB,
- PARTITION p2026 VALUES LESS THAN (2027) ENGINE = InnoDB,
- PARTITION p2027 VALUES LESS THAN (2028) ENGINE = InnoDB,
- PARTITION pfuture VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
 -- Table structure for table `badges`
---
 
 DROP TABLE IF EXISTS `badges`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `badges` (
   `badge_id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(100) NOT NULL,
@@ -158,15 +113,10 @@ CREATE TABLE `badges` (
   PRIMARY KEY (`badge_id`),
   KEY `idx_trigger` (`trigger_event`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
 -- Table structure for table `chat_messages`
---
 
 DROP TABLE IF EXISTS `chat_messages`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `chat_messages` (
   `message_id` int NOT NULL AUTO_INCREMENT,
   `session_id` int NOT NULL,
@@ -178,21 +128,11 @@ CREATE TABLE `chat_messages` (
   KEY `idx_sender` (`sender_id`),
   KEY `idx_sent_at` (`sent_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
-/*!50100 PARTITION BY RANGE (year(`sent_at`))
-(PARTITION p2024 VALUES LESS THAN (2025) ENGINE = InnoDB,
- PARTITION p2025 VALUES LESS THAN (2026) ENGINE = InnoDB,
- PARTITION p2026 VALUES LESS THAN (2027) ENGINE = InnoDB,
- PARTITION p2027 VALUES LESS THAN (2028) ENGINE = InnoDB,
- PARTITION pfuture VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `chat_sessions`
---
 
 DROP TABLE IF EXISTS `chat_sessions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `chat_sessions` (
   `session_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
@@ -209,15 +149,10 @@ CREATE TABLE `chat_sessions` (
   CONSTRAINT `chat_sessions_ibfk_2` FOREIGN KEY (`dog_id`) REFERENCES `dogs` (`dog_id`),
   CONSTRAINT `chat_sessions_ibfk_3` FOREIGN KEY (`shelter_id`) REFERENCES `shelters` (`shelter_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
--- Table structure for table `dog_photos`
---
+-- Table structure for table `dog_photos`-
 
 DROP TABLE IF EXISTS `dog_photos`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `dog_photos` (
   `photo_id` int NOT NULL AUTO_INCREMENT,
   `dog_id` int NOT NULL,
@@ -230,15 +165,11 @@ CREATE TABLE `dog_photos` (
   KEY `idx_primary` (`dog_id`,`is_primary`),
   CONSTRAINT `dog_photos_ibfk_1` FOREIGN KEY (`dog_id`) REFERENCES `dogs` (`dog_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `dogs`
---
 
 DROP TABLE IF EXISTS `dogs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `dogs` (
   `dog_id` int NOT NULL AUTO_INCREMENT,
   `shelter_id` int NOT NULL,
@@ -280,15 +211,11 @@ CREATE TABLE `dogs` (
   KEY `idx_compatibility` (`energy_level`,`good_with_kids`,`good_with_dogs`,`apartment_friendly`),
   CONSTRAINT `dogs_ibfk_1` FOREIGN KEY (`shelter_id`) REFERENCES `shelters` (`shelter_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `meet_greet_sessions`
---
 
 DROP TABLE IF EXISTS `meet_greet_sessions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `meet_greet_sessions` (
   `meetup_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
@@ -310,15 +237,12 @@ CREATE TABLE `meet_greet_sessions` (
   CONSTRAINT `meet_greet_sessions_ibfk_2` FOREIGN KEY (`dog_id`) REFERENCES `dogs` (`dog_id`),
   CONSTRAINT `meet_greet_sessions_ibfk_3` FOREIGN KEY (`shelter_id`) REFERENCES `shelters` (`shelter_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `notifications`
---
+
 
 DROP TABLE IF EXISTS `notifications`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `notifications` (
   `notification_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
@@ -331,21 +255,11 @@ CREATE TABLE `notifications` (
   KEY `idx_created_at` (`created_at`),
   KEY `idx_type` (`type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
-/*!50100 PARTITION BY RANGE (year(`created_at`))
-(PARTITION p2024 VALUES LESS THAN (2025) ENGINE = InnoDB,
- PARTITION p2025 VALUES LESS THAN (2026) ENGINE = InnoDB,
- PARTITION p2026 VALUES LESS THAN (2027) ENGINE = InnoDB,
- PARTITION p2027 VALUES LESS THAN (2028) ENGINE = InnoDB,
- PARTITION pfuture VALUES LESS THAN MAXVALUE ENGINE = InnoDB) */;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `pet_parks`
---
 
 DROP TABLE IF EXISTS `pet_parks`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `pet_parks` (
   `park_id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
@@ -361,15 +275,11 @@ CREATE TABLE `pet_parks` (
   KEY `idx_city` (`city`),
   KEY `idx_active` (`is_active`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `post_adoption_logs`
---
 
 DROP TABLE IF EXISTS `post_adoption_logs`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `post_adoption_logs` (
   `log_id` int NOT NULL AUTO_INCREMENT,
   `adoption_id` int NOT NULL,
@@ -384,15 +294,11 @@ CREATE TABLE `post_adoption_logs` (
   KEY `idx_log_date` (`log_date`),
   CONSTRAINT `post_adoption_logs_ibfk_1` FOREIGN KEY (`adoption_id`) REFERENCES `adoptions` (`adoption_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `quiz_options`
---
 
 DROP TABLE IF EXISTS `quiz_options`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `quiz_options` (
   `option_id` int NOT NULL AUTO_INCREMENT,
   `question_id` int NOT NULL,
@@ -404,15 +310,12 @@ CREATE TABLE `quiz_options` (
   KEY `idx_attribute` (`maps_to_attribute`),
   CONSTRAINT `quiz_options_ibfk_1` FOREIGN KEY (`question_id`) REFERENCES `quiz_questions` (`question_id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `quiz_questions`
---
+
 
 DROP TABLE IF EXISTS `quiz_questions`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `quiz_questions` (
   `question_id` int NOT NULL AUTO_INCREMENT,
   `question_text` text NOT NULL,
@@ -422,15 +325,12 @@ CREATE TABLE `quiz_questions` (
   KEY `idx_category` (`category`),
   KEY `idx_display_order` (`display_order`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
+
 -- Table structure for table `quiz_results`
---
 
 DROP TABLE IF EXISTS `quiz_results`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `quiz_results` (
   `result_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
@@ -442,15 +342,12 @@ CREATE TABLE `quiz_results` (
   KEY `idx_taken_at` (`taken_at`),
   CONSTRAINT `quiz_results_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
+
 -- Table structure for table `resources`
---
 
 DROP TABLE IF EXISTS `resources`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `resources` (
   `resource_id` int NOT NULL AUTO_INCREMENT,
   `title` varchar(255) NOT NULL,
@@ -465,15 +362,12 @@ CREATE TABLE `resources` (
   KEY `idx_published` (`is_published`),
   KEY `idx_content_type` (`content_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
+
 -- Table structure for table `shelters`
---
 
 DROP TABLE IF EXISTS `shelters`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `shelters` (
   `shelter_id` int NOT NULL AUTO_INCREMENT,
   `name` varchar(255) NOT NULL,
@@ -495,15 +389,11 @@ CREATE TABLE `shelters` (
   KEY `idx_active` (`is_active`),
   KEY `idx_coords` (`latitude`,`longitude`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `success_stories`
---
 
 DROP TABLE IF EXISTS `success_stories`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `success_stories` (
   `story_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
@@ -524,15 +414,11 @@ CREATE TABLE `success_stories` (
   CONSTRAINT `success_stories_ibfk_2` FOREIGN KEY (`dog_id`) REFERENCES `dogs` (`dog_id`),
   CONSTRAINT `success_stories_ibfk_3` FOREIGN KEY (`approved_by`) REFERENCES `users` (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `user_badges`
---
 
 DROP TABLE IF EXISTS `user_badges`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `user_badges` (
   `id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
@@ -545,15 +431,11 @@ CREATE TABLE `user_badges` (
   CONSTRAINT `user_badges_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `user_badges_ibfk_2` FOREIGN KEY (`badge_id`) REFERENCES `badges` (`badge_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
 -- Table structure for table `users`
---
 
 DROP TABLE IF EXISTS `users`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `users` (
   `user_id` int NOT NULL AUTO_INCREMENT,
   `email` varchar(255) NOT NULL,
@@ -571,15 +453,12 @@ CREATE TABLE `users` (
   KEY `idx_email` (`email`),
   KEY `idx_role` (`role`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 
---
+
+
 -- Table structure for table `virtual_foster`
---
 
 DROP TABLE IF EXISTS `virtual_foster`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `virtual_foster` (
   `foster_id` int NOT NULL AUTO_INCREMENT,
   `user_id` int NOT NULL,
@@ -597,15 +476,4 @@ CREATE TABLE `virtual_foster` (
   CONSTRAINT `virtual_foster_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`),
   CONSTRAINT `virtual_foster_ibfk_2` FOREIGN KEY (`dog_id`) REFERENCES `dogs` (`dog_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
-/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
-/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
-/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
-/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
-/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
-/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
-/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
-
--- Dump completed on 2026-03-10 19:20:32
