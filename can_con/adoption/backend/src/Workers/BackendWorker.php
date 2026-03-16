@@ -104,38 +104,41 @@ final class BackendWorker
         echo "[Backend] handleRegister: {$data['email']}\n";
         try {
             if (empty($data['email']) || empty($data['password'])) {
-                $this->fail('response.auth.register', 'email and password are required', $corrId);
-                $msg->ack(); return;
+                $this->respond('response.auth.register', [
+                    'success' => false,
+                    'error'   => 'email and password are required',
+                ], $corrId);
+                $msg->ack();
+                $result = $this->mq->waitForResponse('db.result.auth.register', $corrId);
+                var_dump($result);
+                return;
             }
             $this->mq->publish('db.auth.register', [
                 'email'         => $data['email'],
-<<<<<<< HEAD
-                'password_hash' => $this->enc->hashPassword($data['password']),
-                'first_name'    => $this->enc($data['first_name'] ?? ''),
-                'last_name'     => $this->enc($data['last_name']  ?? ''),
-                'phone'         => $this->enc($data['phone']      ?? ''),
-                'address'       => $this->enc($data['address']    ?? ''),
-=======
                 'password'      => $data['password'],
                 'first_name'    => $this->encryptIfPresent($data['first_name'] ?? ''),
                 'last_name'     => $this->encryptIfPresent($data['last_name']  ?? ''),
                 'phone'         => $this->encryptIfPresent($data['phone']      ?? ''),
                 'address'       => $this->encryptIfPresent($data['address']    ?? ''),
->>>>>>> 5c49001b45d399042714184541e0226210b287f7
                 'role'          => 'adopter',
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.auth.register', $corrId);
-            if (!$result || !$result['success']) {
-                $this->fail('response.auth.register', $result['error'] ?? 'Registration failed', $corrId);
-                $msg->ack(); return;
+
+            if (!$result || (($result['status'] ?? '') !== 'registered')) {
+                $this->respond('response.auth.register', [
+                    'success' => false,
+                    'error' => $result['message'] ?? $result['error'] ?? 'Registration failed',
+                ], $corrId);
+                $msg->ack();
+                return;
             }
             $this->respond('response.auth.register', [
-                'success'    => true,
-                'user_id'    => $result['user_id'],
-                'email'      => $data['email'],
+                'success' => true,
+                'user_id' => $result['user_id'] ?? null,
+                'email' => $data['email'],
                 'first_name' => $data['first_name'] ?? '',
-                'last_name'  => $data['last_name']  ?? '',
-                'role'       => 'adopter',
+                'last_name' => $data['last_name'] ?? '',
+                'role' => 'adopter',
             ], $corrId);
             $msg->ack();
         } catch (\Throwable $e) {
