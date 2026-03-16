@@ -52,7 +52,7 @@ final class BackendWorker
 
             $this->mq->publish('db.auth.register', [
                 'email'         => $data['email'],
-                'password_hash' => $this->enc->hashPassword($data['password']),
+                'password'      => $data['password'],
                 'first_name'    => $this->encryptIfPresent($data['first_name'] ?? ''),
                 'last_name'     => $this->encryptIfPresent($data['last_name']  ?? ''),
                 'phone'         => $this->encryptIfPresent($data['phone']      ?? ''),
