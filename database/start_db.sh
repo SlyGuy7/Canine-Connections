@@ -18,3 +18,13 @@
      exit 1
    fi
  fi
+
+echo "Loading database schema..."
+
+sudo mysql < schema.sql
+
+echo "Database schema loaded."
+
+echo "Verifying tables..."
+
+sudo mysql -e "USE adoption_center; SHOW TABLES;"

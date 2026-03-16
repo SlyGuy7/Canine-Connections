@@ -109,11 +109,19 @@ final class BackendWorker
             }
             $this->mq->publish('db.auth.register', [
                 'email'         => $data['email'],
+<<<<<<< HEAD
                 'password_hash' => $this->enc->hashPassword($data['password']),
                 'first_name'    => $this->enc($data['first_name'] ?? ''),
                 'last_name'     => $this->enc($data['last_name']  ?? ''),
                 'phone'         => $this->enc($data['phone']      ?? ''),
                 'address'       => $this->enc($data['address']    ?? ''),
+=======
+                'password'      => $data['password'],
+                'first_name'    => $this->encryptIfPresent($data['first_name'] ?? ''),
+                'last_name'     => $this->encryptIfPresent($data['last_name']  ?? ''),
+                'phone'         => $this->encryptIfPresent($data['phone']      ?? ''),
+                'address'       => $this->encryptIfPresent($data['address']    ?? ''),
+>>>>>>> 5c49001b45d399042714184541e0226210b287f7
                 'role'          => 'adopter',
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.auth.register', $corrId);
