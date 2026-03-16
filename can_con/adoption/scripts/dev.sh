@@ -14,11 +14,9 @@ kill_tunnels() {
 
 kill_tunnels
 
-# Shared SSH options — no mux for reliability
 SSH_OPTS="-i $SSH_KEY -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=10"
 
 ssh_cmd() {
-    # $1=user $2=host ${@:3}=command
     ssh $SSH_OPTS "$1@$2" "${@:3}"
 }
 
@@ -94,7 +92,6 @@ start_php() {
     else
         ssh_cmd "$PHP_USER" "$PHP_HOST" "pkill -f 'php -S' || true"
         echo "[DEBUG] Running composer install..."
-        # Run composer synchronously so we know it finished, then launch PHP detached
         ssh_cmd "$PHP_USER" "$PHP_HOST" \
             "cd ${PHP_DIR} && composer install --no-interaction --prefer-dist --optimize-autoloader -q 2>/dev/null"
         echo "[DEBUG] Starting PHP server..."

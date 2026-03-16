@@ -8,9 +8,7 @@ use App\Workers\BackendWorker;
 
 Config::loadEnv(__DIR__ . '/.env');
 
-echo "================================================\n";
 echo " Canine Connections — Backend Worker\n";
-echo "================================================\n";
 
 try {
     $mq = new RabbitMqClient(
