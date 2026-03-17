@@ -128,16 +128,8 @@ function handleQuery($queue, $data, $db) {
 
     switch ($queue) {
         case "db.auth.register":
-<<<<<<< HEAD
-            if (!isset($data["email"]) || !isset($data["password"])) {
-                return [
-                    "success" => "false",
-                    "message" => "Missing email or password"
-                ];
-=======
             if (!isset($data["email"]) || !isset($data["password_hash"])) {
                 return ["success" => false, "error" => "Missing email or password_hash"];
->>>>>>> e76744152fbf524c19ca9da31e5c8f7a70cceb64
             }
 
             // Escaping all fields to prevent SQL injection
@@ -162,25 +154,6 @@ function handleQuery($queue, $data, $db) {
             logMsg("Executing SQL: " . $sql);
 
             if (!$db->query($sql)) {
-<<<<<<< HEAD
-                return [
-                    "success" => "error",
-                    "error" => $db->error
-                ];
-            }
-
-            return [
-                "success" => true,
-                "user_id" => $db->insert_id
-            ];
-
-        case "db.auth.login":
-            if (!isset($data["email"]) || !isset($data["password"])) {
-                return [
-                    "success" => false,
-                    "error" => "Missing email or password"
-                ];
-=======
                 return ["success" => false, "error" => $db->error];
             }
 
@@ -190,7 +163,6 @@ function handleQuery($queue, $data, $db) {
         case "db.auth.login":
             if (!isset($data["email"]) || !isset($data["password"])) {
                 return ["success" => false, "error" => "Missing email or password"];
->>>>>>> e76744152fbf524c19ca9da31e5c8f7a70cceb64
             }
 
             $email = $db->real_escape_string($data["email"]);
@@ -622,16 +594,7 @@ $callback = function($msg) use ($channel, $db) {
     logMsg("Sending result to " . $resultQueue);
     logMsg("Response: " . json_encode($result));
 
-<<<<<<< HEAD
-    $response = new AMQPMessage(
-        json_encode($result),
-        ['content_type' => 'application/json', 'delivery_mode' => 2, 'correlation_id' => $msg->get('correlation_id')]
-    );
-
-    $channel->basic_publish($response, '', $resultQueue);
-=======
     $channel->basic_publish(new AMQPMessage(json_encode($result), $props), '', $resultQueue);
->>>>>>> e76744152fbf524c19ca9da31e5c8f7a70cceb64
 
     logMsg("Request processed\n");
 };
