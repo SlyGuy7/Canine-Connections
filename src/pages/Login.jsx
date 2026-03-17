@@ -28,7 +28,10 @@ export default function Login() {
       })
 
       if (result.success) {
-        localStorage.setItem("auth", "true")
+        localStorage.setItem("isAuthenticated", "true")
+        localStorage.setItem("userEmail", result.email)
+        localStorage.setItem("userFullName", `${result.first_name} ${result.last_name}`)
+        
         setLoading(false)
         navigate("/dashboard")
         return
@@ -44,6 +47,11 @@ export default function Login() {
     }
   }
 
+  const handleForgotPassword = (e) => {
+    e.preventDefault()
+    alert("Password reset functionality will be implemented in the next phase.")
+  }
+
   return (
     <form onSubmit={onSubmit} style={styles.form}>
       {error && <p style={styles.error}>{error}</p>}
@@ -56,19 +64,22 @@ export default function Login() {
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
-          placeholder="Enter your email"
         />
       </div>
 
       <div>
-        <label style={styles.label}>Password</label>
+        <div style={styles.passwordHeader}>
+          <label style={styles.label}>Password</label>
+          <a href="#" onClick={handleForgotPassword} style={styles.forgotLink}>
+            Forgot password?
+          </a>
+        </div>
         <input
           style={styles.input}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          placeholder="Enter your password"
         />
       </div>
 
@@ -85,11 +96,23 @@ const styles = {
     flexDirection: "column",
     gap: "6px",
   },
+  passwordHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   label: {
     display: "block",
     marginBottom: "6px",
     fontWeight: "600",
     color: "#4a382d",
+  },
+  forgotLink: {
+    fontSize: "13px",
+    color: "#d97706",
+    textDecoration: "none",
+    fontWeight: "600",
+    marginBottom: "6px",
   },
   input: {
     width: "100%",

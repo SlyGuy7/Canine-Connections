@@ -18,61 +18,77 @@ final class BackendWorker
     {
         echo "[Backend] Registering consumers...\n";
 
+        // Auth 
         $this->mq->registerConsumer('request.auth.register',       [$this, 'handleRegister']);
         $this->mq->registerConsumer('request.auth.login',          [$this, 'handleLogin']);
 
+        // Shelters
         $this->mq->registerConsumer('request.shelters.list',       [$this, 'handleSheltersList']);
         $this->mq->registerConsumer('request.shelters.get',        [$this, 'handleSheltersGet']);
 
+        // API Keys 
         $this->mq->registerConsumer('request.api.key.get',         [$this, 'handleApiKeyGet']);
         $this->mq->registerConsumer('request.api.key.regenerate',  [$this, 'handleApiKeyRegenerate']);
         $this->mq->registerConsumer('request.api.logs',            [$this, 'handleApiLogs']);
 
+        // Dogs 
         $this->mq->registerConsumer('request.dogs.list',           [$this, 'handleDogsList']);
         $this->mq->registerConsumer('request.dogs.get',            [$this, 'handleDogsGet']);
 
+        // Applications 
         $this->mq->registerConsumer('request.application.submit',  [$this, 'handleApplicationSubmit']);
         $this->mq->registerConsumer('request.application.status',  [$this, 'handleApplicationStatus']);
         $this->mq->registerConsumer('request.application.list',    [$this, 'handleApplicationList']);
         $this->mq->registerConsumer('request.application.approve', [$this, 'handleApplicationApprove']);
         $this->mq->registerConsumer('request.application.reject',  [$this, 'handleApplicationReject']);
 
+        // Adoptions 
         $this->mq->registerConsumer('request.adoptions.list',      [$this, 'handleAdoptionsList']);
         $this->mq->registerConsumer('request.adoptions.get',       [$this, 'handleAdoptionsGet']);
         $this->mq->registerConsumer('request.adoptions.finalize',  [$this, 'handleAdoptionsFinalize']);
 
+        // Quiz 
         $this->mq->registerConsumer('request.quiz.questions',      [$this, 'handleQuizQuestions']);
         $this->mq->registerConsumer('request.quiz.submit',         [$this, 'handleQuiz']);
         $this->mq->registerConsumer('request.quiz.results',        [$this, 'handleQuizResults']);
 
+        // Post Adoption Logs
         $this->mq->registerConsumer('request.adoption.log.create', [$this, 'handleAdoptionLogCreate']);
         $this->mq->registerConsumer('request.adoption.log.list',   [$this, 'handleAdoptionLogList']);
 
+        // Virtual Foster 
         $this->mq->registerConsumer('request.foster.apply',        [$this, 'handleFosterApply']);
         $this->mq->registerConsumer('request.foster.list',         [$this, 'handleFosterList']);
         $this->mq->registerConsumer('request.foster.cancel',       [$this, 'handleFosterCancel']);
 
+        // Pet Parks 
         $this->mq->registerConsumer('request.parks.list',          [$this, 'handleParksList']);
 
+        // Resources 
         $this->mq->registerConsumer('request.resources.list',      [$this, 'handleResourcesList']);
         $this->mq->registerConsumer('request.resources.get',       [$this, 'handleResourcesGet']);
 
+        // Success Stories 
         $this->mq->registerConsumer('request.stories.list',        [$this, 'handleStoriesList']);
         $this->mq->registerConsumer('request.stories.submit',      [$this, 'handleStoriesSubmit']);
         $this->mq->registerConsumer('request.stories.approve',     [$this, 'handleStoriesApprove']);
 
+        // Badges 
         $this->mq->registerConsumer('request.badges.list',         [$this, 'handleBadgesList']);
         $this->mq->registerConsumer('request.badges.mine',         [$this, 'handleBadgesMine']);
 
+        // Chat 
         $this->mq->registerConsumer('request.enquiry.send',        [$this, 'handleEnquiry']);
         $this->mq->registerConsumer('request.chat.start',          [$this, 'handleChatStart']);
         $this->mq->registerConsumer('request.chat.message',        [$this, 'handleChatMessage']);
         $this->mq->registerConsumer('request.chat.history',        [$this, 'handleChatHistory']);
 
+        // Meet & Greet 
         $this->mq->registerConsumer('request.meetgreet.schedule',  [$this, 'handleMeetGreetSchedule']);
         $this->mq->registerConsumer('request.meetgreet.list',      [$this, 'handleMeetGreetList']);
         $this->mq->registerConsumer('request.meetgreet.cancel',    [$this, 'handleMeetGreetCancel']);
 
+        // Notifications 
         $this->mq->registerConsumer('request.notifications.list',  [$this, 'handleNotificationsList']);
         $this->mq->registerConsumer('request.notifications.read',  [$this, 'handleNotificationsRead']);
 
@@ -81,35 +97,48 @@ final class BackendWorker
         $this->mq->wait();
     }
 
+    // AUTH
+    
     public function handleRegister(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleRegister: {$data['email']}\n";
         try {
             if (empty($data['email']) || empty($data['password'])) {
-                $this->fail('response.auth.register', 'email and password are required', $corrId);
-                $msg->ack(); return;
+                $this->respond('response.auth.register', [
+                    'success' => false,
+                    'error'   => 'email and password are required',
+                ], $corrId);
+                $msg->ack();
+                return;
             }
             $this->mq->publish('db.auth.register', [
                 'email'         => $data['email'],
                 'password_hash' => $this->enc->hashPassword($data['password']),
-                'first_name'    => $this->enc($data['first_name'] ?? ''),
-                'last_name'     => $this->enc($data['last_name']  ?? ''),
-                'phone'         => $this->enc($data['phone']      ?? ''),
-                'address'       => $this->enc($data['address']    ?? ''),
+                'first_name'    => $this->encryptIfPresent($data['first_name'] ?? ''),
+                'last_name'     => $this->encryptIfPresent($data['last_name']  ?? ''),
+                'phone'         => $this->encryptIfPresent($data['phone']      ?? ''),
+                'address'       => $this->encryptIfPresent($data['address']    ?? ''),
                 'role'          => 'adopter',
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.auth.register', $corrId);
-            if (!$result || empty($result['success'])) {
-                $this->fail('response.auth.register', $result['error'] ?? 'Registration failed', $corrId);
-                $msg->ack(); return;
+
+            // Added more error checking for the DB results
+            if (!$result || empty($result['success']) || !isset($result['user_id'])) {
+                $this->respond('response.auth.register', [
+                    'success' => false,
+                    'error' => $result['message'] ?? $result['error'] ?? 'Registration failed: No user ID returned from database',
+                ], $corrId);
+                $msg->ack();
+                return;
             }
+
             $this->respond('response.auth.register', [
-                'success'    => true,
-                'user_id'    => $result['user_id'],
-                'email'      => $data['email'],
+                'success' => true,
+                'user_id' => $result['user_id'],
+                'email' => $data['email'],
                 'first_name' => $data['first_name'] ?? '',
-                'last_name'  => $data['last_name']  ?? '',
-                'role'       => 'adopter',
+                'last_name' => $data['last_name'] ?? '',
+                'role' => 'adopter',
             ], $corrId);
             $msg->ack();
         } catch (\Throwable $e) {
@@ -121,6 +150,7 @@ final class BackendWorker
 
        public function handleLogin(array $data, $msg, ?string $corrId): void
     {
+<<<<<<< HEAD
         try {
             // 1. Forward to DB
             $this->mq->publish('db.auth.login', [
@@ -136,11 +166,50 @@ final class BackendWorker
                 $this->respond('response.auth.login', [
                     'success' => false,
                     'error' => $result['message'] ?? 'Invalid email or password'
+=======
+        // STEP 1: What did RabbitMQ give the Backend?
+        echo "\n--- [DEBUG START: handleLogin] ---\n";
+        echo "[STEP 1] Raw Data Keys: " . implode(", ", array_keys($data)) . "\n";
+        echo "[STEP 2] Full JSON: " . json_encode($data) . "\n";
+
+        try {
+            $email = $data['email'] ?? null;
+            $password = $data['password'] ?? null;
+
+            // STEP 2: Validation Check
+            if (!$email) echo "[STEP 3] ERROR: Email is null\n";
+            if (!$password) echo "[STEP 3] ERROR: Password is null\n";
+
+            if (!$email || !$password) {
+                $this->fail('response.auth.login', 'Email and password are required', $corrId);
+                $msg->ack(); 
+                return;
+            }
+
+            // STEP 3: Preparing Payload for Database
+            $dbPayload = [
+                'email' => $email,
+                'password' => $password,
+            ];
+            echo "[STEP 4] Sending to DB Worker: " . json_encode($dbPayload) . "\n";
+
+            $this->mq->publish('db.auth.login', $dbPayload, $corrId);
+
+            $result = $this->mq->waitForResponse('db.result.auth.login', $corrId);
+            
+            echo "[STEP 5] Database Result: " . json_encode($result) . "\n";
+
+            if (!$result || ($result['success'] ?? false) !== true || !isset($result['user'])) {
+                $this->respond('response.auth.login', [
+                    'success' => false,
+                    'error' => $result['error'] ?? 'Invalid email or password'
+>>>>>>> d5c31837a40462032a74ad8539be46c06011c4c3
                 ], $corrId);
                 $msg->ack();
                 return;
             }
 
+<<<<<<< HEAD
             // 4. Success! DB already verified the password.
             $user = $result['user'];
 
@@ -148,6 +217,24 @@ final class BackendWorker
             $firstName = !empty($user['first_name']) ? $this->dec($user['first_name']) : "New";
             $lastName  = !empty($user['last_name'])  ? $this->dec($user['last_name'])  : "User";
 
+=======
+            $user = $result['user'];
+
+            if (!password_verify($password, $user['password_hash'])) {
+                echo "[STEP 6] Password Verify Failed\n";
+                $this->respond('response.auth.login', [
+                    'success' => false,
+                    'error' => 'Invalid email or password'
+                ], $corrId);
+                $msg->ack();
+                return;
+            }
+
+            echo "[STEP 6] Password Verify Success\n";
+
+            unset($user['password_hash']);
+            
+>>>>>>> d5c31837a40462032a74ad8539be46c06011c4c3
             $this->respond('response.auth.login', [
                 'success'    => true,
                 'user_id'    => $user['user_id'],
@@ -158,11 +245,15 @@ final class BackendWorker
             ], $corrId);
 
             $msg->ack();
+            echo "--- [DEBUG END: handleLogin] ---\n\n";
+
         } catch (\Throwable $e) {
             $this->fail('response.auth.login', 'Internal error', $corrId);
             $msg->nack(false, true);
         }
     }
+
+    // SHELTERS
 
     public function handleSheltersList(array $data, $msg, ?string $corrId): void
     {
@@ -195,6 +286,8 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
+
+    // API KEYS 
 
     public function handleApiKeyGet(array $data, $msg, ?string $corrId): void
     {
@@ -249,6 +342,8 @@ final class BackendWorker
         }
     }
 
+    // DOGS
+
     public function handleDogsList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleDogsList\n";
@@ -284,6 +379,8 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
+
+    // APPLICATIONS
 
     public function handleApplicationSubmit(array $data, $msg, ?string $corrId): void
     {
@@ -404,6 +501,8 @@ final class BackendWorker
         }
     }
 
+    // ADOPTIONS [the finalized records]
+
     public function handleAdoptionsList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleAdoptionsList: user_id={$data['user_id']}\n";
@@ -460,6 +559,8 @@ final class BackendWorker
         }
     }
 
+    // QUIZ
+
     public function handleQuizQuestions(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleQuizQuestions\n";
@@ -511,6 +612,8 @@ final class BackendWorker
         }
     }
 
+    // POST ADOPTION LOGS
+
     public function handleAdoptionLogCreate(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleAdoptionLogCreate\n";
@@ -549,6 +652,8 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
+
+    // VIRTUAL FOSTER
 
     public function handleFosterApply(array $data, $msg, ?string $corrId): void
     {
@@ -603,6 +708,8 @@ final class BackendWorker
         }
     }
 
+    // PET PARKS
+
     public function handleParksList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleParksList\n";
@@ -621,6 +728,8 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
+
+    // RESOURCES
 
     public function handleResourcesList(array $data, $msg, ?string $corrId): void
     {
@@ -655,6 +764,8 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
+
+    // SUCCESS STORIES
 
     public function handleStoriesList(array $data, $msg, ?string $corrId): void
     {
@@ -710,6 +821,8 @@ final class BackendWorker
         }
     }
 
+    // BADGES
+
     public function handleBadgesList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleBadgesList\n";
@@ -740,6 +853,8 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
+
+    // CHAT 
 
     public function handleEnquiry(array $data, $msg, ?string $corrId): void
     {
@@ -813,6 +928,8 @@ final class BackendWorker
         }
     }
 
+    // MEET & GREET
+
     public function handleMeetGreetSchedule(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleMeetGreetSchedule\n";
@@ -868,6 +985,8 @@ final class BackendWorker
         }
     }
 
+    // NOTIFICATIONS
+
     public function handleNotificationsList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleNotificationsList\n";
@@ -902,6 +1021,8 @@ final class BackendWorker
         }
     }
 
+    // Helpers
+
     private function respond(string $queue, array $payload, ?string $corrId): void
     {
         $this->mq->publish($queue, $payload, $corrId);
@@ -930,4 +1051,10 @@ final class BackendWorker
     {
         return $value !== '' ? $this->enc->decrypt($value) : '';
     }
+<<<<<<< HEAD
+=======
+    private function encryptIfPresent($value) {
+        return !empty($value) ? $value : ''; 
+}
+>>>>>>> d5c31837a40462032a74ad8539be46c06011c4c3
 }

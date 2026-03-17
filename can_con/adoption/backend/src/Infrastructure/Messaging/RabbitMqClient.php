@@ -391,7 +391,11 @@ final class RabbitMqClient
                     return $result;
                 }
                 // If it's not our ID, put it back
+<<<<<<< HEAD
                 $this->channel->basic_nack($msg->getDeliveryTag());
+=======
+                $this->channel->basic_ack($msg->getDeliveryTag());
+>>>>>>> d5c31837a40462032a74ad8539be46c06011c4c3
             }
 
             if ((time() - $startTime) >= $timeoutSeconds) {
