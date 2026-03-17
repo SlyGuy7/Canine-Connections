@@ -379,7 +379,7 @@ final class RabbitMqClient
 
         while (true) {
             // Aggressive polling
-            $msg = $this->channel->basic_get($queue, true);
+            $msg = $this->channel->basic_get($queue, false);
 
             if ($msg) {
                 $props = $msg->get_properties();
@@ -391,7 +391,7 @@ final class RabbitMqClient
                     return $result;
                 }
                 // If it's not our ID, put it back
-                $this->channel->basic_nack($msg->getDeliveryTag(), false, true);
+                $this->channel->basic_nack($msg->getDeliveryTag());
             }
 
             if ((time() - $startTime) >= $timeoutSeconds) {
