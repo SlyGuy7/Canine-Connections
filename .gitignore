@@ -2,6 +2,7 @@
 **/storage/
 **/*.log
 .env
+.env.import
 /vendor/
 /composer.lock
 

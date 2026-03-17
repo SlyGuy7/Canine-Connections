@@ -13,7 +13,7 @@ use PhpAmqpLib\Message\AMQPMessage;
 
 $envFile = __DIR__ . '/.env.import';
 if (!file_exists($envFile)) {
-    echo "[DogImporter][FATAL] .env not found\n";
+    echo "[DogImporter][FATAL] .env.import not found\n";
     exit(1);
 }
 foreach (file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
@@ -105,11 +105,6 @@ function mapApartment(string $size, string $energy): bool {
     if ($size === 'medium' && $energy !== 'high') return true; return false;
 }
 
-function randomName(): string {
-    $n = ['Buddy','Max','Charlie','Cooper','Milo','Bear','Rocky','Duke','Zeus','Beau','Finn','Tucker','Luna','Bella','Daisy','Molly','Sadie','Rosie','Lily','Zoe','Nala','Chloe','Penny','Ruby','Jack','Oscar','Toby','Winston','Lola','Coco','Roxy','Abby'];
-    return $n[array_rand($n)];
-}
-
 $allBreeds = []; $pageSize = 10; $totalPages = (int)ceil($breedsToFetch / $pageSize);
 echo "[ DogImporter API ] Fetching breeds...\n";
 for ($page = 0; $page < $totalPages; $page++) {
@@ -147,15 +142,24 @@ foreach ($allBreeds as $breed) {
     ])) ?: "A wonderful {$breedName} looking for a loving home.";
 
     $payload = [
-        'shelter_id' => $shelterId, 'external_id' => 'dogapi_breed_'.$breedId,
-        'name' => randomName(), 'breed' => $breedName, 'age_years' => rand(1,8),
-        'size' => $size, 'gender' => (rand(0,1)===0)?'male':'female',
-        'description' => $desc, 'energy_level' => $energy,
-        'good_with_kids' => mapGoodWithKids($temperament), 'good_with_dogs' => true,
-        'good_with_cats' => (bool)rand(0,1), 'apartment_friendly' => mapApartment($size,$energy),
-        'is_vaccinated' => true, 'is_spayed_neutered' => (bool)rand(0,1),
-        'intake_date' => date('Y-m-d', strtotime('-'.rand(1,180).' days')),
-        'status' => 'available', 'photos' => $photos,
+        'shelter_id'         => $shelterId,
+        'external_id'        => 'dogapi_breed_' . $breedId,
+        'name'               => $breedName,
+        'breed'              => $breedName,
+        'age_years'          => rand(1, 8),
+        'size'               => $size,
+        'gender'             => (rand(0, 1) === 0) ? 'male' : 'female',
+        'description'        => $desc,
+        'energy_level'       => $energy,
+        'good_with_kids'     => mapGoodWithKids($temperament),
+        'good_with_dogs'     => true,
+        'good_with_cats'     => (bool)rand(0, 1),
+        'apartment_friendly' => mapApartment($size, $energy),
+        'is_vaccinated'      => true,
+        'is_spayed_neutered' => (bool)rand(0, 1),
+        'intake_date'        => date('Y-m-d', strtotime('-' . rand(1, 180) . ' days')),
+        'status'             => 'available',
+        'photos'             => $photos,
     ];
 
     $corrId = uniqid('import_', true);
@@ -165,10 +169,10 @@ foreach ($allBreeds as $breed) {
     $result = mqWaitForResponse($channel, 'db.result.api.dog.upsert', $corrId, 15);
 
     if ($result && $result['success']) {
-        if (($result['action'] ?? '') === 'inserted') { $imported++; echo "[ DogImporter API ] NEW — {$breedName} dog_id={$result['dog_id']} (".count($photos)." photos)\n"; }
+        if (($result['action'] ?? '') === 'inserted') { $imported++; echo "[ DogImporter API ] NEW — {$breedName} dog_id={$result['dog_id']} (" . count($photos) . " photos)\n"; }
         else { $updated++; echo "[ DogImporter API ] UPD — {$breedName} dog_id={$result['dog_id']}\n"; }
     } else {
-        $skipped++; $err = $result['error'] ?? 'No response — is mysql-worker.php running?';
+        $skipped++; $err = $result['error'] ?? 'No response — is db_worker.php running?';
         $errors[] = "{$breedName}: {$err}"; echo "[ DogImporter API ][ERROR] {$breedName}: {$err}\n";
     }
     usleep(250000);
@@ -177,6 +181,6 @@ foreach ($allBreeds as $breed) {
 $channel->close(); $connection->close();
 
 echo "\n[ DogImporter API ] DONE — " . date('Y-m-d H:i:s') . "\n";
-echo "[ DogImporter API ] New: {$imported} | Updated: {$updated} | Skipped: {$skipped} | Total: ".count($allBreeds)."\n";
+echo "[ DogImporter API ] New: {$imported} | Updated: {$updated} | Skipped: {$skipped} | Total: " . count($allBreeds) . "\n";
 if (!empty($errors)) { foreach ($errors as $err) echo "  - {$err}\n"; }
 echo "[ DogImporter API ] Frontend loads dogs via request.dogs.list\n\n";
