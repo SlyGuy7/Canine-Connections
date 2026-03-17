@@ -371,38 +371,36 @@ final class RabbitMqClient
         );
     }
 
-    public function waitForResponse(string $queue, string $correlationId, int $timeoutSeconds = 10): ?array
+    public function waitForResponse(string $queue, string $correlationId, int $timeoutSeconds = 30): ?array
     {
-        $result    = null;
+        // Use a unique queue name or ensure no other consumer is bound to this one
         $startTime = time();
-
         echo "[MQ] Waiting on {$queue} (corr:{$correlationId})...\n";
 
         while (true) {
-            $msg = $this->channel->basic_get($queue);
+            // Aggressive polling
+            $msg = $this->channel->basic_get($queue, true);
 
             if ($msg) {
-                $msgCorrId = $msg->get_properties()['correlation_id'] ?? null;
+                $props = $msg->get_properties();
+                $msgCorrId = $props['correlation_id'] ?? null;
 
                 if ($msgCorrId === $correlationId) {
                     $result = json_decode($msg->body, true) ?? [];
                     $this->channel->basic_ack($msg->getDeliveryTag());
-                    echo "[MQ] ← {$queue} received\n";
-                    break;
+                    return $result;
                 }
-
+                // If it's not our ID, put it back
                 $this->channel->basic_nack($msg->getDeliveryTag(), false, true);
             }
 
             if ((time() - $startTime) >= $timeoutSeconds) {
-                echo "[MQ][WARN] Timeout on {$queue} (corr:{$correlationId})\n";
+                echo "[MQ][WARN] Timeout on {$queue}\n";
                 break;
             }
-
-            usleep(100000);
+            usleep(10000);
         }
-
-        return $result;
+        return null;
     }
 
     public function wait(): void

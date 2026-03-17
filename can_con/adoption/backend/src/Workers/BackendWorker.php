@@ -109,13 +109,11 @@ final class BackendWorker
                     'error'   => 'email and password are required',
                 ], $corrId);
                 $msg->ack();
-                $result = $this->mq->waitForResponse('db.result.auth.register', $corrId);
-                var_dump($result);
                 return;
             }
             $this->mq->publish('db.auth.register', [
                 'email'         => $data['email'],
-                'password'      => $data['password'],
+                'password_hash' => $this->enc->hashPassword($data['password']),
                 'first_name'    => $this->encryptIfPresent($data['first_name'] ?? ''),
                 'last_name'     => $this->encryptIfPresent($data['last_name']  ?? ''),
                 'phone'         => $this->encryptIfPresent($data['phone']      ?? ''),
@@ -124,7 +122,7 @@ final class BackendWorker
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.auth.register', $corrId);
 
-            if (!$result || (($result['status'] ?? '') !== 'registered')) {
+            if (!$result || empty($result['success'])) {
                 $this->respond('response.auth.register', [
                     'success' => false,
                     'error' => $result['message'] ?? $result['error'] ?? 'Registration failed',
@@ -157,7 +155,40 @@ final class BackendWorker
                 $msg->ack(); return;
             }
             $this->mq->publish('db.auth.login', ['email' => $data['email']], $corrId);
+
             $result = $this->mq->waitForResponse('db.result.auth.login', $corrId);
+            echo "[Backend] Received from DB: " . json_encode($result) . "\n";
+
+            // Check if the Database found the user
+            if (!$result || ($result['success'] ?? false) !== true || !isset($result['user'])) {
+                $this->respond('response.auth.login', [
+                    'success' => false,
+                    'error' => 'User not found'
+                ], $corrId);
+                $msg->ack();
+                return;
+            }
+
+            $user = $result['user'];
+
+            // The Backend now performs the password verification
+            if (!password_verify($data['password'], $user['password_hash'])) {
+                $this->respond('response.auth.login', [
+                    'success' => false,
+                    'error' => 'Invalid password'
+                ], $corrId);
+                $msg->ack();
+                return;
+            }
+
+            // Success: Remove hash and send user object to Frontend
+            unset($user['password_hash']);
+            $this->respond('response.auth.login', [
+                'success' => true,
+                'user' => $user
+            ], $corrId);
+
+            $msg->ack();
             if (!$result || empty($result['user'])) {
                 $this->fail('response.auth.login', 'Invalid email or password', $corrId);
                 $msg->ack(); return;
@@ -182,7 +213,7 @@ final class BackendWorker
             $this->fail('response.auth.login', 'Login failed', $corrId);
             $msg->nack(false, true);
         }
-    }
+    } 
 
     // SHELTERS
 
@@ -982,4 +1013,7 @@ final class BackendWorker
     {
         return $value !== '' ? $this->enc->decrypt($value) : '';
     }
+    private function encryptIfPresent($value) {
+        return !empty($value) ? $value : ''; 
+}
 }
