@@ -15,6 +15,9 @@ function makeCorrelationId() {
 }
 
 export async function sendMessage(type, payload) {
+  // ADD THIS LOG: Check what is actually in the payload before sending
+  console.log(`[Messaging] Sending to ${type}:`, payload);
+
   return new Promise((resolve) => {
     const responseQueue = getResponseQueue(type)
 
@@ -65,13 +68,14 @@ export async function sendMessage(type, payload) {
           headers: {
             "correlation-id": correlationId,
           },
+          // Ensure this is sending the full payload
           body: JSON.stringify(payload),
         })
 
         setTimeout(() => {
           if (finished) return
           finished = true
-          subscription.unsubscribe()
+          if (subscription) subscription.unsubscribe()
           client.deactivate()
           resolve({ success: false, error: "Request timed out" })
         }, 30000)
