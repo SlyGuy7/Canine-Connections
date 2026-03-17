@@ -1,14 +1,7 @@
-
--- ================================================
--- CANINE CONNECTIONS - FULL SCHEMA
--- Production Ready + Large Dataset Optimized
--- ================================================
-
 SET FOREIGN_KEY_CHECKS = 0;
 
--- ================================================
--- 1. USERS
--- ================================================
+-- USERS
+
 CREATE TABLE users (
   user_id INT PRIMARY KEY AUTO_INCREMENT,
   email VARCHAR(255) UNIQUE NOT NULL,
@@ -25,9 +18,8 @@ CREATE TABLE users (
   INDEX idx_role (role)
 );
 
--- ================================================
--- 2. SHELTERS
--- ================================================
+-- SHELTERS
+
 CREATE TABLE shelters (
   shelter_id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
@@ -49,9 +41,8 @@ CREATE TABLE shelters (
   INDEX idx_coords (latitude, longitude)
 );
 
--- ================================================
--- 3. API_KEYS
--- ================================================
+-- API_KEYS
+
 CREATE TABLE api_keys (
   key_id INT PRIMARY KEY AUTO_INCREMENT,
   shelter_id INT NOT NULL,
@@ -67,9 +58,8 @@ CREATE TABLE api_keys (
   INDEX idx_active (is_active)
 );
 
--- ================================================
--- 4. API_LOGS (partitioned - called_at in PRIMARY KEY)
--- ================================================
+-- API_LOGS 
+
 CREATE TABLE api_logs (
   log_id INT NOT NULL AUTO_INCREMENT,
   key_id INT NOT NULL,
@@ -94,9 +84,8 @@ PARTITION BY RANGE (YEAR(called_at)) (
   PARTITION pfuture VALUES LESS THAN MAXVALUE
 );
 
--- ================================================
--- 5. DOGS
--- ================================================
+-- DOGS
+
 CREATE TABLE dogs (
   dog_id INT PRIMARY KEY AUTO_INCREMENT,
   shelter_id INT NOT NULL,
@@ -138,9 +127,8 @@ CREATE TABLE dogs (
   INDEX idx_compatibility (energy_level, good_with_kids, good_with_dogs, apartment_friendly)
 );
 
--- ================================================
--- 6. DOG_PHOTOS
--- ================================================
+-- DOG_PHOTOS
+
 CREATE TABLE dog_photos (
   photo_id INT PRIMARY KEY AUTO_INCREMENT,
   dog_id INT NOT NULL,
@@ -153,9 +141,8 @@ CREATE TABLE dog_photos (
   INDEX idx_primary (dog_id, is_primary)
 );
 
--- ================================================
--- 7. ADOPTION_APPLICATIONS
--- ================================================
+-- ADOPTION_APPLICATIONS
+
 CREATE TABLE adoption_applications (
   application_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
@@ -187,9 +174,8 @@ CREATE TABLE adoption_applications (
   INDEX idx_status_submitted (status, submitted_at)
 );
 
--- ================================================
--- 8. QUIZ_QUESTIONS
--- ================================================
+-- QUIZ_QUESTIONS
+
 CREATE TABLE quiz_questions (
   question_id INT PRIMARY KEY AUTO_INCREMENT,
   question_text TEXT NOT NULL,
@@ -199,9 +185,8 @@ CREATE TABLE quiz_questions (
   INDEX idx_display_order (display_order)
 );
 
--- ================================================
--- 9. QUIZ_OPTIONS
--- ================================================
+-- QUIZ_OPTIONS
+
 CREATE TABLE quiz_options (
   option_id INT PRIMARY KEY AUTO_INCREMENT,
   question_id INT NOT NULL,
@@ -213,9 +198,8 @@ CREATE TABLE quiz_options (
   INDEX idx_attribute (maps_to_attribute)
 );
 
--- ================================================
--- 10. QUIZ_RESULTS
--- ================================================
+-- QUIZ_RESULTS
+
 CREATE TABLE quiz_results (
   result_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
@@ -227,9 +211,8 @@ CREATE TABLE quiz_results (
   INDEX idx_taken_at (taken_at)
 );
 
--- ================================================
--- 11. ADOPTIONS
--- ================================================
+-- ADOPTIONS
+
 CREATE TABLE adoptions (
   adoption_id INT PRIMARY KEY AUTO_INCREMENT,
   application_id INT NOT NULL,
@@ -246,9 +229,8 @@ CREATE TABLE adoptions (
   INDEX idx_adoption_date (adoption_date)
 );
 
--- ================================================
--- 12. POST_ADOPTION_LOGS
--- ================================================
+-- POST_ADOPTION_LOGS
+
 CREATE TABLE post_adoption_logs (
   log_id INT PRIMARY KEY AUTO_INCREMENT,
   adoption_id INT NOT NULL,
@@ -263,9 +245,8 @@ CREATE TABLE post_adoption_logs (
   INDEX idx_log_date (log_date)
 );
 
--- ================================================
--- 13. VIRTUAL_FOSTER
--- ================================================
+-- VIRTUAL_FOSTER
+
 CREATE TABLE virtual_foster (
   foster_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
@@ -283,9 +264,8 @@ CREATE TABLE virtual_foster (
   INDEX idx_status (status)
 );
 
--- ================================================
--- 14. PET_PARKS
--- ================================================
+-- PET_PARKS
+
 CREATE TABLE pet_parks (
   park_id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(255) NOT NULL,
@@ -301,9 +281,8 @@ CREATE TABLE pet_parks (
   INDEX idx_active (is_active)
 );
 
--- ================================================
--- 15. RESOURCES
--- ================================================
+-- RESOURCES
+
 CREATE TABLE resources (
   resource_id INT PRIMARY KEY AUTO_INCREMENT,
   title VARCHAR(255) NOT NULL,
@@ -318,9 +297,8 @@ CREATE TABLE resources (
   INDEX idx_content_type (content_type)
 );
 
--- ================================================
--- 16. SUCCESS_STORIES
--- ================================================
+-- SUCCESS_STORIES
+
 CREATE TABLE success_stories (
   story_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
@@ -339,9 +317,8 @@ CREATE TABLE success_stories (
   INDEX idx_created_at (created_at)
 );
 
--- ================================================
--- 17. BADGES
--- ================================================
+-- BADGES
+
 CREATE TABLE badges (
   badge_id INT PRIMARY KEY AUTO_INCREMENT,
   name VARCHAR(100) NOT NULL,
@@ -351,9 +328,8 @@ CREATE TABLE badges (
   INDEX idx_trigger (trigger_event)
 );
 
--- ================================================
--- 18. USER_BADGES
--- ================================================
+-- USER_BADGES
+
 CREATE TABLE user_badges (
   id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
@@ -366,9 +342,8 @@ CREATE TABLE user_badges (
   UNIQUE KEY unique_user_badge (user_id, badge_id)
 );
 
--- ================================================
--- 19. CHAT_SESSIONS
--- ================================================
+-- CHAT_SESSIONS
+
 CREATE TABLE chat_sessions (
   session_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
@@ -385,9 +360,9 @@ CREATE TABLE chat_sessions (
   INDEX idx_status (status)
 );
 
--- ================================================
--- 20. CHAT_MESSAGES (partitioned - sent_at in PRIMARY KEY)
--- ================================================
+
+-- CHAT_MESSAGES 
+
 CREATE TABLE chat_messages (
   message_id INT NOT NULL AUTO_INCREMENT,
   session_id INT NOT NULL,
@@ -407,9 +382,8 @@ PARTITION BY RANGE (YEAR(sent_at)) (
   PARTITION pfuture VALUES LESS THAN MAXVALUE
 );
 
--- ================================================
--- 21. MEET_GREET_SESSIONS
--- ================================================
+-- MEET_GREET_SESSIONS
+
 CREATE TABLE meet_greet_sessions (
   meetup_id INT PRIMARY KEY AUTO_INCREMENT,
   user_id INT NOT NULL,
@@ -430,9 +404,8 @@ CREATE TABLE meet_greet_sessions (
   INDEX idx_status (status)
 );
 
--- ================================================
--- 22. NOTIFICATIONS (partitioned - created_at in PRIMARY KEY)
--- ================================================
+-- NOTIFICATIONS 
+
 CREATE TABLE notifications (
   notification_id INT NOT NULL AUTO_INCREMENT,
   user_id INT NOT NULL,

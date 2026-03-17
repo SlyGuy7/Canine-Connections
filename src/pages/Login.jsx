@@ -1,74 +1,150 @@
 import { useState } from "react"
-import { useNavigate, Link } from "react-router-dom"
-import { apiPost } from "../services/api"
+import { useNavigate } from "react-router-dom"
+import { sendMessage } from "../services/messaging"
 
 export default function Login() {
-
-  const emailState = useState("")
-  const passwordState = useState("")
-  const errorState = useState("")
-
-  const email = emailState[0]
-  const setEmail = emailState[1]
-
-  const password = passwordState[0]
-  const setPassword = passwordState[1]
-
-  const error = errorState[0]
-  const setError = errorState[1]
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
 
   const navigate = useNavigate()
 
   async function onSubmit(e) {
-
     e.preventDefault()
+    setError("")
 
-    const result = await apiPost("/auth/login", {
-      email: email,
-      password: password
-    })
-
-    if (result.success) {
-      localStorage.setItem("auth", "true")
-      navigate("/landing")
+    if (!email || !password) {
+      setError("Please fill in all fields")
       return
     }
 
-    console.log("Login failed", result)
+    setLoading(true)
+
+    try {
+      const result = await sendMessage("request.auth.login", {
+        email,
+        password,
+      })
+
+      if (result.success) {
+        localStorage.setItem("isAuthenticated", "true")
+        localStorage.setItem("userEmail", result.email)
+        localStorage.setItem("userFullName", `${result.first_name} ${result.last_name}`)
+        
+        setLoading(false)
+        navigate("/dashboard")
+        return
+      }
+
+      setLoading(false)
+      setError(result.error || "Login failed. Backend or database may be offline.")
+      console.log("Login failed", result)
+    } catch (err) {
+      setLoading(false)
+      setError("Login failed. Backend or database may be offline.")
+      console.log("Login error", err)
+    }
+  }
+
+  const handleForgotPassword = (e) => {
+    e.preventDefault()
+    alert("Password reset functionality will be implemented in the next phase.")
   }
 
   return (
-    <div>
-      <h1>Login Page</h1>
+    <form onSubmit={onSubmit} style={styles.form}>
+      {error && <p style={styles.error}>{error}</p>}
 
-      <form onSubmit={onSubmit}>
-        <div>
-          <label>Email</label>
-          <input
-            value={email}
-            onChange={function(e) {
-              setEmail(e.target.value)
-            }}
-          />
+      <div>
+        <label style={styles.label}>Email</label>
+        <input
+          style={styles.input}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+        />
+      </div>
+
+      <div>
+        <div style={styles.passwordHeader}>
+          <label style={styles.label}>Password</label>
+          <a href="#" onClick={handleForgotPassword} style={styles.forgotLink}>
+            Forgot password?
+          </a>
         </div>
+        <input
+          style={styles.input}
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          autoComplete="current-password"
+        />
+      </div>
 
-        <div>
-          <label>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={function(e) {
-              setPassword(e.target.value)
-            }}
-          />
-        </div>
-
-        <button type="submit">Login</button>
-      </form>
-
-      <p>
-        No Login? <Link to="/register">Register</Link>
-      </p>
-    </div>
+      <button style={styles.button} type="submit" disabled={loading}>
+        {loading ? "Logging In..." : "Login"}
+      </button>
+    </form>
   )
+}
+
+const styles = {
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+  passwordHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  label: {
+    display: "block",
+    marginBottom: "6px",
+    fontWeight: "600",
+    color: "#4a382d",
+  },
+  forgotLink: {
+    fontSize: "13px",
+    color: "#d97706",
+    textDecoration: "none",
+    fontWeight: "600",
+    marginBottom: "6px",
+  },
+  input: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    border: "1px solid #dcc8b7",
+    background: "#fff",
+    color: "#2f241d",
+    fontSize: "15px",
+    boxSizing: "border-box",
+    marginBottom: "12px",
+  },
+  button: {
+    width: "100%",
+    padding: "13px 16px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d97706",
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: "16px",
+    cursor: "pointer",
+    marginTop: "6px",
+    boxShadow: "0 10px 24px rgba(217, 119, 6, 0.22)",
+  },
+  error: {
+    background: "#fff1f2",
+    color: "#b42318",
+    border: "1px solid #fecdd3",
+    borderRadius: "10px",
+    padding: "10px 12px",
+    margin: "0 0 10px 0",
+    fontSize: "14px",
+  },
 }

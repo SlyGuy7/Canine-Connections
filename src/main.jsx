@@ -2,10 +2,9 @@ import React from "react"
 import ReactDOM from "react-dom/client"
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import "./index.css"
-import Login from "./pages/Login.jsx"
-import Register from "./pages/Register.jsx"
 import Landing from "./pages/Landing.jsx"
 import RegisterSuccess from "./pages/RegisterSuccess.jsx"
+import Dashboard from "./pages/Dashboard.jsx"
 import ProtectedRoute from "./components/ProtectedRoute.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -13,17 +12,19 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/landing" replace />} />
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/landing" element={<Landing />} />
+        <Route path="/register-success" element={<RegisterSuccess />} />
+        
         <Route
-          path="/landing"
+          path="/dashboard"
           element={
             <ProtectedRoute>
-              <Landing />
+              <Dashboard />
             </ProtectedRoute>
           }
         />
-        <Route path="/register-success" element={<RegisterSuccess />} />
+        
+        <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>
     </BrowserRouter>
   </React.StrictMode>
