@@ -151,6 +151,7 @@ final class BackendWorker
        public function handleLogin(array $data, $msg, ?string $corrId): void
     {
 
+
         try {
             // 1. Forward to DB
             $this->mq->publish('db.auth.login', [
@@ -210,6 +211,7 @@ final class BackendWorker
             }
 
 
+
             // 4. Success! DB already verified the password.
             $user = $result['user'];
 
@@ -235,12 +237,14 @@ final class BackendWorker
             unset($user['password_hash']);
             
 
+
+
             $this->respond('response.auth.login', [
                 'success'    => true,
                 'user_id'    => $user['user_id'],
                 'email'      => $user['email'],
-                'first_name' => $firstName,
-                'last_name'  => $lastName,
+                'first_name' => $user['first_name'] ?? '',
+                'last_name'  => $user['last_name'] ?? '',
                 'role'       => $user['role'],
             ], $corrId);
 
@@ -1051,7 +1055,6 @@ final class BackendWorker
     {
         return $value !== '' ? $this->enc->decrypt($value) : '';
     }
-
 
     private function encryptIfPresent($value) {
         return !empty($value) ? $value : ''; 
