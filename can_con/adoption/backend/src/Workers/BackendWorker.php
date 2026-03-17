@@ -18,77 +18,61 @@ final class BackendWorker
     {
         echo "[Backend] Registering consumers...\n";
 
-        // Auth 
         $this->mq->registerConsumer('request.auth.register',       [$this, 'handleRegister']);
         $this->mq->registerConsumer('request.auth.login',          [$this, 'handleLogin']);
 
-        // Shelters
         $this->mq->registerConsumer('request.shelters.list',       [$this, 'handleSheltersList']);
         $this->mq->registerConsumer('request.shelters.get',        [$this, 'handleSheltersGet']);
 
-        // API Keys 
         $this->mq->registerConsumer('request.api.key.get',         [$this, 'handleApiKeyGet']);
         $this->mq->registerConsumer('request.api.key.regenerate',  [$this, 'handleApiKeyRegenerate']);
         $this->mq->registerConsumer('request.api.logs',            [$this, 'handleApiLogs']);
 
-        // Dogs 
         $this->mq->registerConsumer('request.dogs.list',           [$this, 'handleDogsList']);
         $this->mq->registerConsumer('request.dogs.get',            [$this, 'handleDogsGet']);
 
-        // Applications 
         $this->mq->registerConsumer('request.application.submit',  [$this, 'handleApplicationSubmit']);
         $this->mq->registerConsumer('request.application.status',  [$this, 'handleApplicationStatus']);
         $this->mq->registerConsumer('request.application.list',    [$this, 'handleApplicationList']);
         $this->mq->registerConsumer('request.application.approve', [$this, 'handleApplicationApprove']);
         $this->mq->registerConsumer('request.application.reject',  [$this, 'handleApplicationReject']);
 
-        // Adoptions 
         $this->mq->registerConsumer('request.adoptions.list',      [$this, 'handleAdoptionsList']);
         $this->mq->registerConsumer('request.adoptions.get',       [$this, 'handleAdoptionsGet']);
         $this->mq->registerConsumer('request.adoptions.finalize',  [$this, 'handleAdoptionsFinalize']);
 
-        // Quiz 
         $this->mq->registerConsumer('request.quiz.questions',      [$this, 'handleQuizQuestions']);
         $this->mq->registerConsumer('request.quiz.submit',         [$this, 'handleQuiz']);
         $this->mq->registerConsumer('request.quiz.results',        [$this, 'handleQuizResults']);
 
-        // Post Adoption Logs
         $this->mq->registerConsumer('request.adoption.log.create', [$this, 'handleAdoptionLogCreate']);
         $this->mq->registerConsumer('request.adoption.log.list',   [$this, 'handleAdoptionLogList']);
 
-        // Virtual Foster 
         $this->mq->registerConsumer('request.foster.apply',        [$this, 'handleFosterApply']);
         $this->mq->registerConsumer('request.foster.list',         [$this, 'handleFosterList']);
         $this->mq->registerConsumer('request.foster.cancel',       [$this, 'handleFosterCancel']);
 
-        // Pet Parks 
         $this->mq->registerConsumer('request.parks.list',          [$this, 'handleParksList']);
 
-        // Resources 
         $this->mq->registerConsumer('request.resources.list',      [$this, 'handleResourcesList']);
         $this->mq->registerConsumer('request.resources.get',       [$this, 'handleResourcesGet']);
 
-        // Success Stories 
         $this->mq->registerConsumer('request.stories.list',        [$this, 'handleStoriesList']);
         $this->mq->registerConsumer('request.stories.submit',      [$this, 'handleStoriesSubmit']);
         $this->mq->registerConsumer('request.stories.approve',     [$this, 'handleStoriesApprove']);
 
-        // Badges 
         $this->mq->registerConsumer('request.badges.list',         [$this, 'handleBadgesList']);
         $this->mq->registerConsumer('request.badges.mine',         [$this, 'handleBadgesMine']);
 
-        // Chat 
         $this->mq->registerConsumer('request.enquiry.send',        [$this, 'handleEnquiry']);
         $this->mq->registerConsumer('request.chat.start',          [$this, 'handleChatStart']);
         $this->mq->registerConsumer('request.chat.message',        [$this, 'handleChatMessage']);
         $this->mq->registerConsumer('request.chat.history',        [$this, 'handleChatHistory']);
 
-        // Meet & Greet 
         $this->mq->registerConsumer('request.meetgreet.schedule',  [$this, 'handleMeetGreetSchedule']);
         $this->mq->registerConsumer('request.meetgreet.list',      [$this, 'handleMeetGreetList']);
         $this->mq->registerConsumer('request.meetgreet.cancel',    [$this, 'handleMeetGreetCancel']);
 
-        // Notifications 
         $this->mq->registerConsumer('request.notifications.list',  [$this, 'handleNotificationsList']);
         $this->mq->registerConsumer('request.notifications.read',  [$this, 'handleNotificationsRead']);
 
@@ -97,8 +81,6 @@ final class BackendWorker
         $this->mq->wait();
     }
 
-    // AUTH
-    
     public function handleRegister(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleRegister: {$data['email']}\n";
@@ -109,7 +91,7 @@ final class BackendWorker
             }
             $this->mq->publish('db.auth.register', [
                 'email'         => $data['email'],
-                'password'      => $data['password'],
+                'password_hash' => $this->enc->hashPassword($data['password']),
                 'first_name'    => $this->enc($data['first_name'] ?? ''),
                 'last_name'     => $this->enc($data['last_name']  ?? ''),
                 'phone'         => $this->enc($data['phone']      ?? ''),
@@ -117,14 +99,9 @@ final class BackendWorker
                 'role'          => 'adopter',
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.auth.register', $corrId);
-            if (!$result || !$result['success'] ?? false) {
-                $this->fail(
-			'response.auth.register', 
-			$result['error'] ?? 'Registration failed', 
-			$corrId
-		);
-                $msg->ack(); 
-		return;
+            if (!$result || empty($result['success'])) {
+                $this->fail('response.auth.register', $result['error'] ?? 'Registration failed', $corrId);
+                $msg->ack(); return;
             }
             $this->respond('response.auth.register', [
                 'success'    => true,
@@ -178,8 +155,6 @@ final class BackendWorker
         }
     }
 
-    // SHELTERS
-
     public function handleSheltersList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleSheltersList\n";
@@ -211,8 +186,6 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
-
-    // API KEYS 
 
     public function handleApiKeyGet(array $data, $msg, ?string $corrId): void
     {
@@ -267,8 +240,6 @@ final class BackendWorker
         }
     }
 
-    // DOGS
-
     public function handleDogsList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleDogsList\n";
@@ -304,8 +275,6 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
-
-    // APPLICATIONS
 
     public function handleApplicationSubmit(array $data, $msg, ?string $corrId): void
     {
@@ -426,8 +395,6 @@ final class BackendWorker
         }
     }
 
-    // ADOPTIONS [the finalized records]
-
     public function handleAdoptionsList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleAdoptionsList: user_id={$data['user_id']}\n";
@@ -484,8 +451,6 @@ final class BackendWorker
         }
     }
 
-    // QUIZ
-
     public function handleQuizQuestions(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleQuizQuestions\n";
@@ -537,8 +502,6 @@ final class BackendWorker
         }
     }
 
-    // POST ADOPTION LOGS
-
     public function handleAdoptionLogCreate(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleAdoptionLogCreate\n";
@@ -577,8 +540,6 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
-
-    // VIRTUAL FOSTER
 
     public function handleFosterApply(array $data, $msg, ?string $corrId): void
     {
@@ -633,8 +594,6 @@ final class BackendWorker
         }
     }
 
-    // PET PARKS
-
     public function handleParksList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleParksList\n";
@@ -653,8 +612,6 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
-
-    // RESOURCES
 
     public function handleResourcesList(array $data, $msg, ?string $corrId): void
     {
@@ -689,8 +646,6 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
-
-    // SUCCESS STORIES
 
     public function handleStoriesList(array $data, $msg, ?string $corrId): void
     {
@@ -746,8 +701,6 @@ final class BackendWorker
         }
     }
 
-    // BADGES
-
     public function handleBadgesList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleBadgesList\n";
@@ -778,8 +731,6 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
-
-    // CHAT 
 
     public function handleEnquiry(array $data, $msg, ?string $corrId): void
     {
@@ -853,8 +804,6 @@ final class BackendWorker
         }
     }
 
-    // MEET & GREET
-
     public function handleMeetGreetSchedule(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleMeetGreetSchedule\n";
@@ -910,8 +859,6 @@ final class BackendWorker
         }
     }
 
-    // NOTIFICATIONS
-
     public function handleNotificationsList(array $data, $msg, ?string $corrId): void
     {
         echo "[Backend] handleNotificationsList\n";
@@ -945,8 +892,6 @@ final class BackendWorker
             $msg->nack(false, true);
         }
     }
-
-    // Helpers
 
     private function respond(string $queue, array $payload, ?string $corrId): void
     {
