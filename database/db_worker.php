@@ -134,7 +134,7 @@ function handleQuery($queue, $data, $db) {
         case "db.auth.register":
             if (!isset($data["email"]) || !isset($data["password"])) {
                 return [
-                    "status" => "error",
+                    "success" => "false",
                     "message" => "Missing email or password"
                 ];
             }
@@ -148,21 +148,21 @@ function handleQuery($queue, $data, $db) {
 
             if (!$db->query($sql)) {
                 return [
-                    "status" => "error",
-                    "message" => $db->error
+                    "success" => "error",
+                    "error" => $db->error
                 ];
             }
 
             return [
-                "status" => "registered",
+                "success" => true,
                 "user_id" => $db->insert_id
             ];
 
         case "db.auth.login":
             if (!isset($data["email"]) || !isset($data["password"])) {
                 return [
-                    "status" => "error",
-                    "message" => "Missing email or password"
+                    "success" => false,
+                    "error" => "Missing email or password"
                 ];
             }
 
@@ -471,7 +471,7 @@ $callback = function($msg) use ($channel, $db) {
 
     $response = new AMQPMessage(
         json_encode($result),
-        ['content_type' => 'application/json', 'delivery_mode' => 2]
+        ['content_type' => 'application/json', 'delivery_mode' => 2, 'correlation_id' => $msg->get('correlation_id')]
     );
 
     $channel->basic_publish($response, '', $resultQueue);
