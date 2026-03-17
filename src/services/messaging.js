@@ -74,7 +74,7 @@ export async function sendMessage(type, payload) {
           subscription.unsubscribe()
           client.deactivate()
           resolve({ success: false, error: "Request timed out" })
-        }, 10000)
+        }, 30000)
       },
 
       onStompError: () => {
