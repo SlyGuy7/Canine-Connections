@@ -148,83 +148,49 @@ final class BackendWorker
         }
     }
 
-       public function handleLogin(array $data, $msg, ?string $corrId): void
-    {
-        echo "\n--- [DEBUG START: handleLogin] ---\n";
-        echo "[STEP 1] Raw Data Keys: " . implode(", ", array_keys($data)) . "\n";
-        echo "[STEP 2] Full JSON: " . json_encode($data) . "\n";
+        public function handleLogin(array $data, $msg, ?string $corrId): void
+        {
+            $email = $data['email'] ?? '';
+            $password = $data['password'] ?? '';
 
-        try {
-            $email = $data['email'] ?? null;
-            $password = $data['password'] ?? null;
+            echo "[STEP 1] Login attempt for: $email\n";
 
-            // STEP 2: Validation Check
-            if (!$email) echo "[STEP 3] ERROR: Email is null\n";
-            if (!$password) echo "[STEP 3] ERROR: Password is null\n";
+            try {
+                // 1. Send the request to the DB Worker
+                $this->mq->publish('db.auth.login', ['email' => $email], $corrId);
+                echo "[STEP 2] Request sent to DB. Listening for response...\n";
 
-            if (!$email || !$password) {
-                $this->fail('response.auth.login', 'Email and password are required', $corrId);
+                // 2. Wait for the result from the DB
+                $result = $this->mq->waitForResponse('db.result.auth.login', $corrId);
+
+                echo "[STEP 3] DB result received for $email\n";
+
+                if (!empty($result['user'])) {
+                    $user = $result['user'];
+                    $dbHash = stripslashes($user['password_hash']);
+
+                    if (password_verify($password, $dbHash)) {
+                        echo "[SUCCESS] Password verified. Sending success to React.\n";
+                        $this->respond('response.auth.login', [
+                            'success' => true,
+                            'user' => ['email' => $user['email']]
+                        ], $corrId);
+                        
+                        $msg->ack();
+                        return;
+                    }
+                }
+
+                // Failure Fallback
+                echo "[FAILURE] Invalid login for $email\n";
+                $this->respond('response.auth.login', ['success' => false], $corrId);
                 $msg->ack();
-                return;
+            } catch (\Throwable $e) {
+                echo "[Backend][ERROR] handleLogin: {$e->getMessage()}\n";
+                $this->fail('response.auth.login', 'Login failed', $corrId);
+                $msg->nack(false, true);
             }
-
-            // 1. Forward to DB
-            $this->mq->publish('db.auth.login', [
-                'email' => $email,
-                'password' => $password,
-            ], $corrId);
-
-            // 2. Wait for DB
-            $result = $this->mq->waitForResponse('db.result.auth.login', $corrId);
-
-            // 3. Check status from DB
-            if (!$result || ($result['status'] ?? '') !== 'success' || !isset($result['user'])) {
-                $this->respond('response.auth.login', [
-                    'success' => false,
-                    'error' => $result['message'] ?? 'Invalid email or password'
-                ], $corrId);
-                $msg->ack();
-                return;
-            }
-           // 4. Verify Password & Respond Success
-        if (isset($result['user'])) {
-            $user = $result['user'];
-            
-            // Fix for escaped slashes in the hash
-            $dbHash = stripslashes($user['password_hash']);
-
-            if (password_verify($password, $dbHash)) {
-                echo "[SUCCESS] Password verified for $email. Sending response...\n";
-                
-                $this->respond('response.auth.login', [
-                    'success' => true,
-                    'email' => $user['email'],
-                    'first_name' => $user['first_name'] ?? '',
-                    'last_name' => $user['last_name'] ?? ''
-                ], $corrId);
-                
-                $msg->ack();
-                return;
-            }
-            echo "[FAILURE] Password mismatch for $email.\n";
         }
-
-        // 5. Default Failure Response
-        $this->respond('response.auth.login', [
-            'success' => false,
-            'error' => 'Invalid email or password, THIS IS A TEST'
-        ], $corrId);
-
-        $msg->ack();
-
-            // Success logic would go here (e.g., $this->respond success)
-
-        } catch (\Throwable $e) {
-            echo "[Backend][ERROR] handleLogin: {$e->getMessage()}\n";
-            $this->fail('response.auth.login', 'Internal error', $corrId);
-            $msg->nack(false, true);
-        }
-    }
 
     // SHELTERS
 
