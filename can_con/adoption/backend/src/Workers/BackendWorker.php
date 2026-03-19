@@ -212,7 +212,7 @@ final class BackendWorker
         // 5. Default Failure Response
         $this->respond('response.auth.login', [
             'success' => false,
-            'error' => 'Invalid email or password'
+            'error' => 'Invalid email or password, THIS IS A TEST'
         ], $corrId);
 
         $msg->ack();
@@ -1023,7 +1023,7 @@ final class BackendWorker
     private function dec(string $value): string
     {
         return $value !== '' ? $this->enc->decrypt($value) : '';
-        
+
     }
 
     private function encryptIfPresent($value) {
