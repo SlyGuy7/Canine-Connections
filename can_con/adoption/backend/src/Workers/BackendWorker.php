@@ -186,6 +186,36 @@ final class BackendWorker
                 $msg->ack();
                 return;
             }
+           // 4. Verify Password & Respond Success
+        if (isset($result['user'])) {
+            $user = $result['user'];
+            
+            // Fix for escaped slashes in the hash
+            $dbHash = stripslashes($user['password_hash']);
+
+            if (password_verify($password, $dbHash)) {
+                echo "[SUCCESS] Password verified for $email. Sending response...\n";
+                
+                $this->respond('response.auth.login', [
+                    'success' => true,
+                    'email' => $user['email'],
+                    'first_name' => $user['first_name'] ?? '',
+                    'last_name' => $user['last_name'] ?? ''
+                ], $corrId);
+                
+                $msg->ack();
+                return;
+            }
+            echo "[FAILURE] Password mismatch for $email.\n";
+        }
+
+        // 5. Default Failure Response
+        $this->respond('response.auth.login', [
+            'success' => false,
+            'error' => 'Invalid email or password'
+        ], $corrId);
+
+        $msg->ack();
 
             // Success logic would go here (e.g., $this->respond success)
 
