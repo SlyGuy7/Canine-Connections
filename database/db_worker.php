@@ -161,8 +161,8 @@ function handleQuery($queue, $data, $db) {
             return ["success" => true, "user_id" => $db->insert_id];
 
         case "db.auth.login":
-            if (!isset($data["email"]) || !isset($data["password"])) {
-                return ["success" => false, "error" => "Missing email or password"];
+            if (!isset($data["email"])) {
+                return ["success" => false, "error" => "Missing email"];
             }
 
             $email = $db->real_escape_string($data["email"]);
