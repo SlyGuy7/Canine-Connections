@@ -3,7 +3,7 @@ import Register from "../pages/Register"
 
 export default function AuthModal({ mode, close, switchMode }) {
   return (
-    <div style={styles.overlay} onClick={close}>
+    <div style={styles.overlay}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <button style={styles.close} onClick={close}>×</button>
 

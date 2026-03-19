@@ -1023,6 +1023,7 @@ final class BackendWorker
     private function dec(string $value): string
     {
         return $value !== '' ? $this->enc->decrypt($value) : '';
+        
     }
 
     private function encryptIfPresent($value) {
