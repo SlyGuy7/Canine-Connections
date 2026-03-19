@@ -76,7 +76,7 @@ function AdoptionFormModal({ dog, close }) {
   }
 
   return (
-    <div style={styles.modalOverlay} onClick={close}>
+    <div style={styles.modalOverlay}>
       <div style={styles.formModal} onClick={(e) => e.stopPropagation()}>
         <button style={styles.modalClose} onClick={close}>
           ×
@@ -161,7 +161,7 @@ function DogModal({ dog, close, openApplication }) {
   if (!dog) return null
 
   return (
-    <div style={styles.modalOverlay} onClick={close}>
+    <div style={styles.modalOverlay}>
       <div style={styles.dogModal} onClick={(e) => e.stopPropagation()}>
         <button style={styles.modalClose} onClick={close}>
           ×
