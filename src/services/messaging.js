@@ -2,7 +2,7 @@ import { Client } from "@stomp/stompjs"
 
 console.log("Messaging URL:", import.meta.env.VITE_MESSAGING_URL)
 
-const BROKER_URL = import.meta.env.VITE_MESSAGING_URL
+const BROKER_URL = import.meta.env.VITE_MESSAGING_URL 
 
 function getResponseQueue(type) {
   if (type === "request.auth.register") return "response.auth.register"
@@ -17,14 +17,11 @@ function makeCorrelationId() {
 export async function sendMessage(type, payload) {
   return new Promise((resolve) => {
     const responseQueue = getResponseQueue(type)
-
     if (!responseQueue) {
       resolve({ success: false, error: "Unknown message type" })
       return
     }
-
     const correlationId = makeCorrelationId()
-
     const client = new Client({
       brokerURL: BROKER_URL,
       connectHeaders: {
@@ -34,20 +31,16 @@ export async function sendMessage(type, payload) {
       },
       reconnectDelay: 0,
       debug: (str) => console.log(str),
-
       onConnect: () => {
         let finished = false
-
         const subscription = client.subscribe(`/queue/${responseQueue}`, (message) => {
-          const messageCorrelationId = message.headers["correlation-id"]
-
+          // RabbitMQ STOMP forwards correlation_id as correlation-id with a dash
+          const messageCorrelationId = message.headers["correlation-id"] || message.headers["correlation_id"]
           if (messageCorrelationId !== correlationId) {
             return
           }
-
           if (finished) return
           finished = true
-
           try {
             const data = JSON.parse(message.body)
             subscription.unsubscribe()
@@ -59,15 +52,14 @@ export async function sendMessage(type, payload) {
             resolve({ success: false, error: "Invalid response from RabbitMQ" })
           }
         })
-
         client.publish({
           destination: `/queue/${type}`,
           headers: {
+            // Send with underscore — backend reads it and forwards with underscore
             "correlation-id": correlationId,
           },
           body: JSON.stringify(payload),
         })
-
         setTimeout(() => {
           if (finished) return
           finished = true
@@ -76,16 +68,13 @@ export async function sendMessage(type, payload) {
           resolve({ success: false, error: "Request timed out" })
         }, 30000)
       },
-
       onStompError: () => {
         resolve({ success: false, error: "RabbitMQ STOMP error" })
       },
-
       onWebSocketError: () => {
         resolve({ success: false, error: "RabbitMQ WebSocket error" })
       },
     })
-
     client.activate()
   })
 }
