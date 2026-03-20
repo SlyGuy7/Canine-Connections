@@ -154,28 +154,41 @@ final class BackendWorker
     try {
         if (empty($data['email']) || empty($data['password'])) {
             $this->fail('response.auth.login', 'email and password are required', $corrId);
-            $msg->ack(); return;
+            $msg->ack();
+            return;
         }
-        $this->mq->publish('db.auth.login', ['email' => $data['email']], $corrId);
+
+        $this->mq->publish('db.auth.login', [
+            'email' => $data['email'],
+            'password' => $data['password'],
+        ], $corrId);
+
         $result = $this->mq->waitForResponse('db.result.auth.login', $corrId);
+
         if (!$result || empty($result['user'])) {
             $this->fail('response.auth.login', 'Invalid email or password', $corrId);
-            $msg->ack(); return;
+            $msg->ack();
+            return;
         }
+
         $user = $result['user'];
+
         if (!$this->enc->verifyPassword($data['password'], $user['password_hash'])) {
             $this->fail('response.auth.login', 'Invalid email or password', $corrId);
-            $msg->ack(); return;
+            $msg->ack();
+            return;
         }
+
         $this->respond('response.auth.login', [
             'success'    => true,
             'token'      => bin2hex(random_bytes(32)),
             'user_id'    => $user['user_id'],
             'email'      => $user['email'],
             'first_name' => $this->dec($user['first_name'] ?? ''),
-            'last_name'  => $this->dec($user['last_name']  ?? ''),
+            'last_name'  => $this->dec($user['last_name'] ?? ''),
             'role'       => $user['role'],
         ], $corrId);
+
         $msg->ack();
     } catch (\Throwable $e) {
         echo "[Backend][ERROR] handleLogin: {$e->getMessage()}\n";
