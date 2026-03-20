@@ -151,11 +151,16 @@ final class BackendWorker
         public function handleLogin(array $data, $msg, ?string $corrId): void
 {
     echo "[Backend] handleLogin: {$data['email']}\n";
+
     try {
         if (empty($data['email']) || empty($data['password'])) {
             $this->fail('response.auth.login', 'email and password are required', $corrId);
             $msg->ack();
             return;
+        }
+
+        if (!$corrId) {
+            $corrId = uniqid('login_', true);
         }
 
         $this->mq->publish('db.auth.login', [
@@ -180,13 +185,13 @@ final class BackendWorker
         }
 
         $this->respond('response.auth.login', [
-            'success'    => true,
-            'token'      => bin2hex(random_bytes(32)),
-            'user_id'    => $user['user_id'],
-            'email'      => $user['email'],
+            'success' => true,
+            'token' => bin2hex(random_bytes(32)),
+            'user_id' => $user['user_id'],
+            'email' => $user['email'],
             'first_name' => $this->dec($user['first_name'] ?? ''),
-            'last_name'  => $this->dec($user['last_name'] ?? ''),
-            'role'       => $user['role'],
+            'last_name' => $this->dec($user['last_name'] ?? ''),
+            'role' => $user['role'],
         ], $corrId);
 
         $msg->ack();
