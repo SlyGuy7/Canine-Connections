@@ -12,169 +12,128 @@ final class RabbitMqClient
 
     private array $queues = [
 
-        // Frontend rabbitmqWorker - Backend [request.*]
-
-        // Auth
         'request.auth.register',
         'request.auth.login',
 
-        // Shelters
         'request.shelters.list',
         'request.shelters.get',
 
-        // API Keys 
         'request.api.key.get',
         'request.api.key.regenerate',
         'request.api.logs',
 
-        // Dogs
         'request.dogs.list',
         'request.dogs.get',
 
-        // Applications
         'request.application.submit',
         'request.application.status',
         'request.application.list',
         'request.application.approve',
         'request.application.reject',
 
-        // Adoptions
         'request.adoptions.list',
         'request.adoptions.get',
         'request.adoptions.finalize',
 
-        // Quiz
         'request.quiz.questions',
         'request.quiz.submit',
         'request.quiz.results',
 
-        // Post Adoption Logs
         'request.adoption.log.create',
         'request.adoption.log.list',
 
-        // Virtual Foster
         'request.foster.apply',
         'request.foster.list',
         'request.foster.cancel',
 
-        // Pet Parks
         'request.parks.list',
 
-        // Resources
         'request.resources.list',
         'request.resources.get',
 
-        // Success Stories
         'request.stories.list',
         'request.stories.submit',
         'request.stories.approve',
 
-        // Badges
         'request.badges.list',
         'request.badges.mine',
 
-        // Chat
         'request.enquiry.send',
         'request.chat.start',
         'request.chat.message',
         'request.chat.history',
 
-        // Meet & Greet
         'request.meetgreet.schedule',
         'request.meetgreet.list',
         'request.meetgreet.cancel',
 
-        // Notifications
         'request.notifications.list',
         'request.notifications.read',
 
-        // Backend rabbitmqWorker - Frontend [response.*]
-
-        // Auth
         'response.auth.register',
         'response.auth.login',
 
-        // Shelters
         'response.shelters.list',
         'response.shelters.get',
 
-        // API Keys
         'response.api.key.get',
         'response.api.key.regenerate',
         'response.api.logs',
 
-        // Dogs
         'response.dogs.list',
         'response.dogs.get',
 
-        // Applications
         'response.application.submit',
         'response.application.status',
         'response.application.list',
         'response.application.decision',
 
-        // Adoptions
         'response.adoptions.list',
         'response.adoptions.get',
         'response.adoptions.finalize',
 
-        // Quiz
         'response.quiz.questions',
         'response.quiz.result',
         'response.quiz.results',
 
-        // Post Adoption Logs
         'response.adoption.log.create',
         'response.adoption.log.list',
 
-        // Virtual Foster
         'response.foster.apply',
         'response.foster.list',
         'response.foster.cancel',
 
-        // Pet Parks
         'response.parks.list',
 
-        // Resources
         'response.resources.list',
         'response.resources.get',
 
-        // Success Stories
         'response.stories.list',
         'response.stories.submit',
         'response.stories.approve',
 
-        // Badges
         'response.badges.list',
         'response.badges.mine',
 
-        // Chat
         'response.enquiry.reply',
         'response.chat.start',
         'response.chat.message',
         'response.chat.history',
 
-        // Meet & Greet
         'response.meetgreet.schedule',
         'response.meetgreet.list',
         'response.meetgreet.cancel',
 
-        // Notifications
         'response.notifications.list',
         'response.notifications.read',
         'notifications',
 
-        // Backend rabbitmqWorker - MySQL rabbitmqWorker
-
-        // Auth
         'db.auth.register',
         'db.auth.login',
 
-        // Shelters
         'db.shelters.list',
         'db.shelters.get',
 
-        // API Keys
         'db.api.key.get',
         'db.api.key.regenerate',
         'db.api.key.validate',
@@ -182,142 +141,111 @@ final class RabbitMqClient
         'db.api.log',
         'db.api.dog.upsert',
 
-        // Dogs
         'db.dogs.list',
         'db.dogs.get',
 
-        // Applications
         'db.application.submit',
         'db.application.status',
         'db.application.list',
         'db.application.approve',
         'db.application.reject',
 
-        // Adoptions
         'db.adoptions.list',
         'db.adoptions.get',
         'db.adoptions.finalize',
 
-        // Quiz
         'db.quiz.questions',
         'db.quiz.submit',
         'db.quiz.results',
 
-        // Post Adoption Logs
         'db.adoption.log.create',
         'db.adoption.log.list',
 
-        // Virtual Foster
         'db.foster.apply',
         'db.foster.list',
         'db.foster.cancel',
 
-        // Pet Parks
         'db.parks.list',
 
-        // Resources
         'db.resources.list',
         'db.resources.get',
 
-        // Success Stories
         'db.stories.list',
         'db.stories.submit',
         'db.stories.approve',
 
-        // Badges
         'db.badges.list',
         'db.badges.mine',
 
-        // Chat
         'db.enquiry.send',
         'db.chat.start',
         'db.chat.message',
         'db.chat.history',
 
-        // Meet & Greet
         'db.meetgreet.schedule',
         'db.meetgreet.list',
         'db.meetgreet.cancel',
 
-        // Notifications
         'db.notifications.list',
         'db.notifications.read',
 
-        // MySQL rabbitmqWorker
-
-        // Auth
         'db.result.auth.register',
         'db.result.auth.login',
 
-        // Shelters
         'db.result.shelters.list',
         'db.result.shelters.get',
 
-        // API Keys
         'db.result.api.key.get',
         'db.result.api.key.regenerate',
         'db.result.api.key.validate',
         'db.result.api.logs',
         'db.result.api.dog.upsert',
 
-        // Dogs
         'db.result.dogs.list',
         'db.result.dogs.get',
 
-        // Applications
         'db.result.application.submit',
         'db.result.application.status',
         'db.result.application.list',
         'db.result.application.approve',
         'db.result.application.reject',
 
-        // Adoptions
         'db.result.adoptions.list',
         'db.result.adoptions.get',
         'db.result.adoptions.finalize',
 
-        // Quiz
         'db.result.quiz.questions',
         'db.result.quiz.submit',
         'db.result.quiz.results',
 
-        // Post Adoption Logs
         'db.result.adoption.log.create',
         'db.result.adoption.log.list',
 
-        // Virtual Foster
         'db.result.foster.apply',
         'db.result.foster.list',
         'db.result.foster.cancel',
 
-        // Pet Parks
         'db.result.parks.list',
 
-        // Resources
         'db.result.resources.list',
         'db.result.resources.get',
 
-        // Success Stories
         'db.result.stories.list',
         'db.result.stories.submit',
         'db.result.stories.approve',
 
-        // Badges
         'db.result.badges.list',
         'db.result.badges.mine',
 
-        // Chat
         'db.result.enquiry.send',
         'db.result.chat.start',
         'db.result.chat.message',
         'db.result.chat.history',
 
-        // Meet & Greet
         'db.result.meetgreet.schedule',
         'db.result.meetgreet.list',
         'db.result.meetgreet.cancel',
 
-        // Notifications
         'db.result.notifications.list',
         'db.result.notifications.read',
     ];
@@ -363,44 +291,55 @@ final class RabbitMqClient
         $this->channel->basic_consume(
             $queue, '', false, false, false, false,
             function ($msg) use ($callback, $queue) {
-                $data   = json_decode($msg->body, true) ?? [];
-                $corrId = $msg->get_properties()['correlation_id'] ?? null;
+                $data       = json_decode($msg->body, true) ?? [];
+                $msgProps   = $msg->get_properties();
+                $corrId     = $msgProps['correlation_id']
+                           ?? ($msgProps['headers']['correlation_id']
+                           ?? ($msgProps['headers']['correlation-id']
+                           ?? null));
+
                 echo "[MQ] ← {$queue}" . ($corrId ? " (corr:{$corrId})" : '') . "\n";
                 $callback($data, $msg, $corrId);
             }
         );
     }
 
-    public function waitForResponse(string $queue, string $correlationId, int $timeoutSeconds = 30): ?array
+    public function waitForResponse(string $queue, string $correlationId, int $timeoutSeconds = 10): ?array
     {
-        // Use a unique queue name or ensure no other consumer is bound to this one
+        $result    = null;
         $startTime = time();
+
         echo "[MQ] Waiting on {$queue} (corr:{$correlationId})...\n";
 
         while (true) {
-            // Aggressive polling
-            $msg = $this->channel->basic_get($queue, false);
+            $msg = $this->channel->basic_get($queue);
 
             if ($msg) {
-                $props = $msg->get_properties();
-                $msgCorrId = $props['correlation_id'] ?? null;
+                $msgProps  = $msg->get_properties();
+                $msgCorrId = $msgProps['correlation_id']
+                          ?? ($msgProps['headers']['correlation_id']
+                          ?? ($msgProps['headers']['correlation-id']
+                          ?? null));
 
                 if ($msgCorrId === $correlationId) {
                     $result = json_decode($msg->body, true) ?? [];
                     $this->channel->basic_ack($msg->getDeliveryTag());
-                    return $result;
+                    echo "[MQ] ← {$queue} received\n";
+                    break;
                 }
-                // If it's not our ID, put it back
-                $this->channel->basic_nack($msg->getDeliveryTag());
+
+                $this->channel->basic_nack($msg->getDeliveryTag(), false, true);
             }
 
             if ((time() - $startTime) >= $timeoutSeconds) {
-                echo "[MQ][WARN] Timeout on {$queue}\n";
+                echo "[MQ][WARN] Timeout on {$queue} (corr:{$correlationId})\n";
                 break;
             }
-            usleep(10000);
+
+            usleep(100000);
         }
-        return null;
+
+        return $result;
     }
 
     public function wait(): void
