@@ -31,7 +31,7 @@ export async function sendMessage(type, payload) {
       onConnect: () => {
         let finished = false
         const subscription = client.subscribe(`/queue/${responseQueue}`, (message) => {
-          const messageCorrelationId = message.headers["correlationid"] || message.headers["correlation-id"]
+          const messageCorrelationId = message.headers["correlation-id"]  message.headers["correlation_id"]
 
           if (messageCorrelationId !== correlationId) {
             return
