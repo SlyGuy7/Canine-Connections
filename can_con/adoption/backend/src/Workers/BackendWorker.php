@@ -100,113 +100,120 @@ final class BackendWorker
     // AUTH
     
     public function handleRegister(array $data, $msg, ?string $corrId): void
-{
-    echo "[Backend] handleRegister: {$data['email']}\n";
+    {
+        echo "[Backend] handleRegister: {$data['email']}\n";
+        try {
+            if (empty($data['email']) || empty($data['password'])) {
+                $this->respond('response.auth.register', [
+                    'success' => false,
+                    'error'   => 'email and password are required',
+                ], $corrId);
+                $msg->ack();
+                return;
+            }
+            $this->mq->publish('db.auth.register', [
+                'email'         => $data['email'],
+                'password_hash' => $this->enc->hashPassword($data['password']),
+                'first_name'    => $this->encryptIfPresent($data['first_name'] ?? ''),
+                'last_name'     => $this->encryptIfPresent($data['last_name']  ?? ''),
+                'phone'         => $this->encryptIfPresent($data['phone']      ?? ''),
+                'address'       => $this->encryptIfPresent($data['address']    ?? ''),
+                'role'          => 'adopter',
+            ], $corrId);
+            $result = $this->mq->waitForResponse('db.result.auth.register', $corrId);
 
-    try {
-        if (empty($data['email']) || empty($data['password'])) {
-            $this->fail('response.auth.register', 'email and password are required', $corrId);
+            if (!$result || empty($result['success'])) {
+                $this->respond('response.auth.register', [
+                    'success' => false,
+                    'error' => $result['message'] ?? $result['error'] ?? 'Registration failed',
+                ], $corrId);
+                $msg->ack();
+                return;
+            }
+            $this->respond('response.auth.register', [
+                'success' => true,
+                'user_id' => $result['user_id'] ?? null,
+                'email' => $data['email'],
+                'first_name' => $data['first_name'] ?? '',
+                'last_name' => $data['last_name'] ?? '',
+                'role' => 'adopter',
+            ], $corrId);
             $msg->ack();
-            return;
+        } catch (\Throwable $e) {
+            echo "[Backend][ERROR] handleRegister: {$e->getMessage()}\n";
+            $this->fail('response.auth.register', 'Registration failed', $corrId);
+            $msg->nack(false, true);
         }
-
-        if (!$corrId) {
-            $corrId = uniqid('register_', true);
-        }
-
-        $this->mq->publish('db.auth.register', [
-            'email' => $data['email'],
-            'password' => $data['password'],
-            'first_name' => $this->enc($data['first_name'] ?? ''),
-            'last_name' => $this->enc($data['last_name'] ?? ''),
-            'phone' => $this->enc($data['phone'] ?? ''),
-            'address' => $this->enc($data['address'] ?? ''),
-            'role' => 'adopter',
-        ], $corrId);
-
-        $result = $this->mq->waitForResponse('db.result.auth.register', $corrId);
-
-        if (!$result || !($result['success'] ?? false)) {
-            $this->fail(
-                'response.auth.register',
-                $result['error'] ?? 'Registration failed',
-                $corrId
-            );
-            $msg->ack();
-            return;
-        }
-
-        $this->respond('response.auth.register', [
-            'success' => true,
-            'user_id' => $result['user_id'] ?? null,
-            'email' => $data['email'],
-            'first_name' => $data['first_name'] ?? '',
-            'last_name' => $data['last_name'] ?? '',
-            'role' => 'adopter',
-        ], $corrId);
-
-        $msg->ack();
-    } catch (\Throwable $e) {
-        echo "[Backend][ERROR] handleRegister: {$e->getMessage()}\n";
-        $this->fail('response.auth.register', 'Registration failed', $corrId);
-        $msg->nack(false, true);
     }
-}
 
+    public function handleLogin(array $data, $msg, ?string $corrId): void
+    {
+        echo "[Backend] handleLogin: {$data['email']}\n";
+        try {
+            if (empty($data['email']) || empty($data['password'])) {
+                $this->fail('response.auth.login', 'email and password are required', $corrId);
+                $msg->ack(); return;
+            }
+            $this->mq->publish('db.auth.login', ['email' => $data['email']], $corrId);
 
-        public function handleLogin(array $data, $msg, ?string $corrId): void
-{
-    echo "[Backend] handleLogin: {$data['email']}\n";
+            $result = $this->mq->waitForResponse('db.result.auth.login', $corrId);
+            echo "[Backend] Received from DB: " . json_encode($result) . "\n";
 
-    try {
-        if (empty($data['email']) || empty($data['password'])) {
-            $this->fail('response.auth.login', 'email and password are required', $corrId);
+            // Check if the Database found the user
+            if (!$result || ($result['success'] ?? false) !== true || !isset($result['user'])) {
+                $this->respond('response.auth.login', [
+                    'success' => false,
+                    'error' => 'User not found'
+                ], $corrId);
+                $msg->ack();
+                return;
+            }
+
+            $user = $result['user'];
+
+            // The Backend now performs the password verification
+            if (!password_verify($data['password'], $user['password_hash'])) {
+                $this->respond('response.auth.login', [
+                    'success' => false,
+                    'error' => 'Invalid password'
+                ], $corrId);
+                $msg->ack();
+                return;
+            }
+
+            // Success: Remove hash and send user object to Frontend
+            unset($user['password_hash']);
+            $this->respond('response.auth.login', [
+                'success' => true,
+                'user' => $user
+            ], $corrId);
+
             $msg->ack();
-            return;
-        }
-
-        if (!$corrId) {
-            $corrId = uniqid('login_', true);
-        }
-
-        $this->mq->publish('db.auth.login', [
-            'email' => $data['email'],
-            'password' => $data['password'],
-        ], $corrId);
-
-        $result = $this->mq->waitForResponse('db.result.auth.login', $corrId);
-
-        if (!$result || empty($result['user'])) {
-            $this->fail('response.auth.login', 'Invalid email or password', $corrId);
+            if (!$result || empty($result['user'])) {
+                $this->fail('response.auth.login', 'Invalid email or password', $corrId);
+                $msg->ack(); return;
+            }
+            $user = $result['user'];
+            if (!$this->enc->verifyPassword($data['password'], $user['password_hash'])) {
+                $this->fail('response.auth.login', 'Invalid email or password', $corrId);
+                $msg->ack(); return;
+            }
+            $this->respond('response.auth.login', [
+                'success'    => true,
+                'token'      => bin2hex(random_bytes(32)),
+                'user_id'    => $user['user_id'],
+                'email'      => $user['email'],
+                'first_name' => $this->dec($user['first_name'] ?? ''),
+                'last_name'  => $this->dec($user['last_name']  ?? ''),
+                'role'       => $user['role'],
+            ], $corrId);
             $msg->ack();
-            return;
+        } catch (\Throwable $e) {
+            echo "[Backend][ERROR] handleLogin: {$e->getMessage()}\n";
+            $this->fail('response.auth.login', 'Login failed', $corrId);
+            $msg->nack(false, true);
         }
-
-        $user = $result['user'];
-
-        if (!$this->enc->verifyPassword($data['password'], $user['password_hash'])) {
-            $this->fail('response.auth.login', 'Invalid email or password', $corrId);
-            $msg->ack();
-            return;
-        }
-
-        $this->respond('response.auth.login', [
-            'success' => true,
-            'token' => bin2hex(random_bytes(32)),
-            'user_id' => $user['user_id'],
-            'email' => $user['email'],
-            'first_name' => $this->dec($user['first_name'] ?? ''),
-            'last_name' => $this->dec($user['last_name'] ?? ''),
-            'role' => $user['role'],
-        ], $corrId);
-
-        $msg->ack();
-    } catch (\Throwable $e) {
-        echo "[Backend][ERROR] handleLogin: {$e->getMessage()}\n";
-        $this->fail('response.auth.login', 'Login failed', $corrId);
-        $msg->nack(false, true);
-    }
-}
+    } 
 
     // SHELTERS
 
@@ -1005,9 +1012,7 @@ final class BackendWorker
     private function dec(string $value): string
     {
         return $value !== '' ? $this->enc->decrypt($value) : '';
-
     }
-
     private function encryptIfPresent($value) {
         return !empty($value) ? $value : ''; 
 }
