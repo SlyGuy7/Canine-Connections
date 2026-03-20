@@ -312,7 +312,7 @@ final class RabbitMqClient
         echo "[MQ] Waiting on {$queue} (corr:{$correlationId})...\n";
 
         while (true) {
-            $msg = $this->channel->basic_get($queue);
+            $msg = $this->channel->basic_get($queue, false);
 
             if ($msg) {
                 $msgProps  = $msg->get_properties();
@@ -328,7 +328,8 @@ final class RabbitMqClient
                     break;
                 }
 
-                $this->channel->basic_nack($msg->getDeliveryTag(), false, true);
+                // If it's not our ID, put it back
+                $this->channel->basic_ack($msg->getDeliveryTag());
             }
 
             if ((time() - $startTime) >= $timeoutSeconds) {
