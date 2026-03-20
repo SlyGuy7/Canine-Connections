@@ -150,7 +150,7 @@ function handleQuery($queue, $data, $db) {
             // 2. Insert the new user with all profile fields
             $sql = "INSERT INTO users (email, password_hash, first_name, last_name, phone, address, role)
                     VALUES ('{$email}', '{$passwordHash}', '{$firstName}', '{$lastName}', '{$phone}', '{$address}', '{$role}')";
-            
+
             logMsg("Executing SQL: " . $sql);
 
             if (!$db->query($sql)) {
@@ -166,7 +166,6 @@ function handleQuery($queue, $data, $db) {
             }
 
             $email = $db->real_escape_string($data["email"]);
-            $plainPassword = $data["password"];
 
             $sql = "SELECT user_id, email, password_hash, role, first_name, last_name
                     FROM users
@@ -177,15 +176,10 @@ function handleQuery($queue, $data, $db) {
             $result = $db->query($sql);
 
             if (!$result || $result->num_rows === 0) {
-                return ["success" => false, "error" => "Invalid email or password"];
+                return ["success" => false, "user" => null];
             }
 
-            $user = $result->fetch_assoc();
-
-            if (!password_verify($plainPassword, $user["password_hash"])) {
-                return ["success" => false, "error" => "Invalid email or password"];
-            }
-            return ["success" => true, "user" => $user];
+            return ["success" => true, "user" => $result->fetch_assoc()];
 
         case "db.dogs.list":
             $sql = "SELECT d.*, GROUP_CONCAT(p.photo_url ORDER BY p.is_primary DESC) as photos
