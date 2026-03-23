@@ -10,9 +10,24 @@ export default function Register() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [strength, setStrength] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  const handlePasswordChange = (e) => {
+    const val = e.target.value;
+    setPassword(val);
+
+    let s = 0;
+    if (val.length >= 8) s += 1;
+    if (/[A-Z]/.test(val)) s += 1;
+    if (/[0-9]/.test(val)) s += 1;
+    if (/[^A-Za-z0-9]/.test(val)) s += 1;
+
+    setStrength(s);
+  };
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -25,6 +40,11 @@ export default function Register() {
 
     if (password !== confirm) {
       setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
       return;
     }
 
@@ -41,14 +61,14 @@ export default function Register() {
         confirm,
       });
 
-    if (result.success) {
-      setLoading(false);
-      localStorage.setItem("userFirstName", firstName);
-      localStorage.setItem("userLastName", lastName);
-      localStorage.setItem("userFullName", `${firstName} ${lastName}`);
-      navigate("/register-success");
-      return;
-    }
+      if (result.success) {
+        setLoading(false);
+        localStorage.setItem("userFirstName", firstName);
+        localStorage.setItem("userLastName", lastName);
+        localStorage.setItem("userFullName", `${firstName} ${lastName}`);
+        navigate("/register-success");
+        return;
+      }
 
       setLoading(false);
       setError(result.error || "Registration failed.");
@@ -56,6 +76,23 @@ export default function Register() {
       setLoading(false);
       setError("Registration failed. Backend offline.");
     }
+  };
+
+  const getStrengthColor = () => {
+    if (strength === 0) return "#dcc8b7"; 
+    if (strength === 1) return "#ef4444"; 
+    if (strength === 2) return "#f59e0b"; 
+    if (strength === 3) return "#fbbf24"; 
+    return "#22c55e"; 
+  };
+
+  const getStrengthText = () => {
+    if (password.length === 0) return "";
+    if (strength === 0) return "Too Short";
+    if (strength === 1) return "Weak";
+    if (strength === 2) return "Fair";
+    if (strength === 3) return "Good";
+    return "Strong";
   };
 
   return (
@@ -115,15 +152,43 @@ export default function Register() {
       </div>
 
       <div style={styles.row}>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, position: "relative" }}>
           <label style={styles.label}>Password</label>
-          <input
-            style={styles.input}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete="new-password"
-          />
+          <div style={{ position: "relative" }}>
+            <input
+              style={styles.input}
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={handlePasswordChange}
+              autoComplete="new-password"
+            />
+            <span 
+              onClick={() => setShowPassword(!showPassword)}
+              style={styles.toggleText}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </span>
+          </div>
+          <div style={styles.strengthContainer}>
+            <div 
+              style={{
+                ...styles.strengthBar,
+                width: `${(strength / 4) * 100}%`,
+                backgroundColor: getStrengthColor()
+              }} 
+            />
+          </div>
+          {password.length > 0 && (
+            <p style={{ 
+              fontSize: "12px", 
+              color: getStrengthColor(), 
+              marginTop: "-8px", 
+              marginBottom: "10px",
+              fontWeight: "bold" 
+            }}>
+              {getStrengthText()}
+            </p>
+          )}
         </div>
         <div style={{ flex: 1 }}>
           <label style={styles.label}>Confirm</label>
@@ -171,6 +236,28 @@ const styles = {
     fontSize: "14px",
     boxSizing: "border-box",
     marginBottom: "8px",
+  },
+  toggleText: {
+    position: "absolute",
+    right: "12px",
+    top: "10px",
+    fontSize: "12px",
+    fontWeight: "700",
+    color: "#d97706",
+    cursor: "pointer",
+    userSelect: "none",
+  },
+  strengthContainer: {
+    width: "100%",
+    height: "6px",
+    backgroundColor: "#efdfd1",
+    borderRadius: "10px",
+    marginBottom: "12px",
+    overflow: "hidden",
+  },
+  strengthBar: {
+    height: "100%",
+    transition: "width 0.3s ease, background-color 0.3s ease",
   },
   button: {
     width: "100%",
