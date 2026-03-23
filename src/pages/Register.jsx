@@ -41,12 +41,14 @@ export default function Register() {
         confirm,
       });
 
-      if (result.success) {
-        setLoading(false);
-        localStorage.setItem("userFullName", `${firstName} ${lastName}`);
-        navigate("/register-success");
-        return;
-      }
+    if (result.success) {
+      setLoading(false);
+      localStorage.setItem("userFirstName", firstName);
+      localStorage.setItem("userLastName", lastName);
+      localStorage.setItem("userFullName", `${firstName} ${lastName}`);
+      navigate("/register-success");
+      return;
+    }
 
       setLoading(false);
       setError(result.error || "Registration failed.");

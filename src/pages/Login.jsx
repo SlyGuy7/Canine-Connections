@@ -26,16 +26,32 @@ export default function Login() {
         email,
         password,
       })
+    
+    console.log("LOGIN RESULT:", result)
 
-      if (result.success) {
-        localStorage.setItem("isAuthenticated", "true")
-        localStorage.setItem("userEmail", result.email)
-        localStorage.setItem("userFullName", `${result.first_name} ${result.last_name}`)
-        
-        setLoading(false)
-        navigate("/dashboard")
-        return
+    if (result.success) {
+      localStorage.setItem("isAuthenticated", "true")
+      localStorage.setItem("userEmail", result.email)
+
+      if (result.first_name) {
+        localStorage.setItem("userFirstName", result.first_name)
       }
+
+      if (result.last_name) {
+        localStorage.setItem("userLastName", result.last_name)
+      }
+
+      if (result.first_name || result.last_name) {
+        localStorage.setItem(
+          "userFullName",
+          `${result.first_name || ""} ${result.last_name || ""}`.trim()
+        )
+      }
+
+      setLoading(false)
+      navigate("/dashboard")
+      return
+    }
 
       setLoading(false)
       setError(result.error || "Login failed. Backend or database may be offline.")
