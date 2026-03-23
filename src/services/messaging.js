@@ -34,7 +34,6 @@ export async function sendMessage(type, payload) {
       onConnect: () => {
         let finished = false
         const subscription = client.subscribe(`/queue/${responseQueue}`, (message) => {
-          // RabbitMQ STOMP forwards correlation_id as correlation-id with a dash
           const messageCorrelationId = message.headers["correlation-id"] || message.headers["correlation_id"]
           if (messageCorrelationId !== correlationId) {
             return
@@ -55,7 +54,6 @@ export async function sendMessage(type, payload) {
         client.publish({
           destination: `/queue/${type}`,
           headers: {
-            // Send with underscore — backend reads it and forwards with underscore
             "correlation-id": correlationId,
           },
           body: JSON.stringify(payload),
