@@ -1,72 +1,68 @@
-import { useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { sendMessage } from "../services/messaging"
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { sendMessage } from "../services/messaging";
 
 export default function Login() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   async function onSubmit(e) {
-    e.preventDefault()
-    setError("")
+    e.preventDefault();
+    setError("");
 
     if (!email || !password) {
-      setError("Please fill in all fields")
-      return
+      setError("Please fill in all fields");
+      return;
     }
 
-    setLoading(true)
+    setLoading(true);
 
     try {
       const result = await sendMessage("request.auth.login", {
         email,
         password,
-      })
-    
-    console.log("LOGIN RESULT:", result)
+      });
 
-    if (result.success) {
-      localStorage.setItem("isAuthenticated", "true")
-      localStorage.setItem("userEmail", result.email)
+      if (result.success) {
+        const fName = result.user?.firstName || result.first_name;
+        const lName = result.user?.lastName || result.last_name;
 
-      if (result.first_name) {
-        localStorage.setItem("userFirstName", result.first_name)
+        if (fName) localStorage.setItem("userFirstName", fName);
+        if (lName) localStorage.setItem("userLastName", lName);
+        
+        if (fName || lName) {
+          localStorage.setItem(
+            "userFullName",
+            `${fName || ""} ${lName || ""}`.trim()
+          );
+        }
+
+        localStorage.setItem("isAuthenticated", "true");
+        localStorage.setItem("userEmail", email);
+
+        setLoading(false);
+        navigate("/dashboard");
+        return; 
       }
 
-      if (result.last_name) {
-        localStorage.setItem("userLastName", result.last_name)
-      }
-
-      if (result.first_name || result.last_name) {
-        localStorage.setItem(
-          "userFullName",
-          `${result.first_name || ""} ${result.last_name || ""}`.trim()
-        )
-      }
-
-      setLoading(false)
-      navigate("/dashboard")
-      return
-    }
-
-      setLoading(false)
-      setError(result.error || "Login failed. Backend or database may be offline.")
-      console.log("Login failed", result)
+      setLoading(false);
+      setError(result.error || "Login failed. Invalid credentials.");
+      
     } catch (err) {
-      setLoading(false)
-      setError("Login failed. Backend or database may be offline.")
-      console.log("Login error", err)
+      setLoading(false);
+      setError("Login failed. Backend or database may be offline.");
+      console.log("Login error", err);
     }
   }
 
   const handleForgotPassword = (e) => {
-    e.preventDefault()
-    alert("Password reset functionality will be implemented in the next phase.")
-  }
+    e.preventDefault();
+    alert("Password reset functionality will be implemented in the next phase.");
+  };
 
   return (
     <form onSubmit={onSubmit} style={styles.form}>
@@ -103,7 +99,7 @@ export default function Login() {
         {loading ? "Logging In..." : "Login"}
       </button>
     </form>
-  )
+  );
 }
 
 const styles = {
@@ -163,4 +159,4 @@ const styles = {
     margin: "0 0 10px 0",
     fontSize: "14px",
   },
-}
+};
