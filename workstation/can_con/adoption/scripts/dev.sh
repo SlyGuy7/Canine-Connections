@@ -1,5 +1,3 @@
-#!/usr/bin/env bash
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [ -f "$SCRIPT_DIR/.env" ] && source "$SCRIPT_DIR/.env" || { echo "[ERROR-MSG] .env not found"; exit 1; }
 
@@ -52,6 +50,7 @@ wait_for() {
     echo "[ERROR-MSG] $label failed to start"; return 1
 }
 
+
 start_rabbitmq() {
     echo "[STARTING - - - ] **** RabbitMQ ****"
     check_ssh "$RABBITMQ_USER" "$RABBITMQ_HOST" "RabbitMQ" || return 1
@@ -67,7 +66,6 @@ start_rabbitmq() {
 
     ssh_cmd "$RABBITMQ_USER" "$RABBITMQ_HOST" \
         "sudo rabbitmq-plugins enable rabbitmq_management &>/dev/null || true"
-
     tunnel "$RABBITMQ_USER" "$RABBITMQ_HOST" \
         "${LOCAL_RABBITMQ_AMQP_PORT}:localhost:5672" \
         "${LOCAL_RABBITMQ_UI_PORT}:localhost:15672"
@@ -147,14 +145,48 @@ start_frontend() {
     echo " Frontend ready -> http://${FRONTEND_HOST}:${LOCAL_FRONTEND_PORT}/"
 }
 
-stop_all() {
-    echo " Stopping services..."
+
+stop_rabbitmq() {
+    echo "[STOPPING - - - ] **** RabbitMQ ****"
+    check_ssh "$RABBITMQ_USER" "$RABBITMQ_HOST" "RabbitMQ" || return 1
     ssh_cmd "$RABBITMQ_USER" "$RABBITMQ_HOST" "sudo systemctl stop rabbitmq-server" || true
-    ssh_cmd "$MYSQL_USER"    "$MYSQL_HOST"    "sudo systemctl stop mysql"           || true
-    ssh_cmd "$PHP_USER"      "$PHP_HOST"      "fuser -k ${PHP_PORT}/tcp &>/dev/null || true"
+    fuser -k "${LOCAL_RABBITMQ_AMQP_PORT}/tcp" &>/dev/null || true
+    fuser -k "${LOCAL_RABBITMQ_UI_PORT}/tcp" &>/dev/null || true
+    echo " RabbitMQ stopped"
+}
+
+stop_mysql() {
+    echo "[STOPPING - - - ] **** MySQL ****"
+    check_ssh "$MYSQL_USER" "$MYSQL_HOST" "MySQL" || return 1
+    ssh_cmd "$MYSQL_USER" "$MYSQL_HOST" "sudo systemctl stop mysql" || true
+    fuser -k "${LOCAL_MYSQL_PORT}/tcp" &>/dev/null || true
+    echo " MySQL stopped"
+}
+
+stop_php() {
+    echo "[STOPPING - - - ] **** PHP Backend ****"
+    check_ssh "$PHP_USER" "$PHP_HOST" "PHP" || return 1
+    ssh_cmd "$PHP_USER" "$PHP_HOST" "fuser -k ${PHP_PORT}/tcp &>/dev/null || true"
+    fuser -k "${LOCAL_PHP_PORT}/tcp" &>/dev/null || true
+    echo " PHP stopped"
+}
+
+stop_frontend() {
+    echo "[STOPPING - - - ] **** Frontend ****"
+    check_ssh "$FRONTEND_USER" "$FRONTEND_HOST" "Frontend" || return 1
     ssh_cmd "$FRONTEND_USER" "$FRONTEND_HOST" "fuser -k ${FRONTEND_PORT}/tcp &>/dev/null || true"
+    fuser -k "${LOCAL_FRONTEND_PORT}/tcp" &>/dev/null || true
+    echo " Frontend stopped"
+}
+
+stop_all() {
+    stop_rabbitmq
+    stop_mysql
+    stop_php
+    stop_frontend
     echo " All services stopped"
 }
+
 
 status_all() {
     echo " Checking all services..."
@@ -177,6 +209,7 @@ status_all() {
     done
 }
 
+
 start_all() {
     start_rabbitmq
     start_mysql
@@ -186,21 +219,35 @@ start_all() {
     echo ""
     echo "[DEBUG-MSG] ########################################################"
     echo "[DEBUG-MSG] All services started."
-    echo "[DEBUG-MSG] RabbitMQ UI -> http://127.0.0.1:${LOCAL_RABBITMQ_UI_PORT}/"
-    echo "[DEBUG-MSG] PHP API     -> http://127.0.0.1:${LOCAL_PHP_PORT}/"
-    echo "[DEBUG-MSG] Frontend    -> http://127.0.0.1:${LOCAL_FRONTEND_PORT}/"
+    echo "[DEBUG-MSG] RabbitMQ UI -> http://${RABBITMQ_HOST}:${LOCAL_RABBITMQ_UI_PORT}/"
+    echo "[DEBUG-MSG] PHP API     -> http://${PHP_HOST}:${LOCAL_PHP_PORT}/"
+    echo "[DEBUG-MSG] Frontend    -> http://${FRONTEND_HOST}:${LOCAL_FRONTEND_PORT}/"
     echo "[DEBUG-MSG] Use './dev.sh stop' to shut everything down."
     echo "[DEBUG-MSG] ########################################################"
 }
 
+
 case "${1:-start}" in
-    start)          start_all       ;;
-    rabbitmq)       start_rabbitmq  ;;
-    mysql)          start_mysql     ;;
-    php|backend)    start_php       ;;
-    frontend)       start_frontend  ;;
-    stop)           stop_all        ;;
-    restart)        stop_all; sleep 2; start_all ;;
-    status)         status_all      ;;
-    *) echo "Usage: $0 {start|stop|restart|status|rabbitmq|mysql|php|backend|frontend}" ;;
+    start)              start_all       ;;
+    stop)               stop_all        ;;
+    restart)            stop_all; sleep 2; start_all ;;
+    status)             status_all      ;;
+    rabbitmq)           start_rabbitmq  ;;
+    rabbitmq_start)     start_rabbitmq  ;;
+    rabbitmq_stop)      stop_rabbitmq   ;;
+    mysql)              start_mysql     ;;
+    mysql_start)        start_mysql     ;;
+    mysql_stop)         stop_mysql      ;;
+    php|backend)        start_php       ;;
+    php_start)          start_php       ;;
+    php_stop)           stop_php        ;;
+    frontend)           start_frontend  ;;
+    frontend_start)     start_frontend  ;;
+    frontend_stop)      stop_frontend   ;;
+    *) echo "Usage: $0 {start|stop|restart|status}"
+       echo "       $0 {rabbitmq|rabbitmq_start|rabbitmq_stop}"
+       echo "       $0 {mysql|mysql_start|mysql_stop}"
+       echo "       $0 {php|backend|php_start|php_stop}"
+       echo "       $0 {frontend|frontend_start|frontend_stop}"
+       ;;
 esac
