@@ -10,7 +10,7 @@ MYSQL_USER="vmware"
 
 PHP_HOST="100.99.21.39"
 PHP_USER="deryk"
-PHP_DIR="$HOME/Capstone-Group-01/can_con/adoption/backend"
+PHP_DIR="/home/Capstone-Group-01/can_con/adoption/backend"
 PHP_PORT=8000
 
 FRONTEND_HOST="100.89.110.16"
