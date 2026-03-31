@@ -1,35 +1,26 @@
-function Milestone2_Frontend() {
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import BrowseDogs from "./pages/BrowseDogs";
+import Shelters from "./pages/Shelters"; // Import your new file
+import MyDogs from "./pages/MyDogs";
+import Settings from "./pages/Settings";
+
+function App() {
   return (
-    <div style={{ padding: "35px", fontFamily: "Times New Roman" }}>
-      <h1>Canine Connections</h1>
-      <p>Find the next great addition to your family!</p>
-      <div style={{ display: "flex", gap: "20px", marginTop: "20px" }}>
-        <div style={{ border: "1px solid #ccc", padding: "15px", width: "200px" }}>
-          <h3>Name: Candy</h3>
-          <p>Breed: Golden Retriever</p>
-          <p>Age: 2 years old</p>
-        </div>
-        <div style={{ border: "1px solid #ccc", padding: "15px", width: "200px" }}>
-          <h3>Name: Max</h3>
-          <p>Breed: German Shepherd</p>
-          <p>Age: 4 year old</p>
-        </div>
-
-        <div style={{ border: "1px solid #ccc", padding: "15px", width: "200px" }}>
-          <h3>Name: Daisy</h3>
-          <p>Breed: Boxer</p>
-          <p>Age: 10 months old</p>
-        </div>
-       </div>
-      </div>
-)
-}
-	function App() {
-        return (
-	<div>
-	<Milestone2_Frontend />
-	</div>
-)
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/dashboard" element={<Home />} />
+        <Route path="/browse-dogs" element={<BrowseDogs />} />
+        <Route path="/shelters" element={<Shelters />} /> {/* ADD THIS LINE */}
+        <Route path="/my-dogs" element={<MyDogs />} />
+        <Route path="/settings" element={<Settings />} />
+        
+        {/* Fallback route - this is why you were being sent home */}
+        <Route path="*" element={<Home />} /> 
+      </Routes>
+    </Router>
+  );
 }
 
-export default App
+export default App;

@@ -1,65 +1,8 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { sendMessage } from "../services/messaging"
 import AuthModal from "../components/AuthModal"
 import Navbar from "../components/Navbar"
-
-const featuredDogs = [
-  {
-    id: 1,
-    name: "Buddy",
-    breed: "Golden Retriever",
-    age: "2 years old",
-    ageGroup: "Young",
-    sex: "Male",
-    size: "Large",
-    location: "Newark, NJ",
-    description:
-      "Buddy is a friendly and playful dog who loves people, long walks, and tennis balls.",
-    image:
-      "https://images.unsplash.com/photo-1518717758536-85ae29035b6d?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: 2,
-    name: "Luna",
-    breed: "Husky Mix",
-    age: "1 year old",
-    ageGroup: "Puppy",
-    sex: "Female",
-    size: "Medium",
-    location: "Jersey City, NJ",
-    description:
-      "Luna is energetic, smart, and loves attention. She would thrive in an active home.",
-    image:
-      "https://images.unsplash.com/photo-1548199973-03cce0bbc87b?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: 3,
-    name: "Max",
-    breed: "Labrador Mix",
-    age: "3 years old",
-    ageGroup: "Adult",
-    sex: "Male",
-    size: "Large",
-    location: "Hoboken, NJ",
-    description:
-      "Max is calm, affectionate, and easygoing. He enjoys cuddles and quiet afternoons.",
-    image:
-      "https://images.unsplash.com/photo-1525253086316-d0c936c814f8?auto=format&fit=crop&w=900&q=80",
-  },
-  {
-    id: 4,
-    name: "Daisy",
-    breed: "Beagle Mix",
-    age: "4 years old",
-    ageGroup: "Adult",
-    sex: "Female",
-    size: "Small",
-    location: "Edison, NJ",
-    description:
-      "Daisy is sweet, curious, and loves sniffing around outside. Great for a loving family.",
-    image:
-      "https://images.unsplash.com/photo-1587300003388-59208cc962cb?auto=format&fit=crop&w=900&q=80",
-  },
-]
 
 function AdoptionFormModal({ dog, close }) {
   const [fullName, setFullName] = useState("")
@@ -76,7 +19,7 @@ function AdoptionFormModal({ dog, close }) {
   }
 
   return (
-    <div style={styles.modalOverlay}>
+    <div style={styles.modalOverlay} onClick={close}>
       <div style={styles.formModal} onClick={(e) => e.stopPropagation()}>
         <button style={styles.modalClose} onClick={close}>
           ×
@@ -161,13 +104,17 @@ function DogModal({ dog, close, openApplication }) {
   if (!dog) return null
 
   return (
-    <div style={styles.modalOverlay}>
+    <div style={styles.modalOverlay} onClick={close}>
       <div style={styles.dogModal} onClick={(e) => e.stopPropagation()}>
         <button style={styles.modalClose} onClick={close}>
           ×
         </button>
 
-        <img src={dog.image} alt={dog.name} style={styles.modalImage} />
+        <img
+          src={dog.image || "https://via.placeholder.com/900x500?text=Dog"}
+          alt={dog.name}
+          style={styles.modalImage}
+        />
 
         <div style={styles.modalBody}>
           <h2 style={styles.modalTitle}>{dog.name}</h2>
@@ -207,22 +154,92 @@ function DogModal({ dog, close, openApplication }) {
 }
 
 export default function Landing() {
+  const navigate = useNavigate()
+
   const [modalMode, setModalMode] = useState(null)
   const [selectedDog, setSelectedDog] = useState(null)
   const [applicationDog, setApplicationDog] = useState(null)
+
+  const [dogs, setDogs] = useState([])
+  const [loadingDogs, setLoadingDogs] = useState(true)
+  const [dogsError, setDogsError] = useState("")
+
   const [breedFilter, setBreedFilter] = useState("All")
   const [ageFilter, setAgeFilter] = useState("All")
 
-  const breedOptions = ["All", ...new Set(featuredDogs.map((dog) => dog.breed))]
-  const ageOptions = ["All", ...new Set(featuredDogs.map((dog) => dog.ageGroup))]
+  useEffect(() => {
+    loadDogs()
+  }, [])
+
+  async function loadDogs() {
+    setLoadingDogs(true)
+    setDogsError("")
+
+    try {
+      const result = await sendMessage("request.dogs.get", {})
+
+      const rawDogs = Array.isArray(result?.dogs) ? result.dogs : []
+
+      const normalizedDogs = rawDogs.map((dog, index) => ({
+        id: dog.id || index + 1,
+        name: dog.name || "Unknown Dog",
+        breed: dog.breed || "Unknown Breed",
+        age: dog.age || "Age not listed",
+        ageGroup: dog.ageGroup || inferAgeGroup(dog.age),
+        sex: dog.sex || "Unknown",
+        size: dog.size || "Unknown",
+        location: dog.location || "Location not listed",
+        description:
+          dog.description ||
+          "This dog is looking for a loving home.",
+        image: dog.image || dog.photo || dog.image_url || "",
+      }))
+
+      setDogs(normalizedDogs)
+    } catch (error) {
+      console.log("Failed to load dogs:", error)
+      setDogsError("Could not load dogs right now.")
+      setDogs([])
+    } finally {
+      setLoadingDogs(false)
+    }
+  }
+
+  function inferAgeGroup(age) {
+    if (!age) return "Unknown"
+
+    const lowerAge = String(age).toLowerCase()
+
+    if (lowerAge.includes("month") || lowerAge.includes("puppy")) {
+      return "Puppy"
+    }
+
+    const firstNumber = parseInt(lowerAge)
+
+    if (!isNaN(firstNumber)) {
+      if (firstNumber <= 1) return "Puppy"
+      if (firstNumber <= 3) return "Young"
+      return "Adult"
+    }
+
+    return "Unknown"
+  }
+
+  const breedOptions = useMemo(() => {
+    return ["All", ...new Set(dogs.map((dog) => dog.breed).filter(Boolean))]
+  }, [dogs])
+
+  const ageOptions = useMemo(() => {
+    return ["All", ...new Set(dogs.map((dog) => dog.ageGroup).filter(Boolean))]
+  }, [dogs])
 
   const filteredDogs = useMemo(() => {
-    return featuredDogs.filter((dog) => {
+    return dogs.filter((dog) => {
       const breedMatch = breedFilter === "All" || dog.breed === breedFilter
       const ageMatch = ageFilter === "All" || dog.ageGroup === ageFilter
       return breedMatch && ageMatch
     })
-  }, [breedFilter, ageFilter])
+  }, [dogs, breedFilter, ageFilter])
 
   function openApplication(dog) {
     setSelectedDog(null)
@@ -233,98 +250,196 @@ export default function Landing() {
     <div style={styles.page} id="home">
       <Navbar />
 
-      <div style={styles.heroSection}>
-        <div style={styles.heroCard}>
-          <div style={styles.badge}>🐶 Dog Adoption Made Simple</div>
+      <section style={styles.heroSection}>
+        <div style={styles.heroOverlay}>
+          <div style={styles.heroCard}>
+            <div style={styles.badge}>🐶 Dog Adoption Made Simple</div>
 
-          <h1 style={styles.title}>Canine Connections</h1>
+            <h1 style={styles.title}>Canine Connections</h1>
 
-          <p style={styles.subtitle}>
-            Browse lovable dogs, connect with shelters, and take the first step
-            toward bringing home your new best friend.
-          </p>
+            <p style={styles.subtitle}>
+              Browse lovable dogs, connect with shelters, and take the first step
+              toward bringing home your new best friend.
+            </p>
 
-          <div style={styles.buttonRow}>
-            <button style={styles.loginBtn} onClick={() => setModalMode("login")}>
-              Login
-            </button>
+            <div style={styles.buttonRow}>
+              <button style={styles.loginBtn} onClick={() => setModalMode("login")}>
+                Login
+              </button>
 
-            <button
-              style={styles.registerBtn}
-              onClick={() => setModalMode("register")}
-            >
-              Register
-            </button>
+              <button
+                style={styles.registerBtn}
+                onClick={() => setModalMode("register")}
+              >
+                Register
+              </button>
+
+              <button
+                style={styles.browseBtn}
+                onClick={() => navigate("/browse-dogs")}
+              >
+                Browse Dogs
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div style={styles.dogSection} id="dogs">
-        <h2 style={styles.sectionTitle}>Featured Dogs</h2>
-
-        <div style={styles.filterBar}>
-          <select
-            style={styles.select}
-            value={breedFilter}
-            onChange={(e) => setBreedFilter(e.target.value)}
-          >
-            {breedOptions.map((breed) => (
-              <option key={breed} value={breed}>
-                {breed === "All" ? "All Breeds" : breed}
-              </option>
-            ))}
-          </select>
-
-          <select
-            style={styles.select}
-            value={ageFilter}
-            onChange={(e) => setAgeFilter(e.target.value)}
-          >
-            {ageOptions.map((age) => (
-              <option key={age} value={age}>
-                {age === "All" ? "All Ages" : age}
-              </option>
-            ))}
-          </select>
+      <section style={styles.statsStrip}>
+        <div style={styles.statPill}>
+          <span style={styles.statNumber}>{dogs.length}</span>
+          <span style={styles.statText}>Dogs Available</span>
         </div>
 
-        <div style={styles.cardGrid}>
-          {filteredDogs.map((dog) => (
-            <div key={dog.id} style={styles.card}>
-              <img src={dog.image} alt={dog.name} style={styles.cardImage} />
+        <div style={styles.statPill}>
+          <span style={styles.statNumber}>{breedOptions.length - 1}</span>
+          <span style={styles.statText}>Breeds Available</span>
+        </div>
 
-              <div style={styles.cardBody}>
-                <h3 style={styles.cardTitle}>{dog.name}</h3>
-                <p style={styles.cardText}>{dog.breed}</p>
-                <p style={styles.cardText}>{dog.age}</p>
+        <div style={styles.statPill}>
+          <span style={styles.statNumber}>Fast</span>
+          <span style={styles.statText}>Simple Application Process</span>
+        </div>
+      </section>
 
-                <button
-                  style={styles.viewDogBtn}
-                  onClick={() => setSelectedDog(dog)}
+      <section style={styles.contentSection}>
+        <div style={styles.dogSection} id="dogs">
+          <h2 style={styles.sectionTitle}>Featured Dogs</h2>
+
+          <div style={styles.filterBar}>
+            <select
+              style={styles.select}
+              value={breedFilter}
+              onChange={(e) => setBreedFilter(e.target.value)}
+            >
+              {breedOptions.map((breed) => (
+                <option key={breed} value={breed}>
+                  {breed === "All" ? "All Breeds" : breed}
+                </option>
+              ))}
+            </select>
+
+            <select
+              style={styles.select}
+              value={ageFilter}
+              onChange={(e) => setAgeFilter(e.target.value)}
+            >
+              {ageOptions.map((age) => (
+                <option key={age} value={age}>
+                  {age === "All" ? "All Ages" : age}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {loadingDogs && (
+            <div style={styles.messageBox}>Loading dogs...</div>
+          )}
+
+          {!loadingDogs && dogsError && (
+            <div style={styles.errorBox}>{dogsError}</div>
+          )}
+
+          {!loadingDogs && !dogsError && filteredDogs.length === 0 && (
+            <div style={styles.messageBox}>No dogs matched your filters.</div>
+          )}
+
+          {!loadingDogs && !dogsError && filteredDogs.length > 0 && (
+            <div style={styles.cardGrid}>
+              {filteredDogs.map((dog) => (
+                <div
+                  key={dog.id}
+                  style={styles.card}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "translateY(-6px)"
+                    e.currentTarget.style.boxShadow = "0 18px 38px rgba(0,0,0,0.12)"
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "translateY(0)"
+                    e.currentTarget.style.boxShadow = "0 14px 32px rgba(0,0,0,0.08)"
+                  }}
                 >
-                  View Dog
-                </button>
-              </div>
+                  <img
+                    src={dog.image || "https://via.placeholder.com/600x500?text=Dog"}
+                    alt={dog.name}
+                    style={styles.cardImage}
+                  />
+
+                  <div style={styles.cardBody}>
+                    <h3 style={styles.cardTitle}>{dog.name}</h3>
+                    <p style={styles.cardText}>{dog.breed}</p>
+
+                    <div style={styles.cardTags}>
+                      <span style={styles.cardTag}>{dog.ageGroup}</span>
+                      <span style={styles.cardTag}>{dog.sex}</span>
+                      <span style={styles.cardTag}>{dog.size}</span>
+                    </div>
+
+                    <p style={styles.cardText}>{dog.location}</p>
+
+                    <button
+                      style={styles.viewDogBtn}
+                      onClick={() => setSelectedDog(dog)}
+                    >
+                      View Dog
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
-      </div>
 
-      <div style={styles.infoSection} id="shelters">
-        <h2 style={styles.infoTitle}>Partner Shelters</h2>
-        <p style={styles.infoText}>
-          Work with trusted shelters to find the right companion. Learn each
-          dog’s story and adopt with confidence.
-        </p>
-      </div>
+        <section style={styles.featureSection}>
+          <h2 style={styles.sectionTitle}>Why Adopt With Us</h2>
 
-      <div style={styles.infoSection} id="contact">
-        <h2 style={styles.infoTitle}>Contact Us</h2>
-        <p style={styles.infoText}>
-          Questions about adoption, fostering, or volunteering? Reach out and
-          we will help you start your journey.
-        </p>
-      </div>
+          <div style={styles.featureGrid}>
+            <div style={styles.featureCard}>
+              <div style={styles.featureIcon}>🐾</div>
+              <h3 style={styles.featureTitle}>Verified Dogs</h3>
+              <p style={styles.featureText}>
+                Every profile is tied to a trusted shelter or rescue partner.
+              </p>
+            </div>
+
+            <div style={styles.featureCard}>
+              <div style={styles.featureIcon}>💛</div>
+              <h3 style={styles.featureTitle}>Simple Process</h3>
+              <p style={styles.featureText}>
+                Browse, learn, and apply without getting lost in complicated
+                steps.
+              </p>
+            </div>
+
+            <div style={styles.featureCard}>
+              <div style={styles.featureIcon}>🏡</div>
+              <h3 style={styles.featureTitle}>Better Matches</h3>
+              <p style={styles.featureText}>
+                Learn each dog’s age, size, personality, and needs before you
+                apply.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <div style={styles.infoGrid}>
+          <div style={styles.infoSection} id="shelters">
+            <h2 style={styles.infoTitle}>🏠 Partner Shelters</h2>
+            <p style={styles.infoText}>
+              Work with trusted shelters to find the right companion. Learn each
+              dog’s story and adopt with confidence.
+            </p>
+          </div>
+
+          <div style={styles.infoSection} id="contact">
+            <h2 style={styles.infoTitle}>📞 Contact Us</h2>
+            <p style={styles.infoText}>
+              Questions about adoption, fostering, or volunteering? Reach out and
+              we will help you start your journey.
+            </p>
+          </div>
+        </div>
+      </section>
 
       {modalMode && (
         <AuthModal
@@ -355,27 +470,35 @@ export default function Landing() {
 const styles = {
   page: {
     minHeight: "100vh",
-    backgroundImage:
-      "linear-gradient(rgba(60,40,25,0.55), rgba(60,40,25,0.55)), url('https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1600&q=80')",
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-    backgroundRepeat: "no-repeat",
+    background: "#f7efe7",
   },
 
   heroSection: {
-    minHeight: "70vh",
+    minHeight: "78vh",
+    backgroundImage:
+      "linear-gradient(rgba(60,40,25,0.58), rgba(60,40,25,0.58)), url('https://images.unsplash.com/photo-1517849845537-4d257902454a?auto=format&fit=crop&w=1600&q=80')",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
+    backgroundRepeat: "no-repeat",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: "90px 20px 70px",
+  },
+
+  heroOverlay: {
+    width: "100%",
+    maxWidth: "1200px",
     display: "flex",
     justifyContent: "center",
-    alignItems: "center",
-    padding: "100px 20px 40px",
   },
 
   heroCard: {
-    maxWidth: "760px",
+    maxWidth: "780px",
     width: "100%",
-    background: "rgba(255,250,245,0.92)",
-    borderRadius: "28px",
-    padding: "50px 36px",
+    background: "rgba(255,250,245,0.94)",
+    borderRadius: "30px",
+    padding: "54px 38px",
     textAlign: "center",
     boxShadow: "0 30px 80px rgba(0,0,0,0.2)",
   },
@@ -392,7 +515,7 @@ const styles = {
   },
 
   title: {
-    fontSize: "56px",
+    fontSize: "58px",
     margin: "0 0 14px 0",
     color: "#2f241d",
   },
@@ -433,15 +556,64 @@ const styles = {
     fontSize: "16px",
   },
 
+  browseBtn: {
+    padding: "14px 24px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#2f241d",
+    color: "#fff",
+    cursor: "pointer",
+    fontWeight: "600",
+    fontSize: "16px",
+  },
+
+  statsStrip: {
+    maxWidth: "1100px",
+    margin: "-34px auto 40px auto",
+    padding: "0 20px",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+    gap: "16px",
+    position: "relative",
+    zIndex: 5,
+  },
+
+  statPill: {
+    background: "#fffaf5",
+    border: "1px solid #efdfd1",
+    borderRadius: "18px",
+    padding: "18px 20px",
+    boxShadow: "0 10px 24px rgba(0,0,0,0.07)",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    textAlign: "center",
+  },
+
+  statNumber: {
+    fontSize: "28px",
+    fontWeight: "800",
+    color: "#d97706",
+    marginBottom: "4px",
+  },
+
+  statText: {
+    fontSize: "15px",
+    color: "#6a5344",
+  },
+
+  contentSection: {
+    padding: "10px 20px 70px",
+  },
+
   dogSection: {
-    padding: "40px 20px 60px",
     maxWidth: "1200px",
-    margin: "0 auto",
+    margin: "0 auto 54px auto",
   },
 
   sectionTitle: {
-    color: "#fffaf5",
-    fontSize: "34px",
+    color: "#2f241d",
+    fontSize: "36px",
     textAlign: "center",
     marginBottom: "24px",
   },
@@ -464,6 +636,30 @@ const styles = {
     minWidth: "180px",
   },
 
+  messageBox: {
+    maxWidth: "700px",
+    margin: "0 auto",
+    textAlign: "center",
+    background: "#fffaf5",
+    border: "1px solid #efdfd1",
+    borderRadius: "18px",
+    padding: "18px",
+    color: "#5f4a3c",
+    boxShadow: "0 10px 24px rgba(0,0,0,0.06)",
+  },
+
+  errorBox: {
+    maxWidth: "700px",
+    margin: "0 auto",
+    textAlign: "center",
+    background: "#fff1f2",
+    border: "1px solid #fecdd3",
+    borderRadius: "18px",
+    padding: "18px",
+    color: "#9f1239",
+    boxShadow: "0 10px 24px rgba(0,0,0,0.06)",
+  },
+
   cardGrid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
@@ -471,15 +667,17 @@ const styles = {
   },
 
   card: {
-    background: "rgba(255,250,245,0.95)",
+    background: "#fffaf5",
     borderRadius: "20px",
     overflow: "hidden",
-    boxShadow: "0 18px 40px rgba(0,0,0,0.18)",
+    boxShadow: "0 14px 32px rgba(0,0,0,0.08)",
+    border: "1px solid #efdfd1",
+    transition: "transform 0.2s ease, box-shadow 0.2s ease",
   },
 
   cardImage: {
     width: "100%",
-    height: "230px",
+    height: "250px",
     objectFit: "cover",
   },
 
@@ -498,8 +696,25 @@ const styles = {
     color: "#6a5344",
   },
 
+  cardTags: {
+    display: "flex",
+    gap: "8px",
+    flexWrap: "wrap",
+    marginTop: "10px",
+    marginBottom: "14px",
+  },
+
+  cardTag: {
+    background: "#fde6cf",
+    color: "#8a541b",
+    padding: "6px 10px",
+    borderRadius: "999px",
+    fontSize: "13px",
+    fontWeight: "700",
+  },
+
   viewDogBtn: {
-    marginTop: "12px",
+    marginTop: "14px",
     width: "100%",
     padding: "12px 14px",
     borderRadius: "10px",
@@ -511,18 +726,65 @@ const styles = {
     fontSize: "15px",
   },
 
-  infoSection: {
-    maxWidth: "1000px",
+  featureSection: {
+    maxWidth: "1200px",
     margin: "0 auto 50px auto",
-    background: "rgba(255,250,245,0.9)",
+  },
+
+  featureGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: "22px",
+  },
+
+  featureCard: {
+    background: "linear-gradient(180deg, #fffaf5 0%, #fff3e8 100%)",
+    border: "1px solid #efdfd1",
+    borderRadius: "22px",
+    padding: "28px",
+    boxShadow: "0 10px 24px rgba(0,0,0,0.06)",
+    textAlign: "center",
+  },
+
+  featureIcon: {
+    fontSize: "36px",
+    marginBottom: "12px",
+  },
+
+  featureTitle: {
+    margin: "0 0 10px 0",
+    fontSize: "22px",
+    color: "#2f241d",
+  },
+
+  featureText: {
+    margin: 0,
+    color: "#5f4a3c",
+    lineHeight: "1.6",
+    fontSize: "16px",
+  },
+
+  infoGrid: {
+    maxWidth: "1200px",
+    margin: "0 auto",
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+    gap: "22px",
+  },
+
+  infoSection: {
+    background: "#fffaf5",
     borderRadius: "22px",
     padding: "30px",
+    border: "1px solid #efdfd1",
+    boxShadow: "0 10px 24px rgba(0,0,0,0.06)",
   },
 
   infoTitle: {
     fontSize: "28px",
     textAlign: "center",
     color: "#2f241d",
+    marginTop: 0,
   },
 
   infoText: {
@@ -530,6 +792,7 @@ const styles = {
     color: "#5f4a3c",
     fontSize: "17px",
     lineHeight: "1.6",
+    marginBottom: 0,
   },
 
   modalOverlay: {

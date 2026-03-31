@@ -1,63 +1,83 @@
 import React, { useEffect, useState } from "react";
-import "../index.css";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
 
 export default function MyDogs() {
   const [savedDogs, setSavedDogs] = useState([]);
+  const navigate = useNavigate();
+  const { addToast } = useToast();
 
   useEffect(() => {
-    loadSavedDogs();
-  }, []);
-
-  function loadSavedDogs() {
     const dogs = JSON.parse(localStorage.getItem("savedDogs")) || [];
     setSavedDogs(dogs);
-  }
+  }, []);
 
   function handleRemoveDog(id) {
     const updated = savedDogs.filter((dog) => dog.id !== id);
     localStorage.setItem("savedDogs", JSON.stringify(updated));
     setSavedDogs(updated);
+    addToast("Removed from Vault", "success");
   }
 
   return (
     <div className="page-container">
-      <h1>My Saved Dogs</h1>
-      <p className="page-subtitle">
-        Dogs you have saved for adoption.
-      </p>
+      <header className="content-header">
+        <div>
+          <h1>Your Vault</h1>
+          <p className="page-subtitle">Review the companions you have saved for adoption.</p>
+        </div>
+      </header>
 
       {savedDogs.length === 0 ? (
-        <p>No saved dogs yet.</p>
+        <div className="empty-state-container">
+          <span style={{ fontSize: '48px', display: 'block', marginBottom: '16px' }}>🐾</span>
+          <h2 className="form-label" style={{ fontSize: '24px' }}>Your pack is empty.</h2>
+          <p className="page-subtitle" style={{ marginBottom: '24px' }}>
+            Find your new best friend by browsing our available dogs.
+          </p>
+          <button className="btn btn-primary" onClick={() => navigate("/browse-dogs")}>
+            Browse Dogs
+          </button>
+        </div>
       ) : (
         <div className="dog-grid">
           {savedDogs.map((dog) => (
-            <div key={dog.id} className="dog-card">
-              <div className="dog-image-placeholder">🐶</div>
-
-              <h3>{dog.name || "Unknown Dog"}</h3>
-
-              <p>
-                {dog.breed ||
-                  dog.breeds?.[0]?.name ||
-                  "Unknown Breed"}
-              </p>
-
-              <p>
-                {dog.age ||
-                  dog.life_span ||
-                  "Age not available"}
-              </p>
-
-              <div className="dog-card-actions">
-                <button className="primary-btn">View</button>
-                <button
-                  className="secondary-btn"
-                  onClick={() => handleRemoveDog(dog.id)}
-                >
-                  Remove
-                </button>
+            <article key={dog.id} className="dog-card">
+              <div className="dog-card-image">
+                {dog.image ? (
+                  <img src={dog.image} alt={dog.name} />
+                ) : (
+                  <span style={{ fontSize: '48px' }}>🐕</span>
+                )}
               </div>
-            </div>
+
+              <div className="dog-card-body">
+                <h3 className="dog-card-name">{dog.name || "Unknown"}</h3>
+                
+                <div className="dog-card-stats">
+                  <div className="dog-card-stat"><strong>Breed:</strong> {dog.breed || "Mixed"}</div>
+                  <div className="dog-card-stat"><strong>Age:</strong> {dog.age || "N/A"}</div>
+                  <div className="dog-card-stat"><strong>Size:</strong> {dog.size || "Unknown"}</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
+                  <button 
+                    className="btn btn-primary" 
+                    style={{ flex: 2 }}
+                    onClick={() => navigate(`/dogs/${dog.id}`)}
+                  >
+                    Profile
+                  </button>
+                  <button
+                    className="btn"
+                    style={{ flex: 1, background: '#fff1f2', color: '#e11d48' }}
+                    onClick={() => handleRemoveDog(dog.id)}
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </article>
           ))}
         </div>
       )}
