@@ -15,104 +15,113 @@ import Settings from "./pages/Settings.jsx"
 import Layout from "./components/Layout.jsx"
 import { ToastProvider } from "./context/ToastContext"
 import ApplicationForm from "./pages/ApplicationForm.jsx"
+import Shelters from "./pages/Shelters.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <ToastProvider>
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/landing" replace />} />
-          <Route path="/landing" element={<Landing />} />
-          <Route path="/register-success" element={<RegisterSuccess />} />
+<React.StrictMode>
+<ToastProvider>
+<BrowserRouter>
+<Routes>
+<Route path="/" element={<Navigate to="/landing" replace />} />
+<Route path="/landing" element={<Landing />} />
+<Route path="/register-success" element={<RegisterSuccess />} />
 
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Dashboard />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          
-          <Route
-            path="/dogs/:id"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <DogProfile />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/my-dogs"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <MyDogs />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Dashboard />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/messages"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Messages />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/my-dogs"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <MyDogs />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/applications"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Applications />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/browse-dogs"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <BrowseDogs />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/messages"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Messages />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
 
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Layout>
-                  <Settings />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-              path="/apply"
-              element={
-              <ProtectedRoute>
-                <Layout>
-                  <ApplicationForm />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+      <Route
+        path="/applications"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Applications />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
 
-          <Route path="*" element={<Navigate to="/landing" replace />} />
-        </Routes>
-      </BrowserRouter>
-    </ToastProvider>
-  </React.StrictMode>
+      <Route
+        path="/settings"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Settings />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/apply"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <ApplicationForm />
+            </Layout>
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/dogs/:id"
+        element={
+          <Layout>
+            <DogProfile />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/browse-dogs"
+        element={
+          <Layout>
+            <BrowseDogs />
+          </Layout>
+        }
+      />
+
+      <Route
+        path="/shelters"
+        element={
+          <Layout>
+            <Shelters />
+          </Layout>
+        }
+      />
+
+      <Route path="*" element={<Navigate to="/landing" replace />} />
+    </Routes>
+  </BrowserRouter>
+</ToastProvider>
+</React.StrictMode>
 )

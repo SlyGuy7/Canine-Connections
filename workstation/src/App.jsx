@@ -1,26 +1,28 @@
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
-import Home from "./pages/Home";
+import React from "react";
+import { Routes, Route } from "react-router-dom";
+
+import Landing from "./pages/Landing";
+import Dashboard from "./pages/Dashboard";
 import BrowseDogs from "./pages/BrowseDogs";
-import Shelters from "./pages/Shelters"; // Import your new file
+import Shelters from "./pages/Shelters";
+import ShelterDetails from "./pages/ShelterDetails";
 import MyDogs from "./pages/MyDogs";
 import Settings from "./pages/Settings";
+import ForgotPassword from "./pages/ForgotPassword";
 
-function App() {
+export default function App() {
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/dashboard" element={<Home />} />
-        <Route path="/browse-dogs" element={<BrowseDogs />} />
-        <Route path="/shelters" element={<Shelters />} /> {/* ADD THIS LINE */}
-        <Route path="/my-dogs" element={<MyDogs />} />
-        <Route path="/settings" element={<Settings />} />
-        
-        {/* Fallback route - this is why you were being sent home */}
-        <Route path="*" element={<Home />} /> 
-      </Routes>
-    </Router>
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/browse-dogs" element={<BrowseDogs />} />
+      <Route path="/shelters" element={<Shelters />} />
+      <Route path="/shelter-details" element={<ShelterDetails />} />
+      <Route path="/my-dogs" element={<MyDogs />} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+
+      <Route path="*" element={<div style={{padding: "50px"}}><h1>404: Page Not Found</h1><p>Check your URL path.</p></div>} />
+    </Routes>
   );
 }
-
-export default App;
