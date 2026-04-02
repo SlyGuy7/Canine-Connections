@@ -1,27 +1,21 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-import { useToast } from "../context/ToastContext";
 
-export default function Login() {
+export default function Login({ switchToRegister, switchToForgot }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
-  const { addToast } = useToast();
 
   async function onSubmit(e) {
     e.preventDefault();
+    setError("");
 
     if (!email || !password) {
-      addToast("Please fill in all fields", "error");
-      return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      addToast("Please enter a valid email address.", "error");
+      setError("Please fill in all fields");
       return;
     }
 
@@ -50,65 +44,119 @@ export default function Login() {
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("userEmail", email);
 
-        addToast("Welcome back!", "success");
+        setLoading(false);
         navigate("/dashboard");
-        
-      } else {
-        addToast(result.error || "Login failed. Invalid credentials.", "error");
+        return; 
       }
-    } catch (err) {
-      addToast("Login failed. Backend or database may be offline.", "error");
-      console.error("Login error", err);
-    } finally {
+
       setLoading(false);
+      setError(result.error || "Login failed. Invalid credentials.");
+      
+    } catch (err) {
+      setLoading(false);
+      setError("Login failed. Backend or database may be offline.");
+      console.log("Login error", err);
     }
   }
 
   const handleForgotPassword = (e) => {
-    e.preventDefault();
-    addToast("Password reset will be implemented in the next phase.", "error");
-  };
+  e.preventDefault();
+  switchToForgot(); 
+};
 
   return (
-    <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <div className="form-group">
-        <label className="form-label">Email</label>
+    <form onSubmit={onSubmit} style={styles.form}>
+      {error && <p style={styles.error}>{error}</p>}
+
+      <div>
+        <label style={styles.label}>Email</label>
         <input
-          className="form-input"
+          style={styles.input}
           type="email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           autoComplete="email"
-          placeholder="name@example.com"
-          required
         />
       </div>
 
-      <div className="form-group">
-        <div className="form-header-row">
-          <label className="form-label">Password</label>
-          <a href="#" onClick={handleForgotPassword} className="link-text">
-            Forgot password?
+      <div>
+        <div style={styles.passwordHeader}>
+          <label style={styles.label}>Password</label>
+          <a href="#" onClick={handleForgotPassword} style={styles.forgotLink}>
+            Forgot Password?
           </a>
         </div>
         <input
-          className="form-input"
+          style={styles.input}
           type="password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"
-          required
         />
       </div>
 
-      <button 
-        className="btn btn-primary" 
-        type="submit" 
-        disabled={loading}
-        style={{ marginTop: '8px' }}
-      >
+      <button style={styles.button} type="submit" disabled={loading}>
         {loading ? "Logging In..." : "Login"}
       </button>
     </form>
   );
 }
+
+const styles = {
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+  },
+  passwordHeader: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  label: {
+    display: "block",
+    marginBottom: "6px",
+    fontWeight: "600",
+    color: "#4a382d",
+  },
+  forgotLink: {
+    fontSize: "13px",
+    color: "#d97706",
+    textDecoration: "none",
+    fontWeight: "600",
+    marginBottom: "6px",
+  },
+  input: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: "12px",
+    border: "1px solid #dcc8b7",
+    background: "#fff",
+    color: "#2f241d",
+    fontSize: "15px",
+    boxSizing: "border-box",
+    marginBottom: "12px",
+  },
+  button: {
+    width: "100%",
+    padding: "13px 16px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d97706",
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: "16px",
+    cursor: "pointer",
+    marginTop: "6px",
+    boxShadow: "0 10px 24px rgba(217, 119, 6, 0.22)",
+  },
+  error: {
+    background: "#fff1f2",
+    color: "#b42318",
+    border: "1px solid #fecdd3",
+    borderRadius: "10px",
+    padding: "10px 12px",
+    margin: "0 0 10px 0",
+    fontSize: "14px",
+  },
+};

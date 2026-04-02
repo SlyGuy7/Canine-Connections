@@ -1,69 +1,97 @@
 import React, { useState, useEffect } from "react";
-import { sendMessage } from "../services/messaging";
+import { useNavigate } from "react-router-dom";
+import Sidebar from "../components/Sidebar";
 
 export default function Shelters() {
+  const navigate = useNavigate();
   const [shelters, setShelters] = useState([]);
+  const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadShelters();
   }, []);
 
-  async function loadShelters() {
-    const fallbackShelters = [
-      { id: 1, name: "Newark Paws Rescue", location: "Newark, NJ", dogs: 12, contact: "contact@newarkpaws.org" },
-      { id: 2, name: "Garden State Society", location: "Jersey City, NJ", dogs: 8, contact: "info@gss.org" },
-      { id: 3, name: "Liberty Humane Network", location: "Hoboken, NJ", dogs: 15, contact: "adopt@libertyhumane.org" }
+  function loadShelters() {
+    // Mock data for shelters until your backend is ready
+    const mockShelters = [
+      { id: 1, name: "Happy Paws Rescue", location: "New York, NY", phone: "(555) 123-4567", dogsAvailable: 12 },
+      { id: 2, name: "Safe Haven Shelter", location: "Los Angeles, CA", phone: "(555) 987-6543", dogsAvailable: 8 },
+      { id: 3, name: "Second Chance Hounds", location: "Austin, TX", phone: "(555) 456-7890", dogsAvailable: 15 },
+      { id: 4, name: "Forever Friends Network", location: "Chicago, IL", phone: "(555) 222-3333", dogsAvailable: 5 },
+      { id: 5, name: "Paws & Hearts Rescue", location: "Seattle, WA", phone: "(555) 444-5555", dogsAvailable: 20 },
+      { id: 6, name: "Sunny Days Sanctuary", location: "Miami, FL", phone: "(555) 666-7777", dogsAvailable: 7 },
     ];
-
-    try {
-      const result = await sendMessage("request.shelters.get", {});
-      if (result.success && result.shelters?.length > 0) {
-        setShelters(result.shelters);
-      } else {
-        setShelters(fallbackShelters);
-      }
-    } catch (err) {
-      setShelters(fallbackShelters);
-    } finally {
-      setLoading(false);
-    }
+    
+    setShelters(mockShelters);
+    setLoading(false);
   }
 
-  return (
-    <div className="dashboard-content">
-      <header className="content-header">
-        <h1>Verified Shelter Partners</h1>
-        <p className="page-subtitle">We only work with licensed organizations to ensure safe adoptions.</p>
-      </header>
+  const filteredShelters = shelters.filter((s) =>
+    s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    s.location.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
-      {loading ? (
-        <p className="page-subtitle">Loading partners...</p>
-      ) : (
-        <div className="dog-grid">
-          {shelters.map((shelter) => (
-            <div key={shelter.id} className="dog-card">
-              <div style={{ height: '140px', background: 'var(--bg-accent)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '48px' }}>🏠</span>
-              </div>
-              <div className="dog-card-content">
-                <h3>{shelter.name}</h3>
-                <p className="page-subtitle">📍 {shelter.location}</p>
-                <p className="page-subtitle">🐕 {shelter.dogs} Dogs Available</p>
+  return (
+    <div className="dashboard-wrapper">
+      <Sidebar />
+      <div className="page-container">
+        <header className="content-header" style={{ marginBottom: "30px" }}>
+          <h1>Partner Shelters</h1>
+          <p className="dashboard-subtitle">Connect with local rescues and shelters in our network.</p>
+        </header>
+
+        <section className="filter-container" style={{ marginBottom: "40px" }}>
+          <input
+            className="form-input"
+            style={{ padding: "15px", borderRadius: "12px", border: "1px solid #dcc8b7", fontSize: "16px", width: "100%", maxWidth: "500px" }}
+            placeholder="Search by shelter name or city..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </section>
+
+        {loading ? (
+          <div style={{ color: "#6f5848", fontSize: "18px" }}>Loading shelters...</div>
+        ) : (
+          <div className="dog-grid">
+            {filteredShelters.map((shelter) => (
+              <div 
+                key={shelter.id} 
+                className="dog-card" 
+                style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}
+              >
+                <div style={{ height: "160px", background: "#e8f3f1", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <span style={{ fontSize: "64px" }}>🏡</span>
+                </div>
                 
-                <div className="dog-card-footer">
-                  <a href={`mailto:${shelter.contact}`} className="btn btn-outline" style={{ flex: 1, textDecoration: 'none' }}>
-                    Contact
-                  </a>
-                  <button className="btn btn-primary" style={{ flex: 1 }}>
-                    View Listings
-                  </button>
+                <div className="dog-card-content" style={{ padding: "20px" }}>
+                  <h3 style={{ margin: "0 0 15px 0", color: "#2f241d" }}>{shelter.name}</h3>
+                  <p style={{ margin: "8px 0", color: "#6f5848", fontSize: "15px" }}>
+                    <strong>📍 Location:</strong> {shelter.location}
+                  </p>
+                  <p style={{ margin: "8px 0", color: "#6f5848", fontSize: "15px" }}>
+                    <strong>📞 Phone:</strong> {shelter.phone}
+                  </p>
+                  <p style={{ margin: "8px 0", color: "#6f5848", fontSize: "15px" }}>
+                    <strong>🐶 Available:</strong> {shelter.dogsAvailable} dogs
+                  </p>
+
+                  <div style={{ marginTop: "25px" }}>
+                    <button
+                      className="btn btn-primary"
+                      style={{ width: "100%" }}
+                      onClick={() => navigate("/browse-dogs")}
+                    >
+                      View Available Dogs
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

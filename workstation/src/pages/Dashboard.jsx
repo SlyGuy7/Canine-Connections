@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
+import Sidebar from "../components/Sidebar";
 import "../index.css";
 
 const fallbackDog = {
@@ -131,131 +132,134 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="page-container">
-      <div className="dashboard-search-card">
-        <div className="content-header">
-          <div>
-            <h1>Welcome back, {user} 🐾</h1>
-            <p className="dashboard-subtitle">
-              Your adoption journey is looking bright today.
-            </p>
-          </div>
-
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate("/browse-dogs")}
-          >
-            Find a Dog
-          </button>
-        </div>
-      </div>
-
-      <section className="stats-grid">
-        <DashboardCard
-          icon="🦴"
-          value={stats.saved}
-          label="Saved Dogs"
-          onClick={() => navigate("/my-dogs")}
-          onKeyDown={(event) => handleCardKeyDown(event, "/my-dogs")}
-        />
-
-        <DashboardCard
-          icon="📋"
-          value={stats.applications}
-          label="Applications"
-          onClick={() => navigate("/applications")}
-          onKeyDown={(event) => handleCardKeyDown(event, "/applications")}
-        />
-
-        <DashboardCard
-          icon="📬"
-          value={stats.messages}
-          label="Messages"
-          onClick={() => navigate("/messages")}
-          onKeyDown={(event) => handleCardKeyDown(event, "/messages")}
-        />
-      </section>
-
-      <section className="dashboard-main-grid">
-        <div className="dashboard-panel highlight-panel">
-          <div className="panel-header">
-            <h2>
-              {loadingDog
-                ? "Featured Companion"
-                : `Featured Companion, ${featuredDog.name}`}
-            </h2>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              gap: "24px",
-              flexWrap: "wrap",
-            }}
-          >
-            <div style={{ flex: 1, minWidth: "240px" }}>
-              <p className="activity-subtext" style={{ marginBottom: "18px" }}>
-                {loadingDog
-                  ? "Loading featured companion details..."
-                  : `Meet ${featuredDog.name}. This ${featuredDog.breed} is looking for a loving home. ${featuredDog.description}`}
+    <div className="dashboard-wrapper">
+      <Sidebar />
+      <div className="page-container">
+        <div className="dashboard-search-card">
+          <div className="content-header">
+            <div>
+              <h1>Welcome back, {user} 🐾</h1>
+              <p className="dashboard-subtitle">
+                Your adoption journey is looking bright today.
               </p>
+            </div>
 
-              <button className="btn btn-primary" onClick={goToFeaturedDog}>
-                View Profile
-              </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate("/browse-dogs")}
+            >
+              Find a Dog
+            </button>
+          </div>
+        </div>
+
+        <section className="stats-grid">
+          <DashboardCard
+            icon="🦴"
+            value={stats.saved}
+            label="Saved Dogs"
+            onClick={() => navigate("/my-dogs")}
+            onKeyDown={(event) => handleCardKeyDown(event, "/my-dogs")}
+          />
+
+          <DashboardCard
+            icon="📋"
+            value={stats.applications}
+            label="Applications"
+            onClick={() => navigate("/applications")}
+            onKeyDown={(event) => handleCardKeyDown(event, "/applications")}
+          />
+
+          <DashboardCard
+            icon="📬"
+            value={stats.messages}
+            label="Messages"
+            onClick={() => navigate("/messages")}
+            onKeyDown={(event) => handleCardKeyDown(event, "/messages")}
+          />
+        </section>
+
+        <section className="dashboard-main-grid">
+          <div className="dashboard-panel highlight-panel">
+            <div className="panel-header">
+              <h2>
+                {loadingDog
+                  ? "Featured Companion"
+                  : `Featured Companion, ${featuredDog.name}`}
+              </h2>
             </div>
 
             <div
               style={{
-                width: "180px",
-                height: "180px",
-                borderRadius: "50%",
-                background: "#fcedda",
                 display: "flex",
+                justifyContent: "space-between",
                 alignItems: "center",
-                justifyContent: "center",
-                overflow: "hidden",
-                flexShrink: 0,
+                gap: "24px",
+                flexWrap: "wrap",
               }}
             >
-              {featuredDog.image ? (
-                <img
-                  src={featuredDog.image}
-                  alt={featuredDog.name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                />
-              ) : (
-                <span style={{ fontSize: "56px" }}>🐕</span>
-              )}
+              <div style={{ flex: 1, minWidth: "240px" }}>
+                <p className="activity-subtext" style={{ marginBottom: "18px" }}>
+                  {loadingDog
+                    ? "Loading featured companion details..."
+                    : `Meet ${featuredDog.name}. This ${featuredDog.breed} is looking for a loving home. ${featuredDog.description}`}
+                </p>
+
+                <button className="btn btn-primary" onClick={goToFeaturedDog}>
+                  View Profile
+                </button>
+              </div>
+
+              <div
+                style={{
+                  width: "180px",
+                  height: "180px",
+                  borderRadius: "50%",
+                  background: "#fcedda",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  overflow: "hidden",
+                  flexShrink: 0,
+                }}
+              >
+                {featuredDog.image ? (
+                  <img
+                    src={featuredDog.image}
+                    alt={featuredDog.name}
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                  />
+                ) : (
+                  <span style={{ fontSize: "56px" }}>🐕</span>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="dashboard-panel">
-          <div className="panel-header">
-            <h2>Next Steps</h2>
-          </div>
+          <div className="dashboard-panel">
+            <div className="panel-header">
+              <h2>Next Steps</h2>
+            </div>
 
-          <div className="activity-list">
-            {nextSteps.map((step) => (
-              <div key={step.label} className="activity-item">
-                <div>
-                  <p className="activity-title">{step.label}</p>
-                  <p className="activity-subtext">
-                    {step.done ? "Completed" : "Still waiting"}
-                  </p>
+            <div className="activity-list">
+              {nextSteps.map((step) => (
+                <div key={step.label} className="activity-item">
+                  <div>
+                    <p className="activity-title">{step.label}</p>
+                    <p className="activity-subtext">
+                      {step.done ? "Completed" : "Still waiting"}
+                    </p>
+                  </div>
+
+                  <span className={`status-badge ${step.done ? "approved" : "pending"}`}>
+                    {step.done ? "Done" : "To Do"}
+                  </span>
                 </div>
-
-                <span className={`status-badge ${step.done ? "approved" : "pending"}`}>
-                  {step.done ? "Done" : "To Do"}
-                </span>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
     </div>
   );
 }

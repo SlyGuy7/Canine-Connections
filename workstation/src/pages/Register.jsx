@@ -1,123 +1,284 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-import { useToast } from "../context/ToastContext";
 
 export default function Register() {
-  const [formData, setFormData] = useState({
-    firstName: "", lastName: "", phone: "", address: "",
-    email: "", password: "", confirm: ""
-  });
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
   const [strength, setStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  
   const navigate = useNavigate();
-  const { addToast } = useToast();
 
-  const updateField = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    if (field === "password") calculateStrength(value);
-  };
+  const handlePasswordChange = (e) => {
+    const val = e.target.value;
+    setPassword(val);
 
-  const calculateStrength = (val) => {
     let s = 0;
-    if (val.length >= 8) s++;
-    if (/[A-Z]/.test(val)) s++;
-    if (/[0-9]/.test(val)) s++;
-    if (/[^A-Za-z0-9]/.test(val)) s++;
-    setStrength(s);
-  };
+    if (val.length >= 8) s += 1;
+    if (/[A-Z]/.test(val)) s += 1;
+    if (/[0-9]/.test(val)) s += 1;
+    if (/[^A-Za-z0-9]/.test(val)) s += 1;
 
-  const validateForm = () => {
-    const { firstName, lastName, phone, address, email, password, confirm } = formData;
-    if (!firstName || !lastName || !phone || !address || !email || !password || !confirm) {
-      addToast("Fill in all required fields.", "error");
-      return false;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      addToast("Enter a valid email.", "error");
-      return false;
-    }
-    if (password !== confirm) {
-      addToast("Passwords do not match.", "error");
-      return false;
-    }
-    return true;
+    setStrength(s);
   };
 
   const onSubmit = async (e) => {
     e.preventDefault();
-    if (!validateForm()) return;
+    setError("");
+
+    if (!firstName || !lastName || !phone || !address || !email || !password || !confirm) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    if (password !== confirm) {
+      setError("Passwords do not match");
+      return;
+    }
+
+    if (password.length < 8) {
+      setError("Password must be at least 8 characters long");
+      return;
+    }
 
     setLoading(true);
+
     try {
-      const result = await sendMessage("request.auth.register", formData);
+      const result = await sendMessage("request.auth.register", {
+        firstName,
+        lastName,
+        phone,
+        address,
+        email,
+        password,
+        confirm,
+      });
+
       if (result.success) {
-        localStorage.setItem("userFullName", `${formData.firstName} ${formData.lastName}`);
+        setLoading(false);
+        localStorage.setItem("userFirstName", firstName);
+        localStorage.setItem("userLastName", lastName);
+        localStorage.setItem("userFullName", `${firstName} ${lastName}`);
         navigate("/register-success");
-      } else {
-        addToast(result.error || "Registration failed.", "error");
+        return;
       }
-    } catch (err) {
-      addToast("Registration failed. Backend offline.", "error");
-    } finally {
+
       setLoading(false);
+      setError(result.error || "Registration failed.");
+    } catch (err) {
+      setLoading(false);
+      setError("Registration failed. Backend offline.");
     }
   };
 
-  const strengthMeta = [
-    { color: "#dcc8b7", text: "Too Short" },
-    { color: "#ef4444", text: "Weak" },
-    { color: "#f59e0b", text: "Fair" },
-    { color: "#fbbf24", text: "Good" },
-    { color: "#22c55e", text: "Strong" }
-  ][strength];
+  const getStrengthColor = () => {
+    if (strength === 0) return "#dcc8b7"; 
+    if (strength === 1) return "#ef4444"; 
+    if (strength === 2) return "#f59e0b"; 
+    if (strength === 3) return "#fbbf24"; 
+    return "#22c55e"; 
+  };
+
+  const getStrengthText = () => {
+    if (password.length === 0) return "";
+    if (strength === 0) return "Too Short";
+    if (strength === 1) return "Weak";
+    if (strength === 2) return "Fair";
+    if (strength === 3) return "Good";
+    return "Strong";
+  };
 
   return (
-    <form onSubmit={onSubmit} className="form-group" style={{ gap: '4px' }}>
-      <div className="form-row">
-        <div className="flex-1">
-          <label className="form-label">First Name</label>
-          <input className="form-input" type="text" value={formData.firstName} onChange={(e) => updateField("firstName", e.target.value)} />
+    <form onSubmit={onSubmit} style={styles.form}>
+      {error && <p style={styles.error}>{error}</p>}
+
+      <div style={styles.row}>
+        <div style={{ flex: 1 }}>
+          <label style={styles.label}>First Name</label>
+          <input
+            style={styles.input}
+            type="text"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+          />
         </div>
-        <div className="flex-1">
-          <label className="form-label">Last Name</label>
-          <input className="form-input" type="text" value={formData.lastName} onChange={(e) => updateField("lastName", e.target.value)} />
+        <div style={{ flex: 1 }}>
+          <label style={styles.label}>Last Name</label>
+          <input
+            style={styles.input}
+            type="text"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+          />
         </div>
       </div>
 
-      <div className="form-group">
-        <label className="form-label">Phone Number</label>
-        <input className="form-input" type="tel" placeholder="(555) 555-5555" value={formData.phone} onChange={(e) => updateField("phone", e.target.value)} />
+      <div>
+        <label style={styles.label}>Phone Number</label>
+        <input
+          style={styles.input}
+          type="tel"
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+        />
       </div>
 
-      <div className="form-group">
-        <label className="form-label">Email</label>
-        <input className="form-input" type="email" value={formData.email} onChange={(e) => updateField("email", e.target.value)} />
+      <div>
+        <label style={styles.label}>Home Address</label>
+        <input
+          style={styles.input}
+          type="text"
+          value={address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
       </div>
 
-      <div className="form-row">
-        <div className="flex-1">
-          <label className="form-label">Password</label>
-          <div className="input-container">
-            <input className="form-input" type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => updateField("password", e.target.value)} />
-            <span className="input-toggle" onClick={() => setShowPassword(!showPassword)}>{showPassword ? "Hide" : "Show"}</span>
+      <div>
+        <label style={styles.label}>Email</label>
+        <input
+          style={styles.input}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+        />
+      </div>
+
+      <div style={styles.row}>
+        <div style={{ flex: 1, position: "relative" }}>
+          <label style={styles.label}>Password</label>
+          <div style={{ position: "relative" }}>
+            <input
+              style={styles.input}
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={handlePasswordChange}
+              autoComplete="new-password"
+            />
+            <span 
+              onClick={() => setShowPassword(!showPassword)}
+              style={styles.toggleText}
+            >
+              {showPassword ? "Hide" : "Show"}
+            </span>
           </div>
-          <div className="strength-wrapper">
-            <div className="strength-bar" style={{ width: `${(strength / 4) * 100}%`, backgroundColor: strengthMeta.color }} />
+          <div style={styles.strengthContainer}>
+            <div 
+              style={{
+                ...styles.strengthBar,
+                width: `${(strength / 4) * 100}%`,
+                backgroundColor: getStrengthColor()
+              }} 
+            />
           </div>
-          {formData.password && <p className="strength-text" style={{ color: strengthMeta.color }}>{strengthMeta.text}</p>}
+          {password.length > 0 && (
+            <p style={{ 
+              fontSize: "12px", 
+              color: getStrengthColor(), 
+              marginTop: "-8px", 
+              marginBottom: "10px",
+              fontWeight: "bold" 
+            }}>
+              {getStrengthText()}
+            </p>
+          )}
         </div>
-        <div className="flex-1">
-          <label className="form-label">Confirm</label>
-          <input className="form-input" type="password" value={formData.confirm} onChange={(e) => updateField("confirm", e.target.value)} />
+        <div style={{ flex: 1 }}>
+          <label style={styles.label}>Confirm</label>
+          <input
+            style={styles.input}
+            type="password"
+            value={confirm}
+            onChange={(e) => setConfirm(e.target.value)}
+            autoComplete="new-password"
+          />
         </div>
       </div>
 
-      <button className="btn btn-primary" type="submit" disabled={loading} style={{ marginTop: '12px' }}>
+      <button style={styles.button} type="submit" disabled={loading}>
         {loading ? "Creating Account..." : "Create Account"}
       </button>
     </form>
   );
 }
+
+const styles = {
+  form: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+  },
+  row: {
+    display: "flex",
+    gap: "10px",
+  },
+  label: {
+    display: "block",
+    marginBottom: "4px",
+    fontWeight: "600",
+    color: "#4a382d",
+    fontSize: "13px",
+  },
+  input: {
+    width: "100%",
+    padding: "10px 12px",
+    borderRadius: "10px",
+    border: "1px solid #dcc8b7",
+    background: "#fff",
+    color: "#2f241d",
+    fontSize: "14px",
+    boxSizing: "border-box",
+    marginBottom: "8px",
+  },
+  toggleText: {
+    position: "absolute",
+    right: "12px",
+    top: "10px",
+    fontSize: "12px",
+    fontWeight: "700",
+    color: "#d97706",
+    cursor: "pointer",
+    userSelect: "none",
+  },
+  strengthContainer: {
+    width: "100%",
+    height: "6px",
+    backgroundColor: "#efdfd1",
+    borderRadius: "10px",
+    marginBottom: "12px",
+    overflow: "hidden",
+  },
+  strengthBar: {
+    height: "100%",
+    transition: "width 0.3s ease, background-color 0.3s ease",
+  },
+  button: {
+    width: "100%",
+    padding: "13px 16px",
+    borderRadius: "12px",
+    border: "none",
+    background: "#d97706",
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: "16px",
+    cursor: "pointer",
+    marginTop: "10px",
+    boxShadow: "0 10px 24px rgba(217, 119, 6, 0.22)",
+  },
+  error: {
+    background: "#fff1f2",
+    color: "#b42318",
+    border: "1px solid #fecdd3",
+    borderRadius: "10px",
+    padding: "8px 12px",
+    marginBottom: "10px",
+    fontSize: "13px",
+  },
+};

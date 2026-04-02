@@ -1,27 +1,33 @@
 import Login from "../pages/Login"
 import Register from "../pages/Register"
+import ForgotPassword from "../pages/ForgotPassword" // 1. Add this import
 
 export default function AuthModal({ mode, close, switchMode }) {
+  // Helper to determine title and subtitle
+  const getHeaderContent = () => {
+    if (mode === "login") return { title: "Welcome Back", sub: "Log in to continue your adoption journey." };
+    if (mode === "register") return { title: "Join Canine Connections", sub: "Create an account to meet your future best friend." };
+    return { title: "Reset Password", sub: "Enter your email to receive instructions." };
+  };
+
+  const content = getHeaderContent();
+
   return (
-    <div style={styles.overlay}>
+    <div style={styles.overlay} onClick={close}>
       <div style={styles.modal} onClick={(e) => e.stopPropagation()}>
         <button style={styles.close} onClick={close}>×</button>
 
         <div style={styles.header}>
           <div style={styles.paw}>🐾</div>
-          <h2 style={styles.title}>
-            {mode === "login" ? "Welcome Back" : "Join Canine Connections"}
-          </h2>
-          <p style={styles.subtitle}>
-            {mode === "login"
-              ? "Log in to continue your adoption journey."
-              : "Create an account to meet your future best friend."}
-          </p>
+          <h2 style={styles.title}>{content.title}</h2>
+          <p style={styles.subtitle}>{content.sub}</p>
         </div>
 
-        {mode === "login" ? (
+        {/* 2. Update logic to handle 3 modes */}
+        {mode === "login" && (
           <>
-            <Login />
+            {/* Pass the switch function to Login so it can trigger the view change */}
+            <Login switchToForgot={() => switchMode("forgot-password")} />
             <p style={styles.switchText}>
               Need an account?{" "}
               <button style={styles.switchBtn} onClick={() => switchMode("register")}>
@@ -29,7 +35,9 @@ export default function AuthModal({ mode, close, switchMode }) {
               </button>
             </p>
           </>
-        ) : (
+        )}
+
+        {mode === "register" && (
           <>
             <Register />
             <p style={styles.switchText}>
@@ -40,11 +48,24 @@ export default function AuthModal({ mode, close, switchMode }) {
             </p>
           </>
         )}
+
+        {mode === "forgot-password" && (
+          <>
+            <ForgotPassword />
+            <p style={styles.switchText}>
+              Remember your password?{" "}
+              <button style={styles.switchBtn} onClick={() => switchMode("login")}>
+                Back to Login
+              </button>
+            </p>
+          </>
+        )}
       </div>
     </div>
   )
 }
 
+// Keep your existing styles as they are
 const styles = {
   overlay: {
     position: "fixed",

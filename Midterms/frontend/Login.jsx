@@ -83,7 +83,7 @@ export default function Login() {
         <div style={styles.passwordHeader}>
           <label style={styles.label}>Password</label>
           <a href="#" onClick={handleForgotPassword} style={styles.forgotLink}>
-            Forgot password?
+            Forgot Password?
           </a>
         </div>
         <input
