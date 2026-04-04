@@ -4,11 +4,11 @@ require_once __DIR__ . '/vendor/autoload.php';
 
 use App\Config\Config;
 use App\Infrastructure\Messaging\RabbitMqClient;
-use App\Workers\BackendWorker;
+use App\Workers\DBridgeWorker;
 
 Config::loadEnv(__DIR__ . '/.env');
 
-echo " Canine Connections — Backend Worker\n";
+echo " Canine Connections — DBridge Worker\n";
 
 try {
     $mq = new RabbitMqClient(
@@ -17,14 +17,14 @@ try {
         $_ENV['RABBITMQ_USER'],
         $_ENV['RABBITMQ_PASS']
     );
-    echo "[Backend] RabbitMQ connected\n";
+    echo "[DBridgeWorker] RabbitMQ connected\n";
 } catch (\Throwable $e) {
-    echo "[Backend][FATAL] RabbitMQ connection failed: {$e->getMessage()}\n";
+    echo "[DBridgeWorker][FATAL] RabbitMQ connection failed: {$e->getMessage()}\n";
     exit(1);
 }
 
 pcntl_signal(SIGINT,  function () use ($mq) { $mq->close(); exit(0); });
 pcntl_signal(SIGTERM, function () use ($mq) { $mq->close(); exit(0); });
 
-$worker = new BackendWorker($mq);
+$worker = new DBridgeWorker($mq);
 $worker->run();
