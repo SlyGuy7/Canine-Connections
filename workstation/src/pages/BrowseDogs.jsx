@@ -19,16 +19,16 @@ export default function BrowseDogs() {
 
   async function loadDogs() {
     const fallbackDogs = [
-      { id: 1, name: "Buddy", breed: "Labrador Mix", size: "Large", age: 2 },
-      { id: 2, name: "Luna", breed: "Golden Retriever", size: "Large", age: 1 },
-      { id: 3, name: "Max", breed: "Beagle", size: "Medium", age: 4 },
-      { id: 4, name: "Bella", breed: "Pug", size: "Small", age: 3 },
-      { id: 5, name: "Charlie", breed: "Poodle", size: "Medium", age: 5 },
-      { id: 6, name: "Daisy", breed: "Chihuahua", size: "Small", age: 1 }
+      { dog_id: 1, name: "Buddy", breed: "Labrador Mix", size: "large", age_years: 2, photos: null },
+      { dog_id: 2, name: "Luna", breed: "Golden Retriever", size: "large", age_years: 1, photos: null },
+      { dog_id: 3, name: "Max", breed: "Beagle", size: "medium", age_years: 4, photos: null },
+      { dog_id: 4, name: "Bella", breed: "Pug", size: "small", age_years: 3, photos: null },
+      { dog_id: 5, name: "Charlie", breed: "Poodle", size: "medium", age_years: 5, photos: null },
+      { dog_id: 6, name: "Daisy", breed: "Chihuahua", size: "small", age_years: 1, photos: null }
     ];
 
     try {
-      const result = await sendMessage("request.dogs.get", {});
+      const result = await sendMessage("request.dogs.list", {});
       if (result.success && result.dogs?.length > 0) {
         setAllDogs(result.dogs);
       } else {
@@ -41,10 +41,9 @@ export default function BrowseDogs() {
     }
   }
 
-  // FIXED: Added backticks around the template literals
   const handleSaveDog = (dog) => {
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
-    if (savedDogs.some((d) => d.id === dog.id)) {
+    if (savedDogs.some((d) => d.dog_id === dog.dog_id)) {
       addToast(`${dog.name} is already in your Vault!`, "error");
       return;
     }
@@ -53,25 +52,24 @@ export default function BrowseDogs() {
     addToast(`${dog.name} saved successfully!`, "success");
   };
 
-  const getAgeCategory = (age) => {
-    if (age <= 1) return "Puppy (0-1 yrs)";
-    if (age <= 3) return "Young (2-3 yrs)";
-    if (age <= 7) return "Adult (4-7 yrs)";
+  const getAgeCategory = (age_years) => {
+    if (age_years <= 1) return "Puppy (0-1 yrs)";
+    if (age_years <= 3) return "Young (2-3 yrs)";
+    if (age_years <= 7) return "Adult (4-7 yrs)";
     return "Senior (8+ yrs)";
   };
 
   const filteredDogs = allDogs.filter((dog) => {
-    const matchesSearch = dog.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    const matchesSearch = dog.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           dog.breed.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesBreed = filters.breed === "All" || dog.breed === filters.breed;
     const matchesSize = filters.size === "All" || dog.size === filters.size;
-    const matchesAge = filters.age === "All" || getAgeCategory(dog.age) === filters.age;
+    const matchesAge = filters.age === "All" || getAgeCategory(dog.age_years) === filters.age;
     return matchesSearch && matchesBreed && matchesSize && matchesAge;
   });
 
   const uniqueBreeds = ["All", ...new Set(allDogs.map((dog) => dog.breed))];
 
-  // FIXED: Wrapped loading state in dashboard-wrapper and page-container
   if (loading) {
     return (
       <div className="dashboard-wrapper">
@@ -96,7 +94,6 @@ export default function BrowseDogs() {
     );
   }
 
-  // FIXED: Wrapped main content in dashboard-wrapper and page-container
   return (
     <div className="dashboard-wrapper">
       <Sidebar />
@@ -107,10 +104,10 @@ export default function BrowseDogs() {
         </header>
 
         <section className="filter-container" style={{ marginBottom: '40px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
-          <input 
+          <input
             className="form-input"
             style={{ padding: '15px', borderRadius: '12px', border: '1px solid #dcc8b7', fontSize: '16px', width: '100%', maxWidth: '500px' }}
-            placeholder="Search by name or breed..." 
+            placeholder="Search by name or breed..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -122,9 +119,9 @@ export default function BrowseDogs() {
             </select>
             <select className="form-input" value={filters.size} onChange={(e) => setFilters({ ...filters, size: e.target.value })}>
               <option value="All">All Sizes</option>
-              <option value="Small">Small</option>
-              <option value="Medium">Medium</option>
-              <option value="Large">Large</option>
+              <option value="small">Small</option>
+              <option value="medium">Medium</option>
+              <option value="large">Large</option>
             </select>
             <select className="form-input" value={filters.age} onChange={(e) => setFilters({ ...filters, age: e.target.value })}>
               <option value="All">All Ages</option>
@@ -138,26 +135,36 @@ export default function BrowseDogs() {
 
         <div className="dog-grid">
           {filteredDogs.map((dog) => (
-            <div key={dog.id} className="dog-card" style={{ background: 'white', borderRadius: '20px', overflow: 'hidden', border: '1px solid #efdfd1' }}>
-              <div style={{ height: '200px', background: '#fcedda', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '64px' }}>🐕</span>
+            <div key={dog.dog_id} className="dog-card" style={{ background: 'white', borderRadius: '20px', overflow: 'hidden', border: '1px solid #efdfd1' }}>
+              <div style={{ height: '200px', overflow: 'hidden' }}>
+                {dog.photos ? (
+                  <img
+                    src={dog.photos.split(",")[0]}
+                    alt={dog.name}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <div style={{ height: '200px', background: '#fcedda', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <span style={{ fontSize: '14px', color: '#6f5848' }}>No photo available</span>
+                  </div>
+                )}
               </div>
               <div className="dog-card-content" style={{ padding: '20px' }}>
                 <h3 style={{ margin: '0 0 10px 0', color: '#2f241d' }}>{dog.name}</h3>
                 <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Breed:</strong> {dog.breed}</p>
                 <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Size:</strong> {dog.size}</p>
-                <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Age:</strong> {dog.age} {dog.age === 1 ? "year" : "years"}</p>
-                
+                <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Age:</strong> {dog.age_years} {dog.age_years === 1 ? "year" : "years"}</p>
+
                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate(`/dogs/${dog.id}`)}>
+                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate(`/dogs/${dog.dog_id}`)}>
                     Details
                   </button>
-                  <button 
-                    className="btn" 
-                    style={{ flex: 1, background: 'white', border: '1px solid #d8c1af', color: '#2f241d' }} 
+                  <button
+                    className="btn"
+                    style={{ flex: 1, background: 'white', border: '1px solid #d8c1af', color: '#2f241d' }}
                     onClick={() => handleSaveDog(dog)}
                   >
-                    ❤️ Save
+                    Save
                   </button>
                 </div>
               </div>

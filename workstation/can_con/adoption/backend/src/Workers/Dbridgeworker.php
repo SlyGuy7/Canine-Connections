@@ -16,6 +16,7 @@ final class DBridgeWorker
 
         $this->mq->registerConsumer('bridge.auth.register',       [$this, 'handleAuthRegister']);
         $this->mq->registerConsumer('bridge.auth.login',          [$this, 'handleAuthLogin']);
+        $this->mq->registerConsumer('bridge.auth.resetPassword',  [$this, 'handleResetPassword']);
         $this->mq->registerConsumer('bridge.shelters.list',       [$this, 'handleSheltersList']);
         $this->mq->registerConsumer('bridge.shelters.get',        [$this, 'handleSheltersGet']);
         $this->mq->registerConsumer('bridge.api.key.get',         [$this, 'handleApiKeyGet']);
@@ -102,6 +103,11 @@ final class DBridgeWorker
     public function handleAuthLogin(array $data, $msg, ?string $corrId): void
     {
         $this->fork(fn() => $this->relay('bridge.auth.login', 'db.auth.login', 'db.result.auth.login', 'bridge.result.auth.login', $data, $corrId), $msg);
+    }
+
+    public function handleResetPassword(array $data, $msg, ?string $corrId): void
+    {
+        $this->fork(fn() => $this->relay('bridge.auth.resetPassword', 'db.auth.resetPassword', 'db.result.auth.resetPassword', 'bridge.result.auth.resetPassword', $data, $corrId), $msg);
     }
 
     public function handleSheltersList(array $data, $msg, ?string $corrId): void

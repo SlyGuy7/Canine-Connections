@@ -44,6 +44,7 @@ logMsg("MySQL connected");
 $queues = [
     'db.auth.register',
     'db.auth.login',
+    'db.auth.resetPassword',
 
     'db.shelters.list',
     'db.shelters.get',
@@ -180,6 +181,18 @@ function handleQuery($queue, $data, $db) {
             }
 
             return ["success" => true, "user" => $result->fetch_assoc()];
+
+        case "db.auth.resetPassword":
+            if (!isset($data["email"]) || !isset($data["password_hash"])) {
+                return ["success" => false, "error" => "Missing email or password_hash"];
+            }
+            $email        = $db->real_escape_string($data["email"]);
+            $passwordHash = $db->real_escape_string($data["password_hash"]);
+            $db->query("UPDATE users SET password_hash='{$passwordHash}' WHERE email='{$email}'");
+            if ($db->affected_rows === 0) {
+                return ["success" => false, "error" => "User not found"];
+            }
+            return ["success" => true];
 
         case "db.dogs.list":
             $sql = "SELECT d.*, GROUP_CONCAT(p.photo_url ORDER BY p.is_primary DESC) as photos

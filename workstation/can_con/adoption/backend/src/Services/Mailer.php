@@ -40,6 +40,24 @@ final class Mailer
         );
     }
 
+    public static function passwordReset(string $to, string $firstName): bool
+    {
+        return self::send(
+            $to,
+            'Password Reset Successful — Canine Connections',
+            "
+            <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
+                <h1 style='color:#b45309'>Password Reset Successful</h1>
+                <p>Hi {$firstName},</p>
+                <p>Your password has been successfully updated.</p>
+                <p>If you did not make this change please contact us immediately.</p>
+                <br>
+                <p style='color:#666'>The Canine Connections Team</p>
+            </div>
+            "
+        );
+    }
+
     public static function applicationReceived(string $to, string $firstName, string $dogName): bool
     {
         return self::send(

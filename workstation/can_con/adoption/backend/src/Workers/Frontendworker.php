@@ -21,6 +21,7 @@ final class FrontendWorker
 
         $this->mq->registerConsumer('request.auth.register',       [$this, 'handleRegister']);
         $this->mq->registerConsumer('request.auth.login',          [$this, 'handleLogin']);
+        $this->mq->registerConsumer('request.auth.resetPassword',  [$this, 'handleResetPassword']);
         $this->mq->registerConsumer('request.shelters.list',       [$this, 'handleSheltersList']);
         $this->mq->registerConsumer('request.shelters.get',        [$this, 'handleSheltersGet']);
         $this->mq->registerConsumer('request.api.key.get',         [$this, 'handleApiKeyGet']);
@@ -149,6 +150,44 @@ final class FrontendWorker
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleLogin: {$e->getMessage()}\n";
                 $this->fail('response.auth.login', 'Login failed', $corrId);
+            }
+        }, $msg);
+    }
+
+    public function handleResetPassword(array $data, $msg, ?string $corrId): void
+    {
+        $this->fork(function () use ($data, $corrId) {
+            echo "[FrontendWorker] handleResetPassword: {$data['email']}\n";
+            try {
+                if (empty($data['email']) || empty($data['oldPassword']) || empty($data['newPassword'])) {
+                    $this->fail('response.auth.resetPassword', 'All fields are required', $corrId);
+                    return;
+                }
+                $this->mq->publish('bridge.auth.login', ['email' => $data['email']], $corrId);
+                $result = $this->mq->waitForResponse('bridge.result.auth.login', $corrId);
+                if (!$result || empty($result['user'])) {
+                    $this->fail('response.auth.resetPassword', 'User not found', $corrId);
+                    return;
+                }
+                $user = $result['user'];
+                if (!password_verify($data['oldPassword'], $user['password_hash'])) {
+                    $this->fail('response.auth.resetPassword', 'Old password is incorrect', $corrId);
+                    return;
+                }
+                $this->mq->publish('bridge.auth.resetPassword', [
+                    'email'         => $data['email'],
+                    'password_hash' => $this->enc->hashPassword($data['newPassword']),
+                ], $corrId);
+                $result = $this->mq->waitForResponse('bridge.result.auth.resetPassword', $corrId);
+                if (!$result || empty($result['success'])) {
+                    $this->fail('response.auth.resetPassword', $result['error'] ?? 'Reset failed', $corrId);
+                    return;
+                }
+                $this->respond('response.auth.resetPassword', ['success' => true, 'message' => 'Password updated successfully'], $corrId);
+                Mailer::passwordReset($data['email'], $user['first_name'] ?? '');
+            } catch (\Throwable $e) {
+                echo "[FrontendWorker][ERROR] handleResetPassword: {$e->getMessage()}\n";
+                $this->fail('response.auth.resetPassword', 'Reset failed', $corrId);
             }
         }, $msg);
     }

@@ -1,15 +1,12 @@
 import { Client } from "@stomp/stompjs";
-
 console.log("Messaging URL:", import.meta.env.VITE_MESSAGING_URL);
-
 const BROKER_URL = import.meta.env.VITE_MESSAGING_URL || "ws://localhost:15674/ws"; 
-
 function getResponseQueue(type) {
   switch (type) {
-
     case "request.auth.register": return "response.auth.register";
     case "request.auth.login": return "response.auth.login";
-
+    case "request.auth.resetPassword": return "response.auth.resetPassword";
+    case "request.dogs.list": return "response.dogs.list";
     case "request.dogs.get": return "response.dogs.get";
     case "request.applications.get": return "response.applications.get";
     case "request.applications.submit": return "response.applications.submit";
@@ -20,11 +17,9 @@ function getResponseQueue(type) {
     default: return "";
   }
 }
-
 function makeCorrelationId() {
   return `req_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
-
 export async function sendMessage(type, payload) {
   return new Promise((resolve) => {
     const responseQueue = getResponseQueue(type);
@@ -34,10 +29,8 @@ export async function sendMessage(type, payload) {
       resolve({ success: false, error: `Unknown message type: ${type}` });
       return;
     }
-
     const correlationId = makeCorrelationId();
     let isResolved = false;
-
     const client = new Client({
       brokerURL: BROKER_URL,
       connectHeaders: {
@@ -68,7 +61,6 @@ export async function sendMessage(type, payload) {
             cleanup({ success: false, error: "Invalid response from RabbitMQ" });
           }
         });
-
         client.publish({
           destination: `/queue/${type}`,
           headers: {
@@ -76,7 +68,6 @@ export async function sendMessage(type, payload) {
           },
           body: JSON.stringify(payload),
         });
-
         setTimeout(() => {
           if (!finished) {
             finished = true;
@@ -85,7 +76,6 @@ export async function sendMessage(type, payload) {
             cleanup({ success: false, error: "Request timed out" });
           }
         }, 30000);
-
         function cleanup(resultData) {
             subscription.unsubscribe();
             client.deactivate();
@@ -103,7 +93,6 @@ export async function sendMessage(type, payload) {
         if (!isResolved) resolve({ success: false, error: "RabbitMQ WebSocket error" });
       },
     });
-
     client.activate();
   });
 }
