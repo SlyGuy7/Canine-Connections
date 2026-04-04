@@ -6,6 +6,7 @@ function getResponseQueue(type) {
     case "request.auth.register": return "response.auth.register";
     case "request.auth.login": return "response.auth.login";
     case "request.auth.resetPassword": return "response.auth.resetPassword";
+    case "request.profile.update": return "response.profile.update";
     case "request.dogs.list": return "response.dogs.list";
     case "request.dogs.get": return "response.dogs.get";
     case "request.applications.get": return "response.applications.get";

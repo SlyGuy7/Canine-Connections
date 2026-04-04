@@ -22,6 +22,7 @@ final class FrontendWorker
         $this->mq->registerConsumer('request.auth.register',       [$this, 'handleRegister']);
         $this->mq->registerConsumer('request.auth.login',          [$this, 'handleLogin']);
         $this->mq->registerConsumer('request.auth.resetPassword',  [$this, 'handleResetPassword']);
+        $this->mq->registerConsumer('request.profile.update',      [$this, 'handleProfileUpdate']);
         $this->mq->registerConsumer('request.shelters.list',       [$this, 'handleSheltersList']);
         $this->mq->registerConsumer('request.shelters.get',        [$this, 'handleSheltersGet']);
         $this->mq->registerConsumer('request.api.key.get',         [$this, 'handleApiKeyGet']);
@@ -188,6 +189,31 @@ final class FrontendWorker
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleResetPassword: {$e->getMessage()}\n";
                 $this->fail('response.auth.resetPassword', 'Reset failed', $corrId);
+            }
+        }, $msg);
+    }
+
+    public function handleProfileUpdate(array $data, $msg, ?string $corrId): void
+    {
+        $this->fork(function () use ($data, $corrId) {
+            echo "[FrontendWorker] handleProfileUpdate: user_id={$data['user_id']}\n";
+            try {
+                if (empty($data['user_id'])) {
+                    $this->fail('response.profile.update', 'user_id is required', $corrId);
+                    return;
+                }
+                $this->mq->publish('bridge.profile.update', [
+                    'user_id'    => $data['user_id'],
+                    'first_name' => $this->encryptIfPresent($data['first_name'] ?? ''),
+                    'last_name'  => $this->encryptIfPresent($data['last_name']  ?? ''),
+                    'phone'      => $this->encryptIfPresent($data['phone']      ?? ''),
+                    'address'    => $this->encryptIfPresent($data['address']    ?? ''),
+                ], $corrId);
+                $result = $this->mq->waitForResponse('bridge.result.profile.update', $corrId);
+                $this->respond('response.profile.update', $result ?? ['success' => false, 'error' => 'Could not update profile'], $corrId);
+            } catch (\Throwable $e) {
+                echo "[FrontendWorker][ERROR] handleProfileUpdate: {$e->getMessage()}\n";
+                $this->fail('response.profile.update', 'Could not update profile', $corrId);
             }
         }, $msg);
     }
