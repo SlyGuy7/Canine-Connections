@@ -1,139 +1,155 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { sendMessage } from "../services/messaging";
-
-const fallbackApplications = [
-  { id: 1, dog: "Buddy", breed: "Labrador Mix", shelter: "Happy Tails Rescue", status: "Pending", date: "March 18" },
-  { id: 2, dog: "Luna", breed: "Husky Mix", shelter: "Safe Haven Dogs", status: "In Review", date: "March 16" },
-  { id: 3, dog: "Max", breed: "Golden Retriever", shelter: "Paws & Homes", status: "Approved", date: "March 10" },
-];
+import React, { useEffect, useState } from "react"
+import { useNavigate } from "react-router-dom"
+import { sendMessage } from "../services/messaging"
+import Sidebar from "../components/Sidebar"
 
 export default function Applications() {
-  const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
-  const userEmail = localStorage.getItem("userEmail");
+  const [applications, setApplications] = useState([])
+  const [loading, setLoading] = useState(true)
+  const navigate = useNavigate()
+  const userId = localStorage.getItem("userId")
 
   useEffect(() => {
-    loadApplications();
-  }, []);
+    loadApplications()
+  }, [])
 
   async function loadApplications() {
+    setLoading(true)
     try {
-      const result = await sendMessage("request.applications.get", { email: userEmail });
-      
-      if (result.success && result.applications && result.applications.length > 0) {
-        setApplications(result.applications);
+      const result = await sendMessage("request.application.list", { user_id: parseInt(userId) })
+      if (result.success && result.applications?.length > 0) {
+        setApplications(result.applications)
       } else {
-        setApplications(fallbackApplications);
+        setApplications([])
       }
     } catch (err) {
-      console.log("Failed to load applications", err);
-      setApplications(fallbackApplications);
+      setApplications([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
   }
 
-  const getProgressWidth = (status) => {
-    switch (status) {
-      case "Pending": return "33%";
-      case "In Review": return "66%";
-      case "Approved": return "100%";
-      default: return "10%";
+  const getStatusMeta = (status) => {
+    switch ((status || "").toLowerCase()) {
+      case "pending":
+        return { label: "Pending", badgeClass: "pending", progress: "25%", color: "#f59e0b", message: "Your application has been received and is awaiting shelter review." }
+      case "in review":
+      case "review":
+        return { label: "In Review", badgeClass: "review", progress: "60%", color: "#3b82f6", message: "The shelter team is currently reviewing your application." }
+      case "approved":
+        return { label: "Approved", badgeClass: "approved", progress: "100%", color: "#10b981", message: "Congratulations! Your application has been approved. Check your email for next steps." }
+      case "rejected":
+        return { label: "Not Approved", badgeClass: "rejected", progress: "100%", color: "#ef4444", message: "Unfortunately this application was not successful. You are welcome to apply for other dogs." }
+      case "finalized":
+        return { label: "Finalized", badgeClass: "approved", progress: "100%", color: "#10b981", message: "Adoption complete. Welcome to the family!" }
+      default:
+        return { label: status || "Unknown", badgeClass: "pending", progress: "10%", color: "#94a3b8", message: "Status update pending." }
     }
-  };
+  }
 
-  const getStatusClass = (status) => {
-    switch (status) {
-      case "Pending": return "pending";
-      case "In Review": return "review";
-      case "Approved": return "approved";
-      default: return "";
+  const formatDate = (dateStr) => {
+    if (!dateStr) return ""
+    try {
+      return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    } catch {
+      return dateStr
     }
-  };
-
-  const getProgressColor = (status) => {
-    switch (status) {
-      case "Pending": return "#f59e0b";
-      case "In Review": return "#3b82f6";
-      case "Approved": return "#10b981";
-      default: return "#cbd5e1";
-    }
-  };
+  }
 
   return (
-    <div className="page-container">
-      <header className="content-header">
-        <div>
-          <h1>My Applications</h1>
-          <p className="page-subtitle">Track your adoption requests and their status.</p>
-        </div>
-      </header>
-
-      {loading ? (
-        <p className="page-subtitle">Loading your applications...</p>
-      ) : applications.length === 0 ? (
-        <div className="empty-state">
-          <span className="empty-icon">📝</span>
-          <h2>No Active Applications</h2>
-          <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>
-            You have not applied to adopt any dogs yet.
-          </p>
+    <div className="dashboard-wrapper">
+      <Sidebar />
+      <div className="page-container">
+        <header className="content-header" style={{ marginBottom: '32px' }}>
+          <div>
+            <h1>My Applications</h1>
+            <p className="page-subtitle">Track your adoption requests and their current status.</p>
+          </div>
           <button className="btn btn-primary" onClick={() => navigate("/browse-dogs")}>
-            Find a Dog
+            Browse More Dogs
           </button>
-        </div>
-      ) : (
-        <div className="app-list">
-          {applications.map((app) => (
-            <div key={app.id} className="panel">
-              
-              <div className="content-header" style={{ marginBottom: '24px' }}>
-                <div>
-                  <h3 style={{ fontSize: '28px', margin: '0 0 8px 0' }}>{app.dog}</h3>
-                  <p className="activity-subtext">
-                    {app.breed} • <span style={{ color: 'var(--brand)', fontWeight: '700' }}>{app.shelter}</span>
-                  </p>
+        </header>
+
+        {loading ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {[1, 2].map((i) => (
+              <div key={i} className="settings-card">
+                <div style={{ height: '28px', width: '40%', background: '#e0e0e0', borderRadius: '6px', marginBottom: '12px' }} />
+                <div style={{ height: '16px', width: '60%', background: '#e0e0e0', borderRadius: '6px', marginBottom: '24px' }} />
+                <div style={{ height: '8px', background: '#e0e0e0', borderRadius: '6px' }} />
+              </div>
+            ))}
+          </div>
+        ) : applications.length === 0 ? (
+          <div className="empty-state">
+            <h2>No Applications Yet</h2>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>
+              You have not applied to adopt any dogs yet. Browse available dogs and start your adoption journey.
+            </p>
+            <button className="btn btn-primary" onClick={() => navigate("/browse-dogs")}>
+              Find a Dog
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {applications.map((app) => {
+              const meta = getStatusMeta(app.status)
+              return (
+                <div key={app.application_id || app.id} className="settings-card">
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '22px', margin: '0 0 6px 0', color: 'var(--text-main)' }}>
+                        {app.dog_name || app.dog || "Dog"}
+                      </h3>
+                      <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '14px' }}>
+                        {app.breed && <span>{app.breed} &nbsp;&bull;&nbsp; </span>}
+                        Applied {formatDate(app.submitted_at || app.date)}
+                      </p>
+                    </div>
+                    <span className={`status-badge ${meta.badgeClass}`}>{meta.label}</span>
+                  </div>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Application Progress</span>
+                      <span style={{ fontSize: '13px', color: meta.color, fontWeight: '700' }}>{meta.label}</span>
+                    </div>
+                    <div style={{ height: '8px', background: '#f1ebe5', borderRadius: '99px', overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: meta.progress, background: meta.color, borderRadius: '99px', transition: 'width 0.5s ease' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', paddingTop: '16px', borderTop: '1px solid #f1ebe5' }}>
+                    <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '14px', maxWidth: '480px' }}>
+                      {meta.message}
+                    </p>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      {app.dog_id && (
+                        <button
+                          className="btn"
+                          style={{ background: 'white', border: '1px solid #d8c1af', color: 'var(--text-main)', fontSize: '14px' }}
+                          onClick={() => navigate(`/dogs/${app.dog_id}`)}
+                        >
+                          View Dog
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-primary"
+                        style={{ fontSize: '14px' }}
+                        onClick={() => navigate("/messages")}
+                      >
+                        Message Shelter
+                      </button>
+                    </div>
+                  </div>
+
                 </div>
-                <div style={{ textAlign: "right" }}>
-                  <span className={`status-badge ${getStatusClass(app.status)}`}>
-                    {app.status}
-                  </span>
-                  <p className="activity-subtext" style={{ marginTop: '8px' }}>
-                    Applied: {app.date}
-                  </p>
-                </div>
-              </div>
-
-              <div className="progress-track">
-                <div 
-                  className="progress-bar"
-                  style={{ 
-                    width: getProgressWidth(app.status), 
-                    background: getProgressColor(app.status),
-                  }} 
-                />
-              </div>
-
-              <div className="app-card-footer">
-                <span style={{ fontWeight: '700', color: 'var(--text-muted)' }}>
-                  {app.status === "Pending" && "Awaiting shelter review."}
-                  {app.status === "In Review" && "Shelter is reviewing your details."}
-                  {app.status === "Approved" && "Congratulations! Next steps emailed."}
-                </span>
-                <button 
-                  className="btn btn-secondary" 
-                  onClick={() => navigate(`/messages?shelter=${encodeURIComponent(app.shelter)}`)}
-                >
-                  Message Shelter
-                </button>
-              </div>
-
-            </div>
-          ))}
-        </div>
-      )}
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }

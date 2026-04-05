@@ -21,36 +21,33 @@ export default function DogProfile() {
     setError("")
 
     const fallbackDogs = [
-      { id: 1, name: "Buddy", breed: "Labrador Mix", size: "Large", age: 2, gender: "Male", image: "", description: "Buddy is a friendly and playful dog who loves people, long walks, and tennis balls. He does well with children and other pets.", health: "Vaccinated, Neutered", temperament: "Playful, Loyal" },
-      { id: 2, name: "Luna", breed: "Golden Retriever", size: "Large", age: 1, gender: "Female", image: "", description: "Luna is a sweet and gentle pup. She is currently learning basic commands and loves belly rubs.", health: "Vaccinated, Spayed", temperament: "Gentle, Smart" },
-      { id: 3, name: "Max", breed: "Beagle", size: "Medium", age: 4, gender: "Male", image: "", description: "Max is an energetic explorer. He needs a secure yard and loves to follow his nose.", health: "Vaccinated, Neutered", temperament: "Curious, Active" },
-      { id: 4, name: "Bella", breed: "Pug", size: "Small", age: 3, gender: "Female", image: "", description: "Bella is a couch potato who enjoys cuddling and short walks. Perfect for apartment living.", health: "Vaccinated, Spayed", temperament: "Calm, Affectionate" },
-      { id: 5, name: "Charlie", breed: "Poodle", size: "Medium", age: 5, gender: "Male", image: "", description: "Charlie is highly intelligent and hypoallergenic. He knows several tricks and loves agility training.", health: "Vaccinated, Neutered", temperament: "Intelligent, Alert" },
-      { id: 6, name: "Daisy", breed: "Chihuahua", size: "Small", age: 1, gender: "Female", image: "", description: "Daisy is tiny but has a big personality. She prefers to be the only pet in the household.", health: "Vaccinated, Spayed", temperament: "Protective, Sassy" }
+      { dog_id: 1, name: "Buddy", breed: "Labrador Mix", size: "large", age_years: 2, gender: "male", photos: null, description: "Buddy is a friendly and playful dog who loves people, long walks, and tennis balls.", is_vaccinated: 1, is_spayed_neutered: 1, energy_level: "high", good_with_kids: 1, good_with_dogs: 1, good_with_cats: 0, apartment_friendly: 0 },
+      { dog_id: 2, name: "Luna", breed: "Golden Retriever", size: "large", age_years: 1, gender: "female", photos: null, description: "Luna is a sweet and gentle pup. She loves belly rubs.", is_vaccinated: 1, is_spayed_neutered: 1, energy_level: "medium", good_with_kids: 1, good_with_dogs: 1, good_with_cats: 1, apartment_friendly: 0 },
+      { dog_id: 3, name: "Max", breed: "Beagle", size: "medium", age_years: 4, gender: "male", photos: null, description: "Max is an energetic explorer who loves to follow his nose.", is_vaccinated: 1, is_spayed_neutered: 1, energy_level: "high", good_with_kids: 1, good_with_dogs: 0, good_with_cats: 0, apartment_friendly: 0 },
+      { dog_id: 4, name: "Bella", breed: "Pug", size: "small", age_years: 3, gender: "female", photos: null, description: "Bella is a couch potato who enjoys cuddling and short walks.", is_vaccinated: 1, is_spayed_neutered: 1, energy_level: "low", good_with_kids: 1, good_with_dogs: 1, good_with_cats: 1, apartment_friendly: 1 },
+      { dog_id: 5, name: "Charlie", breed: "Poodle", size: "medium", age_years: 5, gender: "male", photos: null, description: "Charlie is highly intelligent and knows several tricks.", is_vaccinated: 1, is_spayed_neutered: 1, energy_level: "medium", good_with_kids: 1, good_with_dogs: 1, good_with_cats: 1, apartment_friendly: 1 },
+      { dog_id: 6, name: "Daisy", breed: "Chihuahua", size: "small", age_years: 1, gender: "female", photos: null, description: "Daisy is tiny but has a big personality.", is_vaccinated: 1, is_spayed_neutered: 1, energy_level: "medium", good_with_kids: 0, good_with_dogs: 0, good_with_cats: 0, apartment_friendly: 1 }
     ]
 
     try {
-      const result = await sendMessage("request.dogs.get", {})
-      let foundDog = null
-      if (result.success && result.dogs && result.dogs.length > 0) {
-        foundDog = result.dogs.find((d) => d.id.toString() === id)
+      const result = await sendMessage("request.dogs.get", { dog_id: parseInt(id) })
+      if (result.success && result.dog) {
+        setDog(result.dog)
       } else {
-        foundDog = fallbackDogs.find((d) => d.id.toString() === id)
-      }
-
-      if (foundDog) {
-        setDog({
-          ...foundDog,
-          gender: foundDog.gender || "Unknown",
-          description: foundDog.description || `Meet ${foundDog.name}. This beautiful ${foundDog.breed} is looking for a loving home.`,
-          health: foundDog.health || "Up to date on vaccinations",
-          temperament: foundDog.temperament || "Friendly"
-        })
-      } else {
-        setError("Dog profile not found.")
+        const found = fallbackDogs.find((d) => d.dog_id.toString() === id)
+        if (found) {
+          setDog(found)
+        } else {
+          setError("Dog profile not found.")
+        }
       }
     } catch (err) {
-      setError("Network error. Profile unavailable.")
+      const found = fallbackDogs.find((d) => d.dog_id.toString() === id)
+      if (found) {
+        setDog(found)
+      } else {
+        setError("Network error. Profile unavailable.")
+      }
     } finally {
       setLoading(false)
     }
@@ -59,7 +56,7 @@ export default function DogProfile() {
   const handleSaveDog = () => {
     if (!dog) return
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]")
-    if (savedDogs.some((d) => d.id === dog.id)) {
+    if (savedDogs.some((d) => d.dog_id === dog.dog_id)) {
       addToast(`${dog.name} is already in your Vault!`, "error")
       return
     }
@@ -69,14 +66,23 @@ export default function DogProfile() {
   }
 
   const handleApply = () => {
-    localStorage.setItem("pendingApplicationDogId", dog.id)
+    localStorage.setItem("pendingApplicationDogId", dog.dog_id)
+    localStorage.setItem("pendingApplicationDogName", dog.name)
     navigate("/apply")
   }
+
+  const getPrimaryPhoto = () => {
+    if (!dog.photos) return null
+    const photos = Array.isArray(dog.photos) ? dog.photos : dog.photos.split(",")
+    return photos[0] || null
+  }
+
+  const yesNo = (val) => (val == 1 ? "Yes" : "No")
 
   if (loading) {
     return (
       <div className="page-container">
-        <button className="btn" onClick={() => navigate(-1)} style={{ background: 'transparent', padding: '0 0 24px 0' }}>← Back</button>
+        <button className="btn" onClick={() => navigate(-1)} style={{ background: 'transparent', padding: '0 0 24px 0' }}>Back</button>
         <div className="profile-grid">
           <div className="skeleton-image" style={{ height: '100%' }} />
           <div className="profile-details">
@@ -101,22 +107,26 @@ export default function DogProfile() {
     )
   }
 
+  const primaryPhoto = getPrimaryPhoto()
+
   return (
     <div className="page-container">
-      <button 
-        className="btn" 
-        style={{ background: 'transparent', color: 'var(--text-light)', padding: '0 0 24px 0', fontWeight: '600' }} 
+      <button
+        className="btn"
+        style={{ background: 'transparent', color: 'var(--text-light)', padding: '0 0 24px 0', fontWeight: '600' }}
         onClick={() => navigate(-1)}
       >
-        ← Back to Search
+        Back to Search
       </button>
 
       <div className="profile-grid">
         <div className="profile-image-section">
-          {dog.image ? (
-            <img src={dog.image} alt={dog.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+          {primaryPhoto ? (
+            <img src={primaryPhoto} alt={dog.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
           ) : (
-            <span style={{ fontSize: '120px' }}>🐕</span>
+            <div style={{ width: '100%', height: '100%', background: '#fcedda', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: '14px', color: '#6f5848' }}>No photo available</span>
+            </div>
           )}
         </div>
 
@@ -129,7 +139,7 @@ export default function DogProfile() {
           <div className="traits-container">
             <div className="trait-card">
               <span className="trait-label">Age</span>
-              <span className="trait-value">{dog.age} {dog.age === 1 ? "yr" : "yrs"}</span>
+              <span className="trait-value">{dog.age_years} {dog.age_years == 1 ? "yr" : "yrs"}</span>
             </div>
             <div className="trait-card">
               <span className="trait-label">Gender</span>
@@ -139,20 +149,34 @@ export default function DogProfile() {
               <span className="trait-label">Size</span>
               <span className="trait-value">{dog.size}</span>
             </div>
+            <div className="trait-card">
+              <span className="trait-label">Energy</span>
+              <span className="trait-value">{dog.energy_level}</span>
+            </div>
           </div>
 
           <div className="form-section">
             <h2 style={{ fontSize: '20px', borderBottom: 'none' }}>About {dog.name}</h2>
             <p className="page-subtitle" style={{ color: 'var(--text-main)', textAlign: 'left' }}>
-              {dog.description}
+              {dog.description || `Meet ${dog.name}. This ${dog.breed} is looking for a loving home.`}
             </p>
           </div>
 
           <div className="form-section">
-            <h2 style={{ fontSize: '20px', borderBottom: 'none' }}>Health & Temperament</h2>
+            <h2 style={{ fontSize: '20px', borderBottom: 'none' }}>Health</h2>
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--text-main)' }}>
-              <li style={{ marginBottom: '8px' }}>• Health: {dog.health}</li>
-              <li>• Temperament: {dog.temperament}</li>
+              <li style={{ marginBottom: '8px' }}>Vaccinated: {yesNo(dog.is_vaccinated)}</li>
+              <li>Spayed / Neutered: {yesNo(dog.is_spayed_neutered)}</li>
+            </ul>
+          </div>
+
+          <div className="form-section">
+            <h2 style={{ fontSize: '20px', borderBottom: 'none' }}>Compatibility</h2>
+            <ul style={{ listStyle: 'none', padding: 0, margin: 0, color: 'var(--text-main)' }}>
+              <li style={{ marginBottom: '8px' }}>Good with kids: {yesNo(dog.good_with_kids)}</li>
+              <li style={{ marginBottom: '8px' }}>Good with dogs: {yesNo(dog.good_with_dogs)}</li>
+              <li style={{ marginBottom: '8px' }}>Good with cats: {yesNo(dog.good_with_cats)}</li>
+              <li>Apartment friendly: {yesNo(dog.apartment_friendly)}</li>
             </ul>
           </div>
 
@@ -161,7 +185,7 @@ export default function DogProfile() {
               Apply to Adopt
             </button>
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleSaveDog}>
-              ❤️ Save
+                 ❤️️ Save
             </button>
           </div>
         </div>
@@ -169,3 +193,20 @@ export default function DogProfile() {
     </div>
   )
 }
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+            
+   
+            
