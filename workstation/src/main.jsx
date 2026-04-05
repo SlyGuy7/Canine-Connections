@@ -25,6 +25,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 <Route path="/" element={<Navigate to="/landing" replace />} />
 <Route path="/landing" element={<Landing />} />
 <Route path="/register-success" element={<RegisterSuccess />} />
+<Route path="/apply" element={<ApplicationForm />} />
 
       <Route
         path="/dashboard"

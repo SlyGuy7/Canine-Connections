@@ -1,18 +1,20 @@
-import React, { useState, useEffect } from "react"
-import { useParams, useNavigate } from "react-router-dom"
-import { sendMessage } from "../services/messaging"
-import { useToast } from "../context/ToastContext"
+import React, { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { sendMessage } from "../services/messaging";
+import { useToast } from "../context/ToastContext";
+import Sidebar from "../components/Sidebar";
 
 export default function DogProfile() {
-  const { id } = useParams()
-  const navigate = useNavigate()
-  const { addToast } = useToast()
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const { addToast } = useToast();
 
-  const [dog, setDog] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
+  const [dog, setDog] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isSaved, setIsSaved] = useState(false);
 
   useEffect(() => {
+<<<<<<< HEAD
     loadDogProfile()
   }, [id])
 
@@ -28,8 +30,15 @@ export default function DogProfile() {
       { dog_id: 5, name: "Charlie", breed: "Poodle", size: "medium", age_years: 5, gender: "male", photos: null, description: "Charlie is highly intelligent and knows several tricks.", is_vaccinated: 1, is_spayed_neutered: 1, energy_level: "medium", good_with_kids: 1, good_with_dogs: 1, good_with_cats: 1, apartment_friendly: 1 },
       { dog_id: 6, name: "Daisy", breed: "Chihuahua", size: "small", age_years: 1, gender: "female", photos: null, description: "Daisy is tiny but has a big personality.", is_vaccinated: 1, is_spayed_neutered: 1, energy_level: "medium", good_with_kids: 0, good_with_dogs: 0, good_with_cats: 0, apartment_friendly: 1 }
     ]
+=======
+    loadDogDetails();
+  }, [id]);
+>>>>>>> 037c91f (Frontend Additions)
 
+  async function loadDogDetails() {
+    setLoading(true);
     try {
+<<<<<<< HEAD
       const result = await sendMessage("request.dogs.get", { dog_id: parseInt(id) })
       if (result.success && result.dog) {
         setDog(result.dog)
@@ -48,11 +57,31 @@ export default function DogProfile() {
       } else {
         setError("Network error. Profile unavailable.")
       }
+=======
+      // Attempt to get real dog data via RabbitMQ
+      const result = await sendMessage("request.dogs.get", { dogId: id });
+      
+      if (result && Array.isArray(result.dogs)) {
+        const foundDog = result.dogs.find((d) => d.id === parseInt(id));
+        if (foundDog) {
+          setDog(foundDog);
+          checkIfSaved(foundDog.id);
+        } else {
+          handleFallback();
+        }
+      } else {
+        handleFallback();
+      }
+    } catch (err) {
+      console.error("Failed to fetch dog details, using fallback", err);
+      handleFallback();
+>>>>>>> 037c91f (Frontend Additions)
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
+<<<<<<< HEAD
   const handleSaveDog = () => {
     if (!dog) return
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]")
@@ -91,25 +120,58 @@ export default function DogProfile() {
             <div className="skeleton-line" />
             <div className="skeleton-line" style={{ width: '40%' }} />
           </div>
-        </div>
-      </div>
-    )
+=======
+  function handleFallback() {
+    // This ensures the page works even during backend timeouts
+    const fallbackDogs = [
+      { id: 1, name: "Buddy", breed: "Labrador Mix", size: "Large", age: 2, description: "Buddy is a friendly and playful dog who loves people and long walks.", shelter: "Happy Tails Rescue" },
+      { id: 2, name: "Luna", breed: "Golden Retriever", size: "Large", age: 1, description: "Luna is full of energy and looking for an active family.", shelter: "Safe Haven Dogs" },
+      { id: 3, name: "Max", breed: "Beagle", size: "Medium", age: 4, description: "Max is a quiet companion who enjoys naps and treats.", shelter: "Paws & Homes" }
+    ];
+    const found = fallbackDogs.find((d) => d.id === parseInt(id));
+    setDog(found || fallbackDogs[0]);
+    if (found) checkIfSaved(found.id);
   }
 
-  if (error || !dog) {
+  function checkIfSaved(dogId) {
+    const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
+    setIsSaved(saved.some((d) => d.id === dogId));
+  }
+
+  const handleSave = () => {
+    const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
+    
+    if (isSaved) {
+      const updated = savedDogs.filter((d) => d.id !== dog.id);
+      localStorage.setItem("savedDogs", JSON.stringify(updated));
+      setIsSaved(false);
+      addToast(`${dog.name} removed from favorites`, "info");
+    } else {
+      savedDogs.push(dog);
+      localStorage.setItem("savedDogs", JSON.stringify(savedDogs));
+      setIsSaved(true);
+      addToast(`${dog.name} saved to your Vault!`, "success");
+    }
+  };
+
+  if (loading) {
     return (
-      <div className="page-container">
-        <div className="empty-state">
-          <h2>{error}</h2>
-          <button className="btn btn-primary" onClick={() => navigate("/browse-dogs")}>Return to Browse</button>
+      <div className="dashboard-wrapper">
+        <Sidebar />
+        <div className="page-container">
+          <p>Loading dog profile...</p>
+>>>>>>> 037c91f (Frontend Additions)
         </div>
       </div>
-    )
+    );
   }
+
+  if (!dog) return null;
 
   const primaryPhoto = getPrimaryPhoto()
 
   return (
+<<<<<<< HEAD
     <div className="page-container">
       <button
         className="btn"
@@ -148,6 +210,29 @@ export default function DogProfile() {
             <div className="trait-card">
               <span className="trait-label">Size</span>
               <span className="trait-value">{dog.size}</span>
+=======
+    <div className="dashboard-wrapper">
+      <Sidebar />
+      <div className="page-container">
+        <button className="btn btn-secondary" onClick={() => navigate(-1)} style={{ marginBottom: '20px' }}>
+          ← Back to Browse
+        </button>
+
+        <div className="panel" style={{ display: 'flex', gap: '40px', padding: '40px', borderRadius: '30px' }}>
+          <div style={{ flex: '1' }}>
+            <div style={{ 
+              width: '100%', 
+              height: '400px', 
+              background: '#fcedda', 
+              borderRadius: '20px', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              fontSize: '120px',
+              overflow: 'hidden'
+            }}>
+              {dog.image ? <img src={dog.image} alt={dog.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : "🐕"}
+>>>>>>> 037c91f (Frontend Additions)
             </div>
             <div className="trait-card">
               <span className="trait-label">Energy</span>
@@ -155,6 +240,7 @@ export default function DogProfile() {
             </div>
           </div>
 
+<<<<<<< HEAD
           <div className="form-section">
             <h2 style={{ fontSize: '20px', borderBottom: 'none' }}>About {dog.name}</h2>
             <p className="page-subtitle" style={{ color: 'var(--text-main)', textAlign: 'left' }}>
@@ -187,10 +273,65 @@ export default function DogProfile() {
             <button className="btn btn-secondary" style={{ flex: 1 }} onClick={handleSaveDog}>
                  ❤️️ Save
             </button>
+=======
+          <div style={{ flex: '1.5' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div>
+                <h1 style={{ fontSize: '48px', margin: '0 0 10px 0' }}>{dog.name}</h1>
+                <p style={{ fontSize: '20px', color: '#d97706', fontWeight: 'bold' }}>{dog.breed}</p>
+              </div>
+              <button 
+                onClick={handleSave}
+                style={{ 
+                  background: 'none', 
+                  border: '1px solid #efdfd1', 
+                  padding: '10px 20px', 
+                  borderRadius: '12px', 
+                  cursor: 'pointer',
+                  fontSize: '18px'
+                }}
+              >
+                {isSaved ? "❤️ Saved" : "🤍 Save"}
+              </button>
+            </div>
+
+            <hr style={{ margin: '30px 0', border: 'none', borderTop: '1px solid #efdfd1' }} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '30px' }}>
+              <div>
+                <p style={{ color: '#6f5848', marginBottom: '5px' }}>Age</p>
+                <p style={{ fontWeight: 'bold', fontSize: '18px' }}>{dog.age} Years</p>
+              </div>
+              <div>
+                <p style={{ color: '#6f5848', marginBottom: '5px' }}>Size</p>
+                <p style={{ fontWeight: 'bold', fontSize: '18px' }}>{dog.size}</p>
+              </div>
+              <div>
+                <p style={{ color: '#6f5848', marginBottom: '5px' }}>Shelter</p>
+                <p style={{ fontWeight: 'bold', fontSize: '18px' }}>{dog.shelter || "Community Partner"}</p>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '40px' }}>
+              <h3 style={{ marginBottom: '15px' }}>About {dog.name}</h3>
+              <p style={{ lineHeight: '1.6', color: '#2f241d', fontSize: '17px' }}>
+                {dog.description || "No description provided. Contact the shelter for more details about this companion."}
+              </p>
+            </div>
+
+          <button 
+            className="btn btn-primary" 
+            style={{ width: '100%', padding: '20px', fontSize: '18px' }}
+            onClick={() => navigate('/apply', { state: { dogId: dog.id, dogName: dog.name } })}
+            >
+            Start Adoption Application
+          </button>
+>>>>>>> 037c91f (Frontend Additions)
           </div>
         </div>
       </div>
     </div>
+<<<<<<< HEAD
   )
 }
             
@@ -210,3 +351,7 @@ export default function DogProfile() {
             
    
             
+=======
+  );
+}
+>>>>>>> 037c91f (Frontend Additions)

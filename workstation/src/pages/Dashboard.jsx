@@ -26,10 +26,43 @@ export default function Dashboard() {
     loadAll()
   }, [location])
 
-  async function loadAll() {
-    loadUser()
-    loadStats()
-    await Promise.all([loadFeaturedDog(), loadAdoptions()])
+  async function loadDashboardData() {
+    await loadStats();
+    loadUser();
+    await loadFeaturedDog();
+  }
+
+  async function loadStats() {
+    // 1. Get Saved Dogs from LocalStorage (standard for your setup)
+    const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
+    
+    // 2. Default to LocalStorage for apps in case of timeout/error
+    const localApps = JSON.parse(localStorage.getItem("myApplications") || "[]");
+    let appCount = localApps.length;
+    let msgCount = 0;
+
+    try {
+      // Attempt to get real-time counts from backend
+      // Note: This will hit your 30s timeout until the backend worker is fixed
+      const appResult = await sendMessage("request.apps.get", {});
+      const msgResult = await sendMessage("request.messages.get", {});
+
+      if (appResult && Array.isArray(appResult.apps)) {
+        appCount = appResult.apps.length;
+      }
+      
+      if (msgResult && Array.isArray(msgResult.messages)) {
+        msgCount = msgResult.messages.length;
+      }
+    } catch (err) {
+      console.log("Backend stats sync failed or timed out. Using local defaults.");
+    }
+
+    setStats({
+      saved: saved.length,
+      applications: appCount,
+      messages: msgCount,
+    });
   }
 
   function loadUser() {
@@ -42,22 +75,43 @@ export default function Dashboard() {
     setUser("Friend")
   }
 
-  function loadStats() {
-    const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]")
-    const applications = JSON.parse(localStorage.getItem("myApplications") || "[]")
-    setStats({ saved: saved.length, applications: applications.length })
+    if (firstName) {
+      setUser(firstName);
+      return;
+    }
+    if (fullName) {
+      setUser(fullName);
+      return;
+    }
+    if (email) {
+      setUser(email.split("@")[0]);
+      return;
+    }
+    setUser("Friend");
   }
 
   async function loadFeaturedDog() {
-    setLoadingDog(true)
+    setLoadingDog(true);
     try {
-      const result = await sendMessage("request.dogs.list", {})
-      if (result?.success && result.dogs?.length > 0) {
-        const dog = result.dogs[Math.floor(Math.random() * result.dogs.length)]
-        setFeaturedDog(dog)
+      const result = await sendMessage("request.dogs.get", {});
+
+      if (result && Array.isArray(result.dogs) && result.dogs.length > 0) {
+        const randomIndex = Math.floor(Math.random() * result.dogs.length);
+        const dog = result.dogs[randomIndex];
+
+        setFeaturedDog({
+          id: dog?.id || fallbackDog.id,
+          name: dog?.name || fallbackDog.name,
+          breed: dog?.breed || fallbackDog.breed,
+          description: dog?.description || fallbackDog.description,
+          image: dog?.image || "",
+        });
+      } else {
+        setFeaturedDog(fallbackDog);
       }
-    } catch (err) {
-      setFeaturedDog(null)
+    } catch (error) {
+      console.log("Failed to load featured dog (timeout), using fallback.");
+      setFeaturedDog(fallbackDog);
     } finally {
       setLoadingDog(false)
     }
@@ -199,7 +253,11 @@ export default function Dashboard() {
 
           <div className="dashboard-panel highlight-panel">
             <div className="panel-header">
-              <h2>{loadingDog ? "Featured Companion" : featuredDog ? `Meet ${featuredDog.name}` : "Featured Companion"}</h2>
+              <h2>
+                {loadingDog
+                  ? "Featured Companion"
+                  : `Featured Companion: ${featuredDog.name}`}
+              </h2>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
               <div style={{ flex: 1, minWidth: '200px' }}>
@@ -388,7 +446,6 @@ export default function Dashboard() {
       </div>
     </div>
   )
-}
 
 function StatCard({ value, label, onClick }) {
   return (

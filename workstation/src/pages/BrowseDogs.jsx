@@ -18,24 +18,19 @@ export default function BrowseDogs() {
   }, []);
 
   async function loadDogs() {
-    const fallbackDogs = [
-      { dog_id: 1, name: "Buddy", breed: "Labrador Mix", size: "large", age_years: 2, photos: null },
-      { dog_id: 2, name: "Luna", breed: "Golden Retriever", size: "large", age_years: 1, photos: null },
-      { dog_id: 3, name: "Max", breed: "Beagle", size: "medium", age_years: 4, photos: null },
-      { dog_id: 4, name: "Bella", breed: "Pug", size: "small", age_years: 3, photos: null },
-      { dog_id: 5, name: "Charlie", breed: "Poodle", size: "medium", age_years: 5, photos: null },
-      { dog_id: 6, name: "Daisy", breed: "Chihuahua", size: "small", age_years: 1, photos: null }
-    ];
-
     try {
-      const result = await sendMessage("request.dogs.list", {});
-      if (result.success && result.dogs?.length > 0) {
+      const result = await sendMessage("request.dogs.get", {});
+      
+      // Strict check for API data, removing all fallbacks
+      if (result && result.dogs) {
         setAllDogs(result.dogs);
       } else {
-        setAllDogs(fallbackDogs);
+        setAllDogs([]);
       }
     } catch (err) {
-      setAllDogs(fallbackDogs);
+      console.error("API connection failed:", err);
+      setAllDogs([]);
+      addToast("Failed to connect to the database.", "error");
     } finally {
       setLoading(false);
     }
@@ -134,42 +129,43 @@ export default function BrowseDogs() {
         </section>
 
         <div className="dog-grid">
-          {filteredDogs.map((dog) => (
-            <div key={dog.dog_id} className="dog-card" style={{ background: 'white', borderRadius: '20px', overflow: 'hidden', border: '1px solid #efdfd1' }}>
-              <div style={{ height: '200px', overflow: 'hidden' }}>
-                {dog.photos ? (
-                  <img
-                    src={dog.photos.split(",")[0]}
-                    alt={dog.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                ) : (
-                  <div style={{ height: '200px', background: '#fcedda', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span style={{ fontSize: '14px', color: '#6f5848' }}>No photo available</span>
+          {filteredDogs.length === 0 ? (
+            <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '50px', color: '#6f5848', background: 'white', borderRadius: '20px', border: '1px solid #efdfd1' }}>
+              <h2>No Dogs Found</h2>
+              <p>Check your database connection or adjust your search filters.</p>
+            </div>
+          ) : (
+            filteredDogs.map((dog) => (
+              <div key={dog.id} className="dog-card" style={{ background: 'white', borderRadius: '20px', overflow: 'hidden', border: '1px solid #efdfd1' }}>
+                <div style={{ height: '200px', background: '#fcedda', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {dog.image ? (
+                    <img src={dog.image} alt={dog.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  ) : (
+                    <span style={{ fontSize: '64px' }}>🐕</span>
+                  )}
+                </div>
+                <div className="dog-card-content" style={{ padding: '20px' }}>
+                  <h3 style={{ margin: '0 0 10px 0', color: '#2f241d' }}>{dog.name}</h3>
+                  <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Breed:</strong> {dog.breed}</p>
+                  <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Size:</strong> {dog.size}</p>
+                  <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Age:</strong> {dog.age} {dog.age === 1 ? "year" : "years"}</p>
+                  
+                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                    <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate(`/dogs/${dog.id}`)}>
+                      Details
+                    </button>
+                    <button 
+                      className="btn" 
+                      style={{ flex: 1, background: 'white', border: '1px solid #d8c1af', color: '#2f241d' }} 
+                      onClick={() => handleSaveDog(dog)}
+                    >
+                      ❤️ Save
+                    </button>
                   </div>
-                )}
-              </div>
-              <div className="dog-card-content" style={{ padding: '20px' }}>
-                <h3 style={{ margin: '0 0 10px 0', color: '#2f241d' }}>{dog.name}</h3>
-                <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Breed:</strong> {dog.breed}</p>
-                <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Size:</strong> {dog.size}</p>
-                <p style={{ margin: '5px 0', color: '#6f5848' }}><strong>Age:</strong> {dog.age_years} {dog.age_years === 1 ? "year" : "years"}</p>
-
-                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
-                  <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate(`/dogs/${dog.dog_id}`)}>
-                    Details
-                  </button>
-                  <button
-                    className="btn"
-                    style={{ flex: 1, background: 'white', border: '1px solid #d8c1af', color: '#2f241d' }}
-                    onClick={() => handleSaveDog(dog)}
-                  >
-                    Save
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

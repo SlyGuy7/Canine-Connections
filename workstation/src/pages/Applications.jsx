@@ -1,155 +1,195 @@
-import React, { useEffect, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { sendMessage } from "../services/messaging"
-import Sidebar from "../components/Sidebar"
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "../context/ToastContext";
 
 export default function Applications() {
-  const [applications, setApplications] = useState([])
-  const [loading, setLoading] = useState(true)
-  const navigate = useNavigate()
-  const userId = localStorage.getItem("userId")
+  const [applications, setApplications] = useState([]);
+  const [withdrawApp, setWithdrawApp] = useState(null);
+  const [viewApp, setViewApp] = useState(null); // Added state for the review modal
+  const navigate = useNavigate();
+  const { addToast } = useToast();
 
   useEffect(() => {
-    loadApplications()
-  }, [])
+    const storedApps = JSON.parse(localStorage.getItem("myApplications") || "[]");
+    const sortedApps = [...storedApps].sort((a, b) => b.id - a.id);
+    setApplications(sortedApps);
+  }, []);
 
-  async function loadApplications() {
-    setLoading(true)
-    try {
-      const result = await sendMessage("request.application.list", { user_id: parseInt(userId) })
-      if (result.success && result.applications?.length > 0) {
-        setApplications(result.applications)
-      } else {
-        setApplications([])
-      }
-    } catch (err) {
-      setApplications([])
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const getStatusMeta = (status) => {
-    switch ((status || "").toLowerCase()) {
-      case "pending":
-        return { label: "Pending", badgeClass: "pending", progress: "25%", color: "#f59e0b", message: "Your application has been received and is awaiting shelter review." }
-      case "in review":
-      case "review":
-        return { label: "In Review", badgeClass: "review", progress: "60%", color: "#3b82f6", message: "The shelter team is currently reviewing your application." }
-      case "approved":
-        return { label: "Approved", badgeClass: "approved", progress: "100%", color: "#10b981", message: "Congratulations! Your application has been approved. Check your email for next steps." }
-      case "rejected":
-        return { label: "Not Approved", badgeClass: "rejected", progress: "100%", color: "#ef4444", message: "Unfortunately this application was not successful. You are welcome to apply for other dogs." }
-      case "finalized":
-        return { label: "Finalized", badgeClass: "approved", progress: "100%", color: "#10b981", message: "Adoption complete. Welcome to the family!" }
+  const getStatusDisplay = (status) => {
+    switch (status) {
+      case "Approved":
+        return { pillBg: "#dcfce7", pillColor: "#166534", message: "Congratulations! Next steps emailed." };
+      case "In Review":
+        return { pillBg: "#f3f4f6", pillColor: "#374151", message: "Shelter is reviewing your details." };
+      case "Pending":
       default:
-        return { label: status || "Unknown", badgeClass: "pending", progress: "10%", color: "#94a3b8", message: "Status update pending." }
+        return { pillBg: "#fef08a", pillColor: "#854d0e", message: "Awaiting shelter review." };
     }
   }
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return ""
-    try {
-      return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
-    } catch {
-      return dateStr
-    }
-  }
+  const handleConfirmWithdraw = () => {
+    if (!withdrawApp) return;
+
+    const updatedApps = applications.filter((app) => app.id !== withdrawApp.id);
+    
+    setApplications(updatedApps);
+    localStorage.setItem("myApplications", JSON.stringify(updatedApps));
+    
+    setWithdrawApp(null);
+    addToast("Application successfully withdrawn", "success");
+  };
 
   return (
-    <div className="dashboard-wrapper">
-      <Sidebar />
-      <div className="page-container">
-        <header className="content-header" style={{ marginBottom: '32px' }}>
-          <div>
-            <h1>My Applications</h1>
-            <p className="page-subtitle">Track your adoption requests and their current status.</p>
-          </div>
-          <button className="btn btn-primary" onClick={() => navigate("/browse-dogs")}>
-            Browse More Dogs
-          </button>
-        </header>
+    <div className="page-container" style={{ backgroundColor: '#fffaf5', minHeight: '100vh', padding: '40px 20px', position: 'relative' }}>
+      <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+        <h1 style={{ fontSize: '36px', color: '#2f241d', marginBottom: '8px' }}>My Applications</h1>
+        <p style={{ fontSize: '16px', color: '#6f5848', marginBottom: '40px' }}>
+          Track your adoption requests and their status.
+        </p>
 
-        {loading ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            {[1, 2].map((i) => (
-              <div key={i} className="settings-card">
-                <div style={{ height: '28px', width: '40%', background: '#e0e0e0', borderRadius: '6px', marginBottom: '12px' }} />
-                <div style={{ height: '16px', width: '60%', background: '#e0e0e0', borderRadius: '6px', marginBottom: '24px' }} />
-                <div style={{ height: '8px', background: '#e0e0e0', borderRadius: '6px' }} />
-              </div>
-            ))}
-          </div>
-        ) : applications.length === 0 ? (
-          <div className="empty-state">
-            <h2>No Applications Yet</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '32px' }}>
-              You have not applied to adopt any dogs yet. Browse available dogs and start your adoption journey.
+        {applications.length === 0 ? (
+          <div style={{ 
+            backgroundColor: 'white', 
+            borderRadius: '24px', 
+            padding: '60px 20px', 
+            textAlign: 'center',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.03)',
+            border: '2px dashed #e5d5c5'
+          }}>
+            <div style={{ fontSize: '60px', marginBottom: '20px' }}>🐾</div>
+            <h2 style={{ fontSize: '24px', color: '#2f241d', marginBottom: '12px' }}>No Saved Applications</h2>
+            <p style={{ color: '#6f5848', fontSize: '16px', maxWidth: '400px', margin: '0 auto 30px', lineHeight: '1.6' }}>
+              You haven't applied for any companions yet. When you find a dog you love, your application will appear right here.
             </p>
-            <button className="btn btn-primary" onClick={() => navigate("/browse-dogs")}>
+            <button 
+              onClick={() => navigate('/browse-dogs')}
+              style={{ 
+                padding: '16px 32px', 
+                backgroundColor: '#d97706', 
+                color: 'white', 
+                border: 'none', 
+                borderRadius: '12px', 
+                fontSize: '16px', 
+                fontWeight: 'bold', 
+                cursor: 'pointer',
+                boxShadow: '0 4px 12px rgba(217, 119, 6, 0.2)'
+              }}
+            >
               Find a Dog
             </button>
           </div>
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '40px' }}>
             {applications.map((app) => {
-              const meta = getStatusMeta(app.status)
+              const { pillBg, pillColor, message } = getStatusDisplay(app.status);
+
               return (
-                <div key={app.application_id || app.id} className="settings-card">
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px', marginBottom: '20px' }}>
-                    <div>
-                      <h3 style={{ fontSize: '22px', margin: '0 0 6px 0', color: 'var(--text-main)' }}>
-                        {app.dog_name || app.dog || "Dog"}
-                      </h3>
-                      <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '14px' }}>
-                        {app.breed && <span>{app.breed} &nbsp;&bull;&nbsp; </span>}
-                        Applied {formatDate(app.submitted_at || app.date)}
-                      </p>
-                    </div>
-                    <span className={`status-badge ${meta.badgeClass}`}>{meta.label}</span>
+                <div key={app.id} style={{ borderBottom: '1px solid #efdfd1', paddingBottom: '30px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
+                    <h2 style={{ fontSize: '28px', color: '#2f241d', margin: 0 }}>{app.dog}</h2>
+                    <span style={{ backgroundColor: pillBg, color: pillColor, padding: '6px 12px', borderRadius: '16px', fontSize: '12px', fontWeight: 'bold' }}>
+                      {app.status}
+                    </span>
                   </div>
 
-                  <div style={{ marginBottom: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                      <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Application Progress</span>
-                      <span style={{ fontSize: '13px', color: meta.color, fontWeight: '700' }}>{meta.label}</span>
-                    </div>
-                    <div style={{ height: '8px', background: '#f1ebe5', borderRadius: '99px', overflow: 'hidden' }}>
-                      <div style={{ height: '100%', width: meta.progress, background: meta.color, borderRadius: '99px', transition: 'width 0.5s ease' }} />
-                    </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px', color: '#6f5848', fontSize: '15px' }}>
+                    <span>{app.breed} • <strong>{app.shelter}</strong></span>
+                    <span>Applied: {app.date}</span>
                   </div>
 
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', paddingTop: '16px', borderTop: '1px solid #f1ebe5' }}>
-                    <p style={{ margin: 0, color: 'var(--text-light)', fontSize: '14px', maxWidth: '480px' }}>
-                      {meta.message}
-                    </p>
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      {app.dog_id && (
-                        <button
-                          className="btn"
-                          style={{ background: 'white', border: '1px solid #d8c1af', color: 'var(--text-main)', fontSize: '14px' }}
-                          onClick={() => navigate(`/dogs/${app.dog_id}`)}
-                        >
-                          View Dog
-                        </button>
-                      )}
-                      <button
-                        className="btn btn-primary"
-                        style={{ fontSize: '14px' }}
-                        onClick={() => navigate("/messages")}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 'bold', color: '#2f241d', fontSize: '15px' }}>
+                      {message}
+                    </span>
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                      <button 
+                        onClick={() => setViewApp(app)} // Triggers the review modal
+                        style={{ 
+                          padding: '10px 16px', 
+                          backgroundColor: 'white', 
+                          border: '1px solid #dcc8b7', 
+                          borderRadius: '10px', 
+                          fontWeight: 'bold', 
+                          color: '#2f241d', 
+                          cursor: 'pointer' 
+                        }}
                       >
-                        Message Shelter
+                        Review App
+                      </button>
+                      <button 
+                        onClick={() => setWithdrawApp(app)}
+                        style={{ 
+                          padding: '10px 16px', 
+                          backgroundColor: '#fff1f2', 
+                          border: '1px solid #fecdd3', 
+                          borderRadius: '10px', 
+                          fontWeight: 'bold', 
+                          color: '#e11d48', 
+                          cursor: 'pointer' 
+                        }}
+                      >
+                        Withdraw
                       </button>
                     </div>
                   </div>
-
                 </div>
-              )
+              );
             })}
           </div>
         )}
       </div>
+
+      {/* --- REVIEW APP MODAL --- */}
+      {viewApp && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(47, 36, 29, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: 'white', padding: '40px', borderRadius: '24px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.3)' }}>
+            <h2 style={{ marginBottom: '20px', color: '#2f241d', fontSize: '24px' }}>Application Summary</h2>
+
+            <div style={{ background: '#fffaf5', padding: '24px', borderRadius: '16px', marginBottom: '32px', fontSize: '15px', lineHeight: '1.8', border: '1px solid #efdfd1' }}>
+              <p><strong>Applicant:</strong> {viewApp.applicantName}</p>
+              <p><strong>Companion:</strong> {viewApp.dog} ({viewApp.breed})</p>
+              <p><strong>Shelter:</strong> {viewApp.shelter}</p>
+              <p><strong>Date Applied:</strong> {viewApp.date}</p>
+              <p><strong>Current Status:</strong> <span style={{ color: '#d97706', fontWeight: 'bold' }}>{viewApp.status}</span></p>
+            </div>
+
+            <button 
+              onClick={() => setViewApp(null)} 
+              style={{ width: '100%', padding: '16px', borderRadius: '12px', border: 'none', background: '#d97706', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* --- WITHDRAW CONFIRMATION MODAL --- */}
+      {withdrawApp && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(47, 36, 29, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
+          <div style={{ background: 'white', padding: '40px', borderRadius: '24px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', textAlign: 'center' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚠️</div>
+            <h2 style={{ marginBottom: '12px', color: '#2f241d', fontSize: '24px' }}>Withdraw Application?</h2>
+            <p style={{ color: '#6f5848', marginBottom: '32px', fontSize: '16px', lineHeight: '1.6' }}>
+              Are you sure you want to withdraw your application for <strong>{withdrawApp.dog}</strong>? This action cannot be undone, and you will need to fill out a new form if you change your mind.
+            </p>
+            
+            <div style={{ display: 'flex', gap: '16px' }}>
+              <button 
+                onClick={() => setWithdrawApp(null)} 
+                style={{ flex: 1, padding: '16px', borderRadius: '12px', border: '1px solid #dcc8b7', background: 'white', cursor: 'pointer', fontWeight: 'bold', fontSize: '16px', color: '#6f5848' }}
+              >
+                Keep Application
+              </button>
+              <button 
+                onClick={handleConfirmWithdraw} 
+                style={{ flex: 1, padding: '16px', borderRadius: '12px', border: 'none', background: '#e11d48', color: 'white', fontWeight: 'bold', cursor: 'pointer', fontSize: '16px' }}
+              >
+                Yes, Withdraw
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
