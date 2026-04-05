@@ -104,10 +104,8 @@ final class FrontendWorker
     private function replyTo($msg): string
     {
         $props = $msg->get_properties();
-        $headers = $props['application_headers'] ?? [];
-        if (isset($headers['reply-to'])) {
-            $val = $headers['reply-to'];
-            return is_object($val) ? $val->getValue() : (string)$val;
+        if (isset($props['reply_to']) && $props['reply_to'] !== '') {
+            return (string)$props['reply_to'];
         }
         return '';
     }
@@ -131,7 +129,7 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'email and password are required'], $corrId);
                     return;
                 }
-                $mq->publish('bridge.auth.register', [
+                $result = $mq->publishAndWait('bridge.auth.register', [
                     'email'         => $data['email'],
                     'password_hash' => $this->enc->hashPassword($data['password']),
                     'first_name'    => $this->encryptIfPresent($data['first_name'] ?? ''),
@@ -140,7 +138,6 @@ final class FrontendWorker
                     'address'       => $this->encryptIfPresent($data['address']    ?? ''),
                     'role'          => 'adopter',
                 ], $corrId);
-                $result = $mq->waitForResponse('bridge.result.auth.register', $corrId);
                 if (!$result || empty($result['success'])) {
                     $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'Registration failed'], $corrId);
                     return;
@@ -171,8 +168,7 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'email and password are required'], $corrId);
                     return;
                 }
-                $mq->publish('bridge.auth.login', ['email' => $data['email']], $corrId);
-                $result = $mq->waitForResponse('bridge.result.auth.login', $corrId);
+                $result = $mq->publishAndWait('bridge.auth.login', ['email' => $data['email']], $corrId);
                 if (!$result || ($result['success'] ?? false) !== true || !isset($result['user'])) {
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'User not found'], $corrId);
                     return;
@@ -183,8 +179,8 @@ final class FrontendWorker
                     return;
                 }
                 unset($user['password_hash']);
-                $user['first_name'] = !empty($user['first_name']) ? $this->dec($user['first_name']) : '';
-                $user['last_name']  = !empty($user['last_name'])  ? $this->dec($user['last_name'])  : '';
+                $user['first_name'] = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : '';
+                $user['last_name']  = isset($user['last_name'])  && $user['last_name']  !== '' ? $this->dec($user['last_name'])  : '';
                 $this->respond($mq, 'response.auth.login', $replyTo, ['success' => true, 'user' => $user], $corrId);
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleLogin: {$e->getMessage()}\n";
@@ -203,8 +199,7 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'All fields are required'], $corrId);
                     return;
                 }
-                $mq->publish('bridge.auth.login', ['email' => $data['email']], $corrId);
-                $result = $mq->waitForResponse('bridge.result.auth.login', $corrId);
+                $result = $mq->publishAndWait('bridge.auth.login', ['email' => $data['email']], $corrId);
                 if (!$result || empty($result['user'])) {
                     $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'User not found'], $corrId);
                     return;
@@ -214,13 +209,12 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'Old password is incorrect'], $corrId);
                     return;
                 }
-                $mq->publish('bridge.auth.resetPassword', [
+                $result2 = $mq->publishAndWait('bridge.auth.resetPassword', [
                     'email'         => $data['email'],
                     'password_hash' => $this->enc->hashPassword($data['newPassword']),
-                ], $corrId);
-                $result = $mq->waitForResponse('bridge.result.auth.resetPassword', $corrId);
-                if (!$result || empty($result['success'])) {
-                    $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'Reset failed'], $corrId);
+                ], $corrId . '_reset');
+                if (!$result2 || empty($result2['success'])) {
+                    $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => $result2['error'] ?? 'Reset failed'], $corrId);
                     return;
                 }
                 $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => true, 'message' => 'Password updated successfully'], $corrId);
@@ -243,14 +237,13 @@ final class FrontendWorker
                     $this->respond($mq, 'response.profile.update', $replyTo, ['success' => false, 'error' => 'user_id is required'], $corrId);
                     return;
                 }
-                $mq->publish('bridge.profile.update', [
+                $result = $mq->publishAndWait('bridge.profile.update', [
                     'user_id'    => $userId,
                     'first_name' => $this->encryptIfPresent($data['first_name'] ?? ''),
                     'last_name'  => $this->encryptIfPresent($data['last_name']  ?? ''),
                     'phone'      => $this->encryptIfPresent($data['phone']      ?? ''),
                     'address'    => $this->encryptIfPresent($data['address']    ?? ''),
                 ], $corrId);
-                $result = $mq->waitForResponse('bridge.result.profile.update', $corrId);
                 $this->respond($mq, 'response.profile.update', $replyTo, $result ?? ['success' => false, 'error' => 'Could not update profile'], $corrId);
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleProfileUpdate: {$e->getMessage()}\n";
@@ -263,10 +256,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleSheltersList\n";
             try {
-                $mq->publish('bridge.shelters.list', ['search' => $data['search'] ?? null, 'limit' => $data['limit'] ?? 50, 'offset' => $data['offset'] ?? 0], $corrId);
-                $result = $mq->waitForResponse('bridge.result.shelters.list', $corrId);
+                $result = $mq->publishAndWait('bridge.shelters.list', ['search' => $data['search'] ?? null, 'limit' => $data['limit'] ?? 50, 'offset' => $data['offset'] ?? 0], $corrId);
                 $this->respond($mq, 'response.shelters.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load shelters'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.shelters.list', $replyTo, ['success' => false, 'error' => 'Could not load shelters'], $corrId); }
         }, $msg);
@@ -276,15 +267,9 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            $shelterId = $data['shelter_id'] ?? null;
-            echo "[FrontendWorker] handleSheltersGet: shelter_id={$shelterId}\n";
             try {
-                if (empty($shelterId)) {
-                    $this->respond($mq, 'response.shelters.get', $replyTo, ['success' => false, 'error' => 'shelter_id is required'], $corrId);
-                    return;
-                }
-                $mq->publish('bridge.shelters.get', ['shelter_id' => $shelterId], $corrId);
-                $result = $mq->waitForResponse('bridge.result.shelters.get', $corrId);
+                if (empty($data['shelter_id'])) { $this->respond($mq, 'response.shelters.get', $replyTo, ['success' => false, 'error' => 'shelter_id is required'], $corrId); return; }
+                $result = $mq->publishAndWait('bridge.shelters.get', ['shelter_id' => $data['shelter_id']], $corrId);
                 $this->respond($mq, 'response.shelters.get', $replyTo, $result ?? ['success' => false, 'error' => 'Shelter not found'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.shelters.get', $replyTo, ['success' => false, 'error' => 'Could not load shelter'], $corrId); }
         }, $msg);
@@ -294,10 +279,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleApiKeyGet\n";
             try {
-                $mq->publish('bridge.api.key.get', ['shelter_id' => $data['shelter_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.api.key.get', $corrId);
+                $result = $mq->publishAndWait('bridge.api.key.get', ['shelter_id' => $data['shelter_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.api.key.get', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load API key'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.api.key.get', $replyTo, ['success' => false, 'error' => 'Could not load API key'], $corrId); }
         }, $msg);
@@ -307,12 +290,10 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleApiKeyRegenerate\n";
             try {
                 $newKey = bin2hex(random_bytes(32));
-                $mq->publish('bridge.api.key.regenerate', ['shelter_id' => $data['shelter_id'] ?? null, 'new_key' => $newKey], $corrId);
-                $result = $mq->waitForResponse('bridge.result.api.key.regenerate', $corrId);
-                if (!empty($result['success'])) $result['api_key'] = $newKey;
+                $result = $mq->publishAndWait('bridge.api.key.regenerate', ['shelter_id' => $data['shelter_id'] ?? null, 'new_key' => $newKey], $corrId);
+                if (isset($result['success']) && $result['success']) $result['api_key'] = $newKey;
                 $this->respond($mq, 'response.api.key.regenerate', $replyTo, $result ?? ['success' => false, 'error' => 'Could not regenerate key'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.api.key.regenerate', $replyTo, ['success' => false, 'error' => 'Could not regenerate key'], $corrId); }
         }, $msg);
@@ -322,10 +303,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleApiLogs\n";
             try {
-                $mq->publish('bridge.api.logs', ['shelter_id' => $data['shelter_id'] ?? null, 'limit' => $data['limit'] ?? 50, 'offset' => $data['offset'] ?? 0], $corrId);
-                $result = $mq->waitForResponse('bridge.result.api.logs', $corrId);
+                $result = $mq->publishAndWait('bridge.api.logs', ['shelter_id' => $data['shelter_id'] ?? null, 'limit' => $data['limit'] ?? 50, 'offset' => $data['offset'] ?? 0], $corrId);
                 $this->respond($mq, 'response.api.logs', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.api.logs', $replyTo, ['success' => false, 'error' => 'Could not load logs'], $corrId); }
         }, $msg);
@@ -337,7 +316,7 @@ final class FrontendWorker
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
             echo "[FrontendWorker] handleDogsList\n";
             try {
-                $mq->publish('bridge.dogs.list', [
+                $result = $mq->publishAndWait('bridge.dogs.list', [
                     'status'       => $data['status']       ?? 'available',
                     'breed'        => $data['breed']        ?? null,
                     'size'         => $data['size']         ?? null,
@@ -346,7 +325,6 @@ final class FrontendWorker
                     'limit'        => $data['limit']        ?? 20,
                     'offset'       => $data['offset']       ?? 0,
                 ], $corrId);
-                $result = $mq->waitForResponse('bridge.result.dogs.list', $corrId);
                 $this->respond($mq, 'response.dogs.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load dogs'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.dogs.list', $replyTo, ['success' => false, 'error' => 'Could not load dogs'], $corrId); }
         }, $msg);
@@ -363,8 +341,7 @@ final class FrontendWorker
                     $this->respond($mq, 'response.dogs.get', $replyTo, ['success' => false, 'error' => 'dog_id is required'], $corrId);
                     return;
                 }
-                $mq->publish('bridge.dogs.get', ['dog_id' => $dogId], $corrId);
-                $result = $mq->waitForResponse('bridge.result.dogs.get', $corrId);
+                $result = $mq->publishAndWait('bridge.dogs.get', ['dog_id' => $dogId], $corrId);
                 $this->respond($mq, 'response.dogs.get', $replyTo, $result ?? ['success' => false, 'error' => 'Dog not found'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.dogs.get', $replyTo, ['success' => false, 'error' => 'Could not load dog'], $corrId); }
         }, $msg);
@@ -376,31 +353,21 @@ final class FrontendWorker
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
             $userId = $data['user_id'] ?? null;
             $dogId  = $data['dog_id']  ?? null;
-            echo "[FrontendWorker] handleApplicationSubmit: user_id={$userId}\n";
             try {
                 if (empty($userId) || empty($dogId)) {
                     $this->respond($mq, 'response.application.submit', $replyTo, ['success' => false, 'error' => 'user_id and dog_id are required'], $corrId);
                     return;
                 }
-                $mq->publish('bridge.application.submit', [
-                    'user_id'                => $userId,
-                    'dog_id'                 => $dogId,
-                    'full_name'              => $this->enc($data['full_name']  ?? ''),
-                    'address'                => $this->enc($data['address']    ?? ''),
-                    'phone'                  => $this->enc($data['phone']      ?? ''),
-                    'housing_type'           => $data['housing_type']           ?? null,
-                    'has_yard'               => $data['has_yard']               ?? false,
-                    'has_other_pets'         => $data['has_other_pets']         ?? false,
-                    'other_pets_description' => $data['other_pets_description'] ?? null,
-                    'has_children'           => $data['has_children']           ?? false,
-                    'children_ages'          => $data['children_ages']          ?? null,
-                    'prior_pet_experience'   => $data['prior_pet_experience']   ?? null,
-                    'reason_for_adopting'    => $data['reason_for_adopting']    ?? null,
-                    'vet_reference'          => $data['vet_reference']          ?? null,
+                $result = $mq->publishAndWait('bridge.application.submit', [
+                    'user_id' => $userId, 'dog_id' => $dogId,
+                    'full_name' => $this->enc($data['full_name'] ?? ''), 'address' => $this->enc($data['address'] ?? ''), 'phone' => $this->enc($data['phone'] ?? ''),
+                    'housing_type' => $data['housing_type'] ?? null, 'has_yard' => $data['has_yard'] ?? false, 'has_other_pets' => $data['has_other_pets'] ?? false,
+                    'other_pets_description' => $data['other_pets_description'] ?? null, 'has_children' => $data['has_children'] ?? false,
+                    'children_ages' => $data['children_ages'] ?? null, 'prior_pet_experience' => $data['prior_pet_experience'] ?? null,
+                    'reason_for_adopting' => $data['reason_for_adopting'] ?? null, 'vet_reference' => $data['vet_reference'] ?? null,
                 ], $corrId);
-                $result = $mq->waitForResponse('bridge.result.application.submit', $corrId);
                 $this->respond($mq, 'response.application.submit', $replyTo, $result ?? ['success' => false, 'error' => 'Could not submit application'], $corrId);
-                if (!empty($result['success'])) {
+                if (isset($result['success']) && $result['success']) {
                     $mq->publish('notifications', ['event' => 'application_received', 'user_id' => $userId, 'message' => 'Your adoption application has been received.']);
                     Mailer::applicationReceived($data['email'] ?? '', $data['first_name'] ?? '', $data['dog_name'] ?? 'your chosen dog');
                 }
@@ -412,11 +379,9 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleApplicationStatus\n";
             try {
-                $mq->publish('bridge.application.status', ['application_id' => $data['application_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.application.status', $corrId);
-                if (!empty($result['application']['full_name'])) $result['application']['full_name'] = $this->dec($result['application']['full_name']);
+                $result = $mq->publishAndWait('bridge.application.status', ['application_id' => $data['application_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
+                if (isset($result['application']['full_name']) && $result['application']['full_name'] !== '') $result['application']['full_name'] = $this->dec($result['application']['full_name']);
                 $this->respond($mq, 'response.application.status', $replyTo, $result ?? ['success' => false, 'error' => 'Could not fetch status'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.application.status', $replyTo, ['success' => false, 'error' => 'Could not fetch status'], $corrId); }
         }, $msg);
@@ -426,16 +391,14 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleApplicationList\n";
             try {
-                $mq->publish('bridge.application.list', ['status' => $data['status'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.application.list', $corrId);
-                if (!empty($result['applications'])) {
+                $result = $mq->publishAndWait('bridge.application.list', ['status' => $data['status'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null], $corrId);
+                if (isset($result['applications']) && is_array($result['applications'])) {
                     foreach ($result['applications'] as &$app) {
-                        $app['full_name']  = $this->dec($app['full_name']  ?? '');
-                        $app['phone']      = $this->dec($app['phone']      ?? '');
-                        $app['first_name'] = $this->dec($app['first_name'] ?? '');
-                        $app['last_name']  = $this->dec($app['last_name']  ?? '');
+                        $app['full_name']  = isset($app['full_name'])  && $app['full_name']  !== '' ? $this->dec($app['full_name'])  : '';
+                        $app['phone']      = isset($app['phone'])      && $app['phone']      !== '' ? $this->dec($app['phone'])      : '';
+                        $app['first_name'] = isset($app['first_name']) && $app['first_name'] !== '' ? $this->dec($app['first_name']) : '';
+                        $app['last_name']  = isset($app['last_name'])  && $app['last_name']  !== '' ? $this->dec($app['last_name'])  : '';
                     }
                 }
                 $this->respond($mq, 'response.application.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not fetch applications'], $corrId);
@@ -447,16 +410,11 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleApplicationApprove\n";
             try {
-                if (empty($data['application_id'])) {
-                    $this->respond($mq, 'response.application.decision', $replyTo, ['success' => false, 'error' => 'application_id is required'], $corrId);
-                    return;
-                }
-                $mq->publish('bridge.application.approve', ['application_id' => $data['application_id'], 'reviewed_by' => $data['reviewed_by'] ?? null, 'reviewer_notes' => $data['reviewer_notes'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.application.approve', $corrId);
+                if (empty($data['application_id'])) { $this->respond($mq, 'response.application.decision', $replyTo, ['success' => false, 'error' => 'application_id is required'], $corrId); return; }
+                $result = $mq->publishAndWait('bridge.application.approve', ['application_id' => $data['application_id'], 'reviewed_by' => $data['reviewed_by'] ?? null, 'reviewer_notes' => $data['reviewer_notes'] ?? null], $corrId);
                 $this->respond($mq, 'response.application.decision', $replyTo, $result ?? ['success' => false, 'error' => 'Could not approve'], $corrId);
-                if (!empty($result['success']) && !empty($result['user_id'])) {
+                if (isset($result['success']) && $result['success'] && isset($result['user_id'])) {
                     $mq->publish('notifications', ['event' => 'application_approved', 'user_id' => $result['user_id'], 'message' => 'Your adoption application has been approved.']);
                     Mailer::applicationApproved($result['email'] ?? '', $result['first_name'] ?? '', $result['dog_name'] ?? 'your chosen dog');
                 }
@@ -468,16 +426,11 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleApplicationReject\n";
             try {
-                if (empty($data['application_id'])) {
-                    $this->respond($mq, 'response.application.decision', $replyTo, ['success' => false, 'error' => 'application_id is required'], $corrId);
-                    return;
-                }
-                $mq->publish('bridge.application.reject', ['application_id' => $data['application_id'], 'reviewed_by' => $data['reviewed_by'] ?? null, 'reviewer_notes' => $data['reviewer_notes'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.application.reject', $corrId);
+                if (empty($data['application_id'])) { $this->respond($mq, 'response.application.decision', $replyTo, ['success' => false, 'error' => 'application_id is required'], $corrId); return; }
+                $result = $mq->publishAndWait('bridge.application.reject', ['application_id' => $data['application_id'], 'reviewed_by' => $data['reviewed_by'] ?? null, 'reviewer_notes' => $data['reviewer_notes'] ?? null], $corrId);
                 $this->respond($mq, 'response.application.decision', $replyTo, $result ?? ['success' => false, 'error' => 'Could not reject'], $corrId);
-                if (!empty($result['success']) && !empty($result['user_id'])) {
+                if (isset($result['success']) && $result['success'] && isset($result['user_id'])) {
                     $mq->publish('notifications', ['event' => 'application_rejected', 'user_id' => $result['user_id'], 'message' => 'Your adoption application was not successful.']);
                     Mailer::applicationRejected($result['email'] ?? '', $result['first_name'] ?? '', $result['dog_name'] ?? 'your chosen dog');
                 }
@@ -489,10 +442,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleAdoptionsList\n";
             try {
-                $mq->publish('bridge.adoptions.list', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.adoptions.list', $corrId);
+                $result = $mq->publishAndWait('bridge.adoptions.list', ['user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.adoptions.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load adoptions'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.adoptions.list', $replyTo, ['success' => false, 'error' => 'Could not load adoptions'], $corrId); }
         }, $msg);
@@ -502,10 +453,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleAdoptionsGet\n";
             try {
-                $mq->publish('bridge.adoptions.get', ['adoption_id' => $data['adoption_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.adoptions.get', $corrId);
+                $result = $mq->publishAndWait('bridge.adoptions.get', ['adoption_id' => $data['adoption_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.adoptions.get', $replyTo, $result ?? ['success' => false, 'error' => 'Not found'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.adoptions.get', $replyTo, ['success' => false, 'error' => 'Could not load adoption'], $corrId); }
         }, $msg);
@@ -515,16 +464,11 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleAdoptionsFinalize\n";
             try {
-                if (empty($data['application_id'])) {
-                    $this->respond($mq, 'response.adoptions.finalize', $replyTo, ['success' => false, 'error' => 'application_id is required'], $corrId);
-                    return;
-                }
-                $mq->publish('bridge.adoptions.finalize', ['application_id' => $data['application_id'], 'finalized_by' => $data['finalized_by'] ?? null, 'notes' => $data['notes'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.adoptions.finalize', $corrId);
+                if (empty($data['application_id'])) { $this->respond($mq, 'response.adoptions.finalize', $replyTo, ['success' => false, 'error' => 'application_id is required'], $corrId); return; }
+                $result = $mq->publishAndWait('bridge.adoptions.finalize', ['application_id' => $data['application_id'], 'finalized_by' => $data['finalized_by'] ?? null, 'notes' => $data['notes'] ?? null], $corrId);
                 $this->respond($mq, 'response.adoptions.finalize', $replyTo, $result ?? ['success' => false, 'error' => 'Could not finalize adoption'], $corrId);
-                if (!empty($result['success']) && !empty($result['user_id'])) {
+                if (isset($result['success']) && $result['success'] && isset($result['user_id'])) {
                     $mq->publish('notifications', ['event' => 'adoption_finalized', 'user_id' => $result['user_id'], 'message' => 'Your adoption is now complete!']);
                     Mailer::adoptionComplete($result['email'] ?? '', $result['first_name'] ?? '', $result['dog_name'] ?? 'your dog');
                 }
@@ -536,10 +480,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleQuizQuestions\n";
             try {
-                $mq->publish('bridge.quiz.questions', [], $corrId);
-                $result = $mq->waitForResponse('bridge.result.quiz.questions', $corrId);
+                $result = $mq->publishAndWait('bridge.quiz.questions', [], $corrId);
                 $this->respond($mq, 'response.quiz.questions', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load quiz'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.quiz.questions', $replyTo, ['success' => false, 'error' => 'Could not load quiz'], $corrId); }
         }, $msg);
@@ -550,14 +492,9 @@ final class FrontendWorker
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
             $userId = $data['user_id'] ?? null;
-            echo "[FrontendWorker] handleQuiz: user_id={$userId}\n";
             try {
-                $mq->publish('bridge.quiz.submit', ['user_id' => $userId, 'answers' => $data['answers'] ?? []], $corrId);
-                $result = $mq->waitForResponse('bridge.result.quiz.submit', $corrId);
+                $result = $mq->publishAndWait('bridge.quiz.submit', ['user_id' => $userId, 'answers' => $data['answers'] ?? []], $corrId);
                 $this->respond($mq, 'response.quiz.result', $replyTo, $result ?? ['success' => false, 'error' => 'Quiz failed'], $corrId);
-                if (!empty($result['success']) && $userId) {
-                    $mq->publish('bridge.badges.mine', ['user_id' => $userId, 'auto_award' => 'quiz_complete'], $corrId . '_badge');
-                }
             } catch (\Throwable $e) { $this->respond($mq, 'response.quiz.result', $replyTo, ['success' => false, 'error' => 'Quiz failed'], $corrId); }
         }, $msg);
     }
@@ -566,10 +503,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleQuizResults\n";
             try {
-                $mq->publish('bridge.quiz.results', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.quiz.results', $corrId);
+                $result = $mq->publishAndWait('bridge.quiz.results', ['user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.quiz.results', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load results'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.quiz.results', $replyTo, ['success' => false, 'error' => 'Could not load results'], $corrId); }
         }, $msg);
@@ -579,10 +514,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleAdoptionLogCreate\n";
             try {
-                $mq->publish('bridge.adoption.log.create', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'log_type' => $data['log_type'] ?? 'general', 'title' => $data['title'] ?? '', 'notes' => $data['notes'] ?? '', 'log_date' => $data['log_date'] ?? date('Y-m-d')], $corrId);
-                $result = $mq->waitForResponse('bridge.result.adoption.log.create', $corrId);
+                $result = $mq->publishAndWait('bridge.adoption.log.create', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'log_type' => $data['log_type'] ?? 'general', 'title' => $data['title'] ?? '', 'notes' => $data['notes'] ?? '', 'log_date' => $data['log_date'] ?? date('Y-m-d')], $corrId);
                 $this->respond($mq, 'response.adoption.log.create', $replyTo, $result ?? ['success' => false, 'error' => 'Could not save log'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.adoption.log.create', $replyTo, ['success' => false, 'error' => 'Could not save log'], $corrId); }
         }, $msg);
@@ -592,10 +525,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleAdoptionLogList\n";
             try {
-                $mq->publish('bridge.adoption.log.list', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'log_type' => $data['log_type'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.adoption.log.list', $corrId);
+                $result = $mq->publishAndWait('bridge.adoption.log.list', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'log_type' => $data['log_type'] ?? null], $corrId);
                 $this->respond($mq, 'response.adoption.log.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.adoption.log.list', $replyTo, ['success' => false, 'error' => 'Could not load logs'], $corrId); }
         }, $msg);
@@ -605,14 +536,9 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleFosterApply\n";
             try {
-                $mq->publish('bridge.foster.apply', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'sponsorship_amount' => $data['sponsorship_amount'] ?? 0, 'start_date' => $data['start_date'] ?? date('Y-m-d')], $corrId);
-                $result = $mq->waitForResponse('bridge.result.foster.apply', $corrId);
+                $result = $mq->publishAndWait('bridge.foster.apply', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'sponsorship_amount' => $data['sponsorship_amount'] ?? 0, 'start_date' => $data['start_date'] ?? date('Y-m-d')], $corrId);
                 $this->respond($mq, 'response.foster.apply', $replyTo, $result ?? ['success' => false, 'error' => 'Foster failed'], $corrId);
-                if (!empty($result['success']) && !empty($data['user_id'])) {
-                    $mq->publish('notifications', ['event' => 'foster_active', 'user_id' => $data['user_id'], 'message' => 'Your virtual foster sponsorship is now active!']);
-                }
             } catch (\Throwable $e) { $this->respond($mq, 'response.foster.apply', $replyTo, ['success' => false, 'error' => 'Foster failed'], $corrId); }
         }, $msg);
     }
@@ -621,10 +547,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleFosterList\n";
             try {
-                $mq->publish('bridge.foster.list', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.foster.list', $corrId);
+                $result = $mq->publishAndWait('bridge.foster.list', ['user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.foster.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load sponsorships'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.foster.list', $replyTo, ['success' => false, 'error' => 'Could not load sponsorships'], $corrId); }
         }, $msg);
@@ -634,10 +558,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleFosterCancel\n";
             try {
-                $mq->publish('bridge.foster.cancel', ['foster_id' => $data['foster_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.foster.cancel', $corrId);
+                $result = $mq->publishAndWait('bridge.foster.cancel', ['foster_id' => $data['foster_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.foster.cancel', $replyTo, $result ?? ['success' => false, 'error' => 'Could not cancel'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.foster.cancel', $replyTo, ['success' => false, 'error' => 'Could not cancel sponsorship'], $corrId); }
         }, $msg);
@@ -647,10 +569,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleParksList\n";
             try {
-                $mq->publish('bridge.parks.list', ['shelter_id' => $data['shelter_id'] ?? null, 'lat' => $data['lat'] ?? null, 'lng' => $data['lng'] ?? null, 'radius_km' => $data['radius_km'] ?? 10], $corrId);
-                $result = $mq->waitForResponse('bridge.result.parks.list', $corrId);
+                $result = $mq->publishAndWait('bridge.parks.list', ['shelter_id' => $data['shelter_id'] ?? null, 'lat' => $data['lat'] ?? null, 'lng' => $data['lng'] ?? null, 'radius_km' => $data['radius_km'] ?? 10], $corrId);
                 $this->respond($mq, 'response.parks.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load parks'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.parks.list', $replyTo, ['success' => false, 'error' => 'Could not load parks'], $corrId); }
         }, $msg);
@@ -660,10 +580,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleResourcesList\n";
             try {
-                $mq->publish('bridge.resources.list', ['topic' => $data['topic'] ?? null, 'type' => $data['type'] ?? null, 'search' => $data['search'] ?? null, 'limit' => $data['limit'] ?? 20, 'offset' => $data['offset'] ?? 0], $corrId);
-                $result = $mq->waitForResponse('bridge.result.resources.list', $corrId);
+                $result = $mq->publishAndWait('bridge.resources.list', ['topic' => $data['topic'] ?? null, 'type' => $data['type'] ?? null, 'search' => $data['search'] ?? null, 'limit' => $data['limit'] ?? 20, 'offset' => $data['offset'] ?? 0], $corrId);
                 $this->respond($mq, 'response.resources.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load resources'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.resources.list', $replyTo, ['success' => false, 'error' => 'Could not load resources'], $corrId); }
         }, $msg);
@@ -673,10 +591,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleResourcesGet\n";
             try {
-                $mq->publish('bridge.resources.get', ['resource_id' => $data['resource_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.resources.get', $corrId);
+                $result = $mq->publishAndWait('bridge.resources.get', ['resource_id' => $data['resource_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.resources.get', $replyTo, $result ?? ['success' => false, 'error' => 'Not found'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.resources.get', $replyTo, ['success' => false, 'error' => 'Could not load resource'], $corrId); }
         }, $msg);
@@ -686,10 +602,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleStoriesList\n";
             try {
-                $mq->publish('bridge.stories.list', ['limit' => $data['limit'] ?? 10, 'offset' => $data['offset'] ?? 0], $corrId);
-                $result = $mq->waitForResponse('bridge.result.stories.list', $corrId);
+                $result = $mq->publishAndWait('bridge.stories.list', ['limit' => $data['limit'] ?? 10, 'offset' => $data['offset'] ?? 0], $corrId);
                 $this->respond($mq, 'response.stories.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load stories'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.stories.list', $replyTo, ['success' => false, 'error' => 'Could not load stories'], $corrId); }
         }, $msg);
@@ -699,10 +613,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleStoriesSubmit\n";
             try {
-                $mq->publish('bridge.stories.submit', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'title' => $data['title'] ?? '', 'story' => $data['story'] ?? '', 'photo_url' => $data['photo_url'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.stories.submit', $corrId);
+                $result = $mq->publishAndWait('bridge.stories.submit', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'title' => $data['title'] ?? '', 'story' => $data['story'] ?? '', 'photo_url' => $data['photo_url'] ?? null], $corrId);
                 $this->respond($mq, 'response.stories.submit', $replyTo, $result ?? ['success' => false, 'error' => 'Could not submit story'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.stories.submit', $replyTo, ['success' => false, 'error' => 'Could not submit story'], $corrId); }
         }, $msg);
@@ -712,14 +624,9 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleStoriesApprove\n";
             try {
-                if (empty($data['story_id'])) {
-                    $this->respond($mq, 'response.stories.approve', $replyTo, ['success' => false, 'error' => 'story_id is required'], $corrId);
-                    return;
-                }
-                $mq->publish('bridge.stories.approve', ['story_id' => $data['story_id'], 'approved_by' => $data['approved_by'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.stories.approve', $corrId);
+                if (empty($data['story_id'])) { $this->respond($mq, 'response.stories.approve', $replyTo, ['success' => false, 'error' => 'story_id is required'], $corrId); return; }
+                $result = $mq->publishAndWait('bridge.stories.approve', ['story_id' => $data['story_id'], 'approved_by' => $data['approved_by'] ?? null], $corrId);
                 $this->respond($mq, 'response.stories.approve', $replyTo, $result ?? ['success' => false, 'error' => 'Could not approve story'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.stories.approve', $replyTo, ['success' => false, 'error' => 'Could not approve story'], $corrId); }
         }, $msg);
@@ -729,10 +636,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleBadgesList\n";
             try {
-                $mq->publish('bridge.badges.list', [], $corrId);
-                $result = $mq->waitForResponse('bridge.result.badges.list', $corrId);
+                $result = $mq->publishAndWait('bridge.badges.list', [], $corrId);
                 $this->respond($mq, 'response.badges.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load badges'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.badges.list', $replyTo, ['success' => false, 'error' => 'Could not load badges'], $corrId); }
         }, $msg);
@@ -742,10 +647,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleBadgesMine\n";
             try {
-                $mq->publish('bridge.badges.mine', ['user_id' => $data['user_id'] ?? null, 'auto_award' => null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.badges.mine', $corrId);
+                $result = $mq->publishAndWait('bridge.badges.mine', ['user_id' => $data['user_id'] ?? null, 'auto_award' => null], $corrId);
                 $this->respond($mq, 'response.badges.mine', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load badges'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.badges.mine', $replyTo, ['success' => false, 'error' => 'Could not load badges'], $corrId); }
         }, $msg);
@@ -755,10 +658,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleEnquiry\n";
             try {
-                $mq->publish('bridge.enquiry.send', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null, 'message' => $data['message'] ?? ''], $corrId);
-                $result = $mq->waitForResponse('bridge.result.enquiry.send', $corrId);
+                $result = $mq->publishAndWait('bridge.enquiry.send', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null, 'message' => $data['message'] ?? ''], $corrId);
                 $this->respond($mq, 'response.enquiry.reply', $replyTo, $result ?? ['success' => false, 'error' => 'Could not send message'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.enquiry.reply', $replyTo, ['success' => false, 'error' => 'Could not send message'], $corrId); }
         }, $msg);
@@ -768,10 +669,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleChatStart\n";
             try {
-                $mq->publish('bridge.chat.start', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.chat.start', $corrId);
+                $result = $mq->publishAndWait('bridge.chat.start', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.chat.start', $replyTo, $result ?? ['success' => false, 'error' => 'Could not start chat'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.chat.start', $replyTo, ['success' => false, 'error' => 'Could not start chat'], $corrId); }
         }, $msg);
@@ -781,10 +680,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleChatMessage\n";
             try {
-                $mq->publish('bridge.chat.message', ['session_id' => $data['session_id'] ?? null, 'sender_id' => $data['sender_id'] ?? null, 'message' => $data['message'] ?? ''], $corrId);
-                $result = $mq->waitForResponse('bridge.result.chat.message', $corrId);
+                $result = $mq->publishAndWait('bridge.chat.message', ['session_id' => $data['session_id'] ?? null, 'sender_id' => $data['sender_id'] ?? null, 'message' => $data['message'] ?? ''], $corrId);
                 $this->respond($mq, 'response.chat.message', $replyTo, $result ?? ['success' => false, 'error' => 'Could not send message'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.chat.message', $replyTo, ['success' => false, 'error' => 'Could not send message'], $corrId); }
         }, $msg);
@@ -794,10 +691,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleChatHistory\n";
             try {
-                $mq->publish('bridge.chat.history', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.chat.history', $corrId);
+                $result = $mq->publishAndWait('bridge.chat.history', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.chat.history', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load chat'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.chat.history', $replyTo, ['success' => false, 'error' => 'Could not load chat'], $corrId); }
         }, $msg);
@@ -807,12 +702,10 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleMeetGreetSchedule\n";
             try {
-                $mq->publish('bridge.meetgreet.schedule', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null, 'scheduled_date' => $data['scheduled_date'] ?? '', 'scheduled_time' => $data['scheduled_time'] ?? '', 'video_link' => $data['video_link'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.meetgreet.schedule', $corrId);
+                $result = $mq->publishAndWait('bridge.meetgreet.schedule', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null, 'scheduled_date' => $data['scheduled_date'] ?? '', 'scheduled_time' => $data['scheduled_time'] ?? '', 'video_link' => $data['video_link'] ?? null], $corrId);
                 $this->respond($mq, 'response.meetgreet.schedule', $replyTo, $result ?? ['success' => false, 'error' => 'Could not schedule meeting'], $corrId);
-                if (!empty($result['success']) && !empty($data['user_id'])) {
+                if (isset($result['success']) && $result['success'] && isset($data['user_id'])) {
                     $mq->publish('notifications', ['event' => 'meetgreet_scheduled', 'user_id' => $data['user_id'], 'message' => "Your meet & greet is confirmed for {$data['scheduled_date']} at {$data['scheduled_time']}."]);
                     Mailer::meetGreetConfirmed($data['email'] ?? '', $data['first_name'] ?? '', $data['dog_name'] ?? 'your chosen dog', $data['scheduled_date'] ?? '', $data['scheduled_time'] ?? '');
                 }
@@ -824,10 +717,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleMeetGreetList\n";
             try {
-                $mq->publish('bridge.meetgreet.list', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.meetgreet.list', $corrId);
+                $result = $mq->publishAndWait('bridge.meetgreet.list', ['user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.meetgreet.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load meetings'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.meetgreet.list', $replyTo, ['success' => false, 'error' => 'Could not load meetings'], $corrId); }
         }, $msg);
@@ -837,10 +728,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleMeetGreetCancel\n";
             try {
-                $mq->publish('bridge.meetgreet.cancel', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.meetgreet.cancel', $corrId);
+                $result = $mq->publishAndWait('bridge.meetgreet.cancel', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.meetgreet.cancel', $replyTo, $result ?? ['success' => false, 'error' => 'Could not cancel meeting'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.meetgreet.cancel', $replyTo, ['success' => false, 'error' => 'Could not cancel meeting'], $corrId); }
         }, $msg);
@@ -850,10 +739,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleNotificationsList\n";
             try {
-                $mq->publish('bridge.notifications.list', ['user_id' => $data['user_id'] ?? null, 'unread' => $data['unread'] ?? false], $corrId);
-                $result = $mq->waitForResponse('bridge.result.notifications.list', $corrId);
+                $result = $mq->publishAndWait('bridge.notifications.list', ['user_id' => $data['user_id'] ?? null, 'unread' => $data['unread'] ?? false], $corrId);
                 $this->respond($mq, 'response.notifications.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load notifications'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.notifications.list', $replyTo, ['success' => false, 'error' => 'Could not load notifications'], $corrId); }
         }, $msg);
@@ -863,10 +750,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleNotificationsRead\n";
             try {
-                $mq->publish('bridge.notifications.read', ['user_id' => $data['user_id'] ?? null, 'notification_id' => $data['notification_id'] ?? null], $corrId);
-                $result = $mq->waitForResponse('bridge.result.notifications.read', $corrId);
+                $result = $mq->publishAndWait('bridge.notifications.read', ['user_id' => $data['user_id'] ?? null, 'notification_id' => $data['notification_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.notifications.read', $replyTo, $result ?? ['success' => false, 'error' => 'Could not mark as read'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.notifications.read', $replyTo, ['success' => false, 'error' => 'Could not mark as read'], $corrId); }
         }, $msg);
@@ -884,6 +769,6 @@ final class FrontendWorker
 
     private function encryptIfPresent($value): string
     {
-        return !empty($value) ? $this->enc->encrypt($value) : '';
+        return ($value !== null && $value !== '') ? $this->enc->encrypt($value) : '';
     }
 }
