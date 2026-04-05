@@ -45,6 +45,7 @@ $queues = [
     'db.auth.register',
     'db.auth.login',
     'db.auth.resetPassword',
+    'db.profile.update',
 
     'db.shelters.list',
     'db.shelters.get',
@@ -133,7 +134,6 @@ function handleQuery($queue, $data, $db) {
                 return ["success" => false, "error" => "Missing email or password_hash"];
             }
 
-            // Escaping all fields to prevent SQL injection
             $email        = $db->real_escape_string($data["email"]);
             $passwordHash = $db->real_escape_string($data["password_hash"]);
             $firstName    = $db->real_escape_string($data["first_name"] ?? '');
@@ -142,13 +142,11 @@ function handleQuery($queue, $data, $db) {
             $address      = $db->real_escape_string($data["address"] ?? '');
             $role         = $db->real_escape_string($data["role"] ?? 'adopter');
 
-            // 1. Check if the user already exists
             $check = $db->query("SELECT user_id FROM users WHERE email='{$email}' LIMIT 1");
             if ($check && $check->num_rows > 0) {
                 return ["success" => false, "error" => "Email already registered"];
             }
 
-            // 2. Insert the new user with all profile fields
             $sql = "INSERT INTO users (email, password_hash, first_name, last_name, phone, address, role)
                     VALUES ('{$email}', '{$passwordHash}', '{$firstName}', '{$lastName}', '{$phone}', '{$address}', '{$role}')";
 
@@ -158,7 +156,6 @@ function handleQuery($queue, $data, $db) {
                 return ["success" => false, "error" => $db->error];
             }
 
-            // 3. Return the success and the new user_id (This fixes the BackendWorker warning)
             return ["success" => true, "user_id" => $db->insert_id];
 
         case "db.auth.login":
@@ -192,6 +189,19 @@ function handleQuery($queue, $data, $db) {
             if ($db->affected_rows === 0) {
                 return ["success" => false, "error" => "User not found"];
             }
+            return ["success" => true];
+
+        case "db.profile.update":
+            if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
+            $userId    = (int)$data["user_id"];
+            $firstName = $db->real_escape_string($data["first_name"] ?? '');
+            $lastName  = $db->real_escape_string($data["last_name"]  ?? '');
+            $phone     = $db->real_escape_string($data["phone"]      ?? '');
+            $address   = $db->real_escape_string($data["address"]    ?? '');
+            $sql = "UPDATE users SET first_name='{$firstName}', last_name='{$lastName}', phone='{$phone}', address='{$address}' WHERE user_id={$userId}";
+            logMsg("Executing SQL: " . $sql);
+            $db->query($sql);
+            if ($db->affected_rows === 0) return ["success" => false, "error" => "User not found"];
             return ["success" => true];
 
         case "db.dogs.list":
@@ -579,31 +589,70 @@ function handleQuery($queue, $data, $db) {
     }
 }
 
-$callback = function($msg) use ($channel, $db) {
-    $queue = $msg->delivery_info['routing_key'];
-    logMsg("Message received from " . $queue);
-    logMsg("Raw body: " . $msg->body);
+$callback = function($msg) use ($host, $port, $user, $pass) {
+    $queue         = $msg->delivery_info['routing_key'];
+    $body          = $msg->body;
+    $correlationId = $msg->get_properties()['correlation_id'] ?? null;
 
-    try {
-        $data = json_decode($msg->body, true);
-        if (!is_array($data)) $data = [];
-        $result = handleQuery($queue, $data, $db);
-    } catch (\Throwable $e) {
-        logMsg("Worker error: " . $e->getMessage());
-        $result = ["success" => false, "error" => $e->getMessage()];
+    logMsg("Message received from " . $queue);
+    logMsg("Raw body: " . $body);
+
+    $pid = pcntl_fork();
+
+    if ($pid === -1) {
+        logMsg("Fork failed for queue: " . $queue);
+        return;
     }
 
-    $resultQueue = "db.result." . explode("db.", $queue)[1];
-    $correlationId = $msg->get_properties()['correlation_id'] ?? null;
-    $props = ['content_type' => 'application/json', 'delivery_mode' => 2];
-    if ($correlationId) $props['correlation_id'] = $correlationId;
+    if ($pid === 0) {
+        try {
+            $childDb = new mysqli(
+                $_ENV['DB_HOST'],
+                $_ENV['DB_USER'],
+                $_ENV['DB_PASS'],
+                $_ENV['DB_NAME'],
+                (int) $_ENV['DB_PORT']
+            );
 
-    logMsg("Sending result to " . $resultQueue);
-    logMsg("Response: " . json_encode($result));
+            if ($childDb->connect_error) {
+                logMsg("[CHILD] MySQL connection failed: " . $childDb->connect_error);
+                exit(1);
+            }
 
-    $channel->basic_publish(new AMQPMessage(json_encode($result), $props), '', $resultQueue);
+            $childConnection = new AMQPStreamConnection($host, $port, $user, $pass, "/");
+            $childChannel    = $childConnection->channel();
 
-    logMsg("Request processed\n");
+            $data = json_decode($body, true);
+            if (!is_array($data)) $data = [];
+
+            $result = handleQuery($queue, $data, $childDb);
+
+            $resultQueue = "db.result." . explode("db.", $queue)[1];
+            $props = ['content_type' => 'application/json', 'delivery_mode' => 2];
+            if ($correlationId) $props['correlation_id'] = $correlationId;
+
+            logMsg("[CHILD] Sending result to " . $resultQueue);
+            logMsg("[CHILD] Response: " . json_encode($result));
+
+            $childChannel->basic_publish(
+                new AMQPMessage(json_encode($result), $props),
+                '',
+                $resultQueue
+            );
+
+            $childChannel->close();
+            $childConnection->close();
+            $childDb->close();
+
+            logMsg("[CHILD] Done — exiting");
+        } catch (\Throwable $e) {
+            logMsg("[CHILD] Error: " . $e->getMessage());
+        }
+
+        exit(0);
+    }
+
+    pcntl_waitpid(-1, $status, WNOHANG);
 };
 
 foreach ($queues as $q) {
@@ -614,4 +663,5 @@ logMsg("DATABASE IS RUNNING VERSION 2.0");
 
 while ($channel->is_consuming()) {
     $channel->wait();
+    pcntl_waitpid(-1, $status, WNOHANG);
 }
