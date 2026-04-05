@@ -36,14 +36,12 @@ export default function App() {
       <Route path="/my-dogs"         element={<SavedDogs />} />
       <Route path="/settings"        element={<Settings />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-<<<<<<< HEAD
-      <Route path="/quiz"            element={<Quiz />} />
-      <Route path="/quiz-results"    element={<QuizResults />} />
+      
+      {/* Added your missing routes here */}
       <Route path="/apply"           element={<ApplicationForm />} />
       <Route path="/applications"    element={<Applications />} />
-=======
-      <Route path="/apply" element={<ApplicationForm />} />
->>>>>>> 037c91f (Frontend Additions)
+      <Route path="/quiz"            element={<Quiz />} />
+      <Route path="/quiz-results"    element={<QuizResults />} />
 
       <Route path="/admin"           element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
