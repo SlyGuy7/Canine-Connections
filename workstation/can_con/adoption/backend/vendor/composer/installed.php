@@ -3,7 +3,7 @@
         'name' => 'adoption/backend',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
-        'reference' => '8a9fdaf8a0a0fc7dbdf2cb6ba0cf659fe573c04c',
+        'reference' => '739c0d57970912059945d220941c2b2504825a32',
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +13,7 @@
         'adoption/backend' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
-            'reference' => '8a9fdaf8a0a0fc7dbdf2cb6ba0cf659fe573c04c',
+            'reference' => '739c0d57970912059945d220941c2b2504825a32',
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

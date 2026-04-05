@@ -10,59 +10,23 @@ export default function Dashboard() {
   const [user, setUser] = useState("Friend")
   const [featuredDog, setFeaturedDog] = useState(null)
   const [loadingDog, setLoadingDog] = useState(true)
-
   const [adoptedDogs, setAdoptedDogs] = useState([])
   const [selectedDogId, setSelectedDogId] = useState(null)
   const [logs, setLogs] = useState([])
   const [loadingLogs, setLoadingLogs] = useState(false)
-
   const [logForm, setLogForm] = useState({ log_type: "general", title: "", notes: "", log_date: new Date().toISOString().split("T")[0] })
   const [savingLog, setSavingLog] = useState(false)
   const [showLogForm, setShowLogForm] = useState(false)
-
   const [stats, setStats] = useState({ saved: 0, applications: 0 })
 
   useEffect(() => {
     loadAll()
   }, [location])
 
-  async function loadDashboardData() {
-    await loadStats();
-    loadUser();
-    await loadFeaturedDog();
-  }
-
-  async function loadStats() {
-    // 1. Get Saved Dogs from LocalStorage (standard for your setup)
-    const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
-    
-    // 2. Default to LocalStorage for apps in case of timeout/error
-    const localApps = JSON.parse(localStorage.getItem("myApplications") || "[]");
-    let appCount = localApps.length;
-    let msgCount = 0;
-
-    try {
-      // Attempt to get real-time counts from backend
-      // Note: This will hit your 30s timeout until the backend worker is fixed
-      const appResult = await sendMessage("request.apps.get", {});
-      const msgResult = await sendMessage("request.messages.get", {});
-
-      if (appResult && Array.isArray(appResult.apps)) {
-        appCount = appResult.apps.length;
-      }
-      
-      if (msgResult && Array.isArray(msgResult.messages)) {
-        msgCount = msgResult.messages.length;
-      }
-    } catch (err) {
-      console.log("Backend stats sync failed or timed out. Using local defaults.");
-    }
-
-    setStats({
-      saved: saved.length,
-      applications: appCount,
-      messages: msgCount,
-    });
+  async function loadAll() {
+    loadUser()
+    loadStats()
+    await Promise.all([loadFeaturedDog(), loadAdoptions()])
   }
 
   function loadUser() {
@@ -75,43 +39,21 @@ export default function Dashboard() {
     setUser("Friend")
   }
 
-    if (firstName) {
-      setUser(firstName);
-      return;
-    }
-    if (fullName) {
-      setUser(fullName);
-      return;
-    }
-    if (email) {
-      setUser(email.split("@")[0]);
-      return;
-    }
-    setUser("Friend");
+  function loadStats() {
+    const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]")
+    const applications = JSON.parse(localStorage.getItem("myApplications") || "[]")
+    setStats({ saved: saved.length, applications: applications.length })
   }
 
   async function loadFeaturedDog() {
-    setLoadingDog(true);
+    setLoadingDog(true)
     try {
-      const result = await sendMessage("request.dogs.get", {});
-
-      if (result && Array.isArray(result.dogs) && result.dogs.length > 0) {
-        const randomIndex = Math.floor(Math.random() * result.dogs.length);
-        const dog = result.dogs[randomIndex];
-
-        setFeaturedDog({
-          id: dog?.id || fallbackDog.id,
-          name: dog?.name || fallbackDog.name,
-          breed: dog?.breed || fallbackDog.breed,
-          description: dog?.description || fallbackDog.description,
-          image: dog?.image || "",
-        });
-      } else {
-        setFeaturedDog(fallbackDog);
+      const result = await sendMessage("request.dogs.list", {})
+      if (result?.success && result.dogs?.length > 0) {
+        setFeaturedDog(result.dogs[Math.floor(Math.random() * result.dogs.length)])
       }
-    } catch (error) {
-      console.log("Failed to load featured dog (timeout), using fallback.");
-      setFeaturedDog(fallbackDog);
+    } catch (err) {
+      setFeaturedDog(null)
     } finally {
       setLoadingDog(false)
     }
@@ -124,9 +66,8 @@ export default function Dashboard() {
       const result = await sendMessage("request.adoptions.list", { user_id: parseInt(userId) })
       if (result?.success && result.adoptions?.length > 0) {
         setAdoptedDogs(result.adoptions)
-        const firstId = result.adoptions[0].dog_id
-        setSelectedDogId(firstId)
-        loadLogs(firstId)
+        setSelectedDogId(result.adoptions[0].dog_id)
+        loadLogs(result.adoptions[0].dog_id)
       }
     } catch (err) {
       setAdoptedDogs([])
@@ -139,11 +80,7 @@ export default function Dashboard() {
     setLoadingLogs(true)
     try {
       const result = await sendMessage("request.adoption.log.list", { user_id: parseInt(userId), dog_id: dogId })
-      if (result?.success && result.logs) {
-        setLogs(result.logs)
-      } else {
-        setLogs([])
-      }
+      setLogs(result?.success && result.logs ? result.logs : [])
     } catch (err) {
       setLogs([])
     } finally {
@@ -180,28 +117,17 @@ export default function Dashboard() {
         loadLogs(selectedDogId)
       }
     } catch (err) {
-      // silent
     } finally {
       setSavingLog(false)
     }
   }
 
   const nextSteps = useMemo(() => [
-    { label: "Complete your profile", done: !!localStorage.getItem("userEmail"), path: "/settings" },
-    { label: "Save a dog you like", done: stats.saved > 0, path: "/browse-dogs" },
-    { label: "Submit your first application", done: stats.applications > 0, path: "/browse-dogs" },
-    { label: "Take the compatibility quiz", done: !!localStorage.getItem("quizMatchedDogIds"), path: "/quiz" },
+    { label: "Complete your profile",        done: !!localStorage.getItem("userEmail"),          path: "/settings" },
+    { label: "Save a dog you like",          done: stats.saved > 0,                              path: "/browse-dogs" },
+    { label: "Submit your first application",done: stats.applications > 0,                       path: "/browse-dogs" },
+    { label: "Take the compatibility quiz",  done: !!localStorage.getItem("quizMatchedDogIds"),  path: "/quiz" },
   ], [stats])
-
-  const logTypeIcon = (type) => {
-    switch (type) {
-      case "vet":        return "Vet"
-      case "feeding":    return "Feeding"
-      case "training":   return "Training"
-      case "milestone":  return "Milestone"
-      default:           return "Note"
-    }
-  }
 
   const logTypeBadge = (type) => {
     switch (type) {
@@ -210,6 +136,16 @@ export default function Dashboard() {
       case "training":  return "pending"
       case "milestone": return "approved"
       default:          return "pending"
+    }
+  }
+
+  const logTypeLabel = (type) => {
+    switch (type) {
+      case "vet":       return "Vet"
+      case "feeding":   return "Feeding"
+      case "training":  return "Training"
+      case "milestone": return "Milestone"
+      default:          return "Note"
     }
   }
 
@@ -243,35 +179,31 @@ export default function Dashboard() {
         </div>
 
         <section className="stats-grid">
-          <StatCard value={stats.saved} label="Saved Dogs" onClick={() => navigate("/my-dogs")} />
-          <StatCard value={stats.applications} label="Applications" onClick={() => navigate("/applications")} />
-          <StatCard value={adoptedDogs.length} label="Adopted Dogs" onClick={() => {}} />
-          <StatCard value={logs.length} label="Journal Entries" onClick={() => {}} />
+          <StatCard value={stats.saved}        label="Saved Dogs"      onClick={() => navigate("/my-dogs")} />
+          <StatCard value={stats.applications} label="Applications"    onClick={() => navigate("/applications")} />
+          <StatCard value={adoptedDogs.length} label="Adopted Dogs"    onClick={() => {}} />
+          <StatCard value={logs.length}        label="Journal Entries" onClick={() => {}} />
         </section>
 
         <section className="dashboard-main-grid">
 
           <div className="dashboard-panel highlight-panel">
             <div className="panel-header">
-              <h2>
-                {loadingDog
-                  ? "Featured Companion"
-                  : `Featured Companion: ${featuredDog.name}`}
-              </h2>
+              <h2>{loadingDog ? "Featured Companion" : featuredDog ? `Meet ${featuredDog.name}` : "Featured Companion"}</h2>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-              <div style={{ flex: 1, minWidth: '200px' }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "24px", flexWrap: "wrap" }}>
+              <div style={{ flex: 1, minWidth: "200px" }}>
                 {loadingDog ? (
                   <>
-                    <div style={{ height: '16px', width: '80%', background: '#e0e0e0', borderRadius: '6px', marginBottom: '10px' }} />
-                    <div style={{ height: '16px', width: '60%', background: '#e0e0e0', borderRadius: '6px', marginBottom: '20px' }} />
+                    <div style={{ height: "16px", width: "80%", background: "#e0e0e0", borderRadius: "6px", marginBottom: "10px" }} />
+                    <div style={{ height: "16px", width: "60%", background: "#e0e0e0", borderRadius: "6px", marginBottom: "20px" }} />
                   </>
                 ) : featuredDog ? (
                   <>
-                    <p className="activity-subtext" style={{ marginBottom: '8px' }}>
+                    <p className="activity-subtext" style={{ marginBottom: "8px" }}>
                       <strong>{featuredDog.breed}</strong> &bull; {featuredDog.age_years} {featuredDog.age_years == 1 ? "yr" : "yrs"} &bull; {featuredDog.size}
                     </p>
-                    <p className="activity-subtext" style={{ marginBottom: '18px' }}>
+                    <p className="activity-subtext" style={{ marginBottom: "18px" }}>
                       {featuredDog.description || `${featuredDog.name} is looking for a loving home.`}
                     </p>
                     <button className="btn btn-primary" onClick={() => navigate(`/dogs/${featuredDog.dog_id}`)}>
@@ -282,11 +214,11 @@ export default function Dashboard() {
                   <p className="activity-subtext">Browse our available dogs to find your perfect companion.</p>
                 )}
               </div>
-              <div style={{ width: '160px', height: '160px', borderRadius: '50%', background: '#fcedda', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', flexShrink: 0 }}>
+              <div style={{ width: "160px", height: "160px", borderRadius: "50%", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
                 {featuredPhoto ? (
-                  <img src={featuredPhoto} alt={featuredDog?.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <img src={featuredPhoto} alt={featuredDog?.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
-                  <span style={{ fontSize: '14px', color: '#6f5848', textAlign: 'center', padding: '0 12px' }}>No photo</span>
+                  <span style={{ fontSize: "14px", color: "#6f5848", textAlign: "center", padding: "0 12px" }}>No photo</span>
                 )}
               </div>
             </div>
@@ -298,7 +230,7 @@ export default function Dashboard() {
             </div>
             <div className="activity-list">
               {nextSteps.map((step) => (
-                <div key={step.label} className="activity-item" style={{ cursor: 'pointer' }} onClick={() => !step.done && navigate(step.path)}>
+                <div key={step.label} className="activity-item" style={{ cursor: "pointer" }} onClick={() => !step.done && navigate(step.path)}>
                   <div>
                     <p className="activity-title">{step.label}</p>
                     <p className="activity-subtext">{step.done ? "Completed" : "Tap to get started"}</p>
@@ -314,10 +246,10 @@ export default function Dashboard() {
         </section>
 
         {adoptedDogs.length > 0 && (
-          <section style={{ marginTop: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          <section style={{ marginTop: "32px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
               <div>
-                <h2 style={{ margin: '0 0 4px 0', color: 'var(--text-main)' }}>Post-Adoption Journal</h2>
+                <h2 style={{ margin: "0 0 4px 0", color: "var(--text-main)" }}>Post-Adoption Journal</h2>
                 <p className="page-subtitle" style={{ margin: 0 }}>Track vet visits, feeding, training milestones, and more.</p>
               </div>
               <button className="btn btn-primary" onClick={() => setShowLogForm((v) => !v)}>
@@ -326,17 +258,12 @@ export default function Dashboard() {
             </div>
 
             {adoptedDogs.length > 1 && (
-              <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
+              <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
                 {adoptedDogs.map((dog) => (
                   <button
                     key={dog.dog_id}
                     className="btn"
-                    style={{
-                      fontSize: '14px',
-                      background: selectedDogId === dog.dog_id ? 'var(--brand)' : 'white',
-                      color: selectedDogId === dog.dog_id ? 'white' : 'var(--text-main)',
-                      border: '1px solid #d8c1af',
-                    }}
+                    style={{ fontSize: "14px", background: selectedDogId === dog.dog_id ? "var(--brand)" : "white", color: selectedDogId === dog.dog_id ? "white" : "var(--text-main)", border: "1px solid #d8c1af" }}
                     onClick={() => handleDogSelect(dog.dog_id)}
                   >
                     {dog.dog_name || `Dog #${dog.dog_id}`}
@@ -346,11 +273,11 @@ export default function Dashboard() {
             )}
 
             {showLogForm && (
-              <div className="settings-card" style={{ marginBottom: '24px' }}>
-                <h3 style={{ margin: '0 0 20px 0', color: 'var(--text-main)' }}>
+              <div className="settings-card" style={{ marginBottom: "24px" }}>
+                <h3 style={{ margin: "0 0 20px 0", color: "var(--text-main)" }}>
                   New Journal Entry {selectedDog ? `for ${selectedDog.dog_name}` : ""}
                 </h3>
-                <form onSubmit={handleAddLog} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <form onSubmit={handleAddLog} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
                   <div className="form-row">
                     <div className="flex-1">
                       <label className="form-label">Entry Type</label>
@@ -372,18 +299,10 @@ export default function Dashboard() {
                     <input required name="title" value={logForm.title} onChange={handleLogChange} className="form-input" placeholder="e.g. First vet checkup, Learned sit command" />
                   </div>
                   <div>
-                    <label className="form-label">Notes <span style={{ color: 'var(--text-muted)', fontWeight: '400' }}>(optional)</span></label>
-                    <textarea
-                      name="notes"
-                      value={logForm.notes}
-                      onChange={handleLogChange}
-                      className="form-input"
-                      rows="3"
-                      placeholder="Add any details, observations, or reminders."
-                      style={{ resize: 'vertical', minHeight: '80px' }}
-                    />
+                    <label className="form-label">Notes <span style={{ color: "var(--text-muted)", fontWeight: "400" }}>(optional)</span></label>
+                    <textarea name="notes" value={logForm.notes} onChange={handleLogChange} className="form-input" rows="3" placeholder="Add any details, observations, or reminders." style={{ resize: "vertical", minHeight: "80px" }} />
                   </div>
-                  <button type="submit" className="btn btn-primary" disabled={savingLog} style={{ alignSelf: 'flex-start', minWidth: '140px' }}>
+                  <button type="submit" className="btn btn-primary" disabled={savingLog} style={{ alignSelf: "flex-start", minWidth: "140px" }}>
                     {savingLog ? "Saving..." : "Save Entry"}
                   </button>
                 </form>
@@ -391,36 +310,34 @@ export default function Dashboard() {
             )}
 
             {loadingLogs ? (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {[1, 2, 3].map((i) => (
-                  <div key={i} className="settings-card" style={{ padding: '16px' }}>
-                    <div style={{ height: '16px', width: '40%', background: '#e0e0e0', borderRadius: '6px', marginBottom: '8px' }} />
-                    <div style={{ height: '14px', width: '70%', background: '#e0e0e0', borderRadius: '6px' }} />
+                  <div key={i} className="settings-card" style={{ padding: "16px" }}>
+                    <div style={{ height: "16px", width: "40%", background: "#e0e0e0", borderRadius: "6px", marginBottom: "8px" }} />
+                    <div style={{ height: "14px", width: "70%", background: "#e0e0e0", borderRadius: "6px" }} />
                   </div>
                 ))}
               </div>
             ) : logs.length === 0 ? (
-              <div className="settings-card" style={{ textAlign: 'center', padding: '40px 20px' }}>
-                <p style={{ color: 'var(--text-muted)', margin: '0 0 16px 0' }}>No journal entries yet. Add your first entry to start tracking your dog's journey.</p>
+              <div className="settings-card" style={{ textAlign: "center", padding: "40px 20px" }}>
+                <p style={{ color: "var(--text-muted)", margin: "0 0 16px 0" }}>No journal entries yet. Add your first entry to start tracking your dog's journey.</p>
                 <button className="btn btn-primary" onClick={() => setShowLogForm(true)}>Add First Entry</button>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {logs.map((log, index) => (
-                  <div key={log.log_id || index} className="settings-card" style={{ padding: '20px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '8px' }}>
+                  <div key={log.log_id || index} className="settings-card" style={{ padding: "20px" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px" }}>
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px', flexWrap: 'wrap' }}>
-                          <span className={`status-badge ${logTypeBadge(log.log_type)}`} style={{ fontSize: '11px' }}>
-                            {logTypeIcon(log.log_type)}
-                          </span>
-                          <h4 style={{ margin: 0, color: 'var(--text-main)', fontWeight: '600' }}>{log.title}</h4>
+                        <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
+                          <span className={`status-badge ${logTypeBadge(log.log_type)}`} style={{ fontSize: "11px" }}>{logTypeLabel(log.log_type)}</span>
+                          <h4 style={{ margin: 0, color: "var(--text-main)", fontWeight: "600" }}>{log.title}</h4>
                         </div>
                         {log.notes && (
-                          <p style={{ margin: '0 0 6px 0', color: 'var(--text-light)', fontSize: '14px', lineHeight: '1.5' }}>{log.notes}</p>
+                          <p style={{ margin: "0 0 6px 0", color: "var(--text-light)", fontSize: "14px", lineHeight: "1.5" }}>{log.notes}</p>
                         )}
                       </div>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '13px', whiteSpace: 'nowrap' }}>{formatDate(log.log_date)}</span>
+                      <span style={{ color: "var(--text-muted)", fontSize: "13px", whiteSpace: "nowrap" }}>{formatDate(log.log_date)}</span>
                     </div>
                   </div>
                 ))}
@@ -430,10 +347,10 @@ export default function Dashboard() {
         )}
 
         {adoptedDogs.length === 0 && (
-          <section style={{ marginTop: '32px' }}>
-            <div className="settings-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
-              <h3 style={{ margin: '0 0 12px 0', color: 'var(--text-main)' }}>Post-Adoption Journal</h3>
-              <p style={{ color: 'var(--text-muted)', margin: '0 0 24px 0', maxWidth: '400px', marginLeft: 'auto', marginRight: 'auto' }}>
+          <section style={{ marginTop: "32px" }}>
+            <div className="settings-card" style={{ textAlign: "center", padding: "48px 24px" }}>
+              <h3 style={{ margin: "0 0 12px 0", color: "var(--text-main)" }}>Post-Adoption Journal</h3>
+              <p style={{ color: "var(--text-muted)", margin: "0 0 24px 0", maxWidth: "400px", marginLeft: "auto", marginRight: "auto" }}>
                 Once an adoption is finalized, your journal will appear here. Track vet appointments, feeding logs, training milestones, and celebrate every moment with your new companion.
               </p>
               <button className="btn btn-primary" onClick={() => navigate("/browse-dogs")}>
@@ -446,10 +363,11 @@ export default function Dashboard() {
       </div>
     </div>
   )
+}
 
 function StatCard({ value, label, onClick }) {
   return (
-    <div className="stat-card" onClick={onClick} role="button" tabIndex="0" style={{ cursor: 'pointer' }}>
+    <div className="stat-card" onClick={onClick} role="button" tabIndex="0" style={{ cursor: "pointer" }}>
       <div className="stat-number">{value}</div>
       <div className="stat-label">{label}</div>
     </div>
