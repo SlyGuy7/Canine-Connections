@@ -10,21 +10,32 @@ Config::loadEnv(__DIR__ . '/.env');
 
 echo " Canine Connections — Frontend Worker\n";
 
-try {
-    $mq = new RabbitMqClient(
-        $_ENV['RABBITMQ_HOST'],
-        (int)$_ENV['RABBITMQ_PORT'],
-        $_ENV['RABBITMQ_USER'],
-        $_ENV['RABBITMQ_PASS']
-    );
-    echo "[FrontendWorker] RabbitMQ connected\n";
-} catch (\Throwable $e) {
-    echo "[FrontendWorker][FATAL] RabbitMQ connection failed: {$e->getMessage()}\n";
-    exit(1);
+pcntl_async_signals(true);
+
+$running = true;
+pcntl_signal(SIGINT,  function () use (&$running) { $running = false; echo "\n[FrontendWorker] Shutting down...\n"; });
+pcntl_signal(SIGTERM, function () use (&$running) { $running = false; echo "\n[FrontendWorker] Shutting down...\n"; });
+
+while ($running) {
+    try {
+        $mq = new RabbitMqClient(
+            $_ENV['RABBITMQ_HOST'],
+            (int)$_ENV['RABBITMQ_PORT'],
+            $_ENV['RABBITMQ_USER'],
+            $_ENV['RABBITMQ_PASS']
+        );
+        echo "[FrontendWorker] RabbitMQ connected\n";
+
+        $worker = new FrontendWorker($mq);
+        $worker->run();
+    } catch (\Throwable $e) {
+        if (!$running) break;
+        echo "[FrontendWorker][ERROR] {$e->getMessage()}\n";
+        echo "[FrontendWorker] Reconnecting in 2 seconds...\n";
+        for ($i = 0; $i < 20 && $running; $i++) {
+            usleep(100000);
+        }
+    }
 }
 
-pcntl_signal(SIGINT,  function () use ($mq) { $mq->close(); exit(0); });
-pcntl_signal(SIGTERM, function () use ($mq) { $mq->close(); exit(0); });
-
-$worker = new FrontendWorker($mq);
-$worker->run();
+echo "[FrontendWorker] Stopped.\n";

@@ -14,6 +14,8 @@ final class RabbitMqClient
 
         'request.auth.register',
         'request.auth.login',
+        'request.auth.resetPassword',
+        'request.profile.update',
 
         'request.shelters.list',
         'request.shelters.get',
@@ -72,6 +74,8 @@ final class RabbitMqClient
 
         'response.auth.register',
         'response.auth.login',
+        'response.auth.resetPassword',
+        'response.profile.update',
 
         'response.shelters.list',
         'response.shelters.get',
@@ -126,10 +130,133 @@ final class RabbitMqClient
 
         'response.notifications.list',
         'response.notifications.read',
+
         'notifications',
+
+        'bridge.auth.register',
+        'bridge.auth.login',
+        'bridge.auth.resetPassword',
+        'bridge.profile.update',
+
+        'bridge.shelters.list',
+        'bridge.shelters.get',
+
+        'bridge.api.key.get',
+        'bridge.api.key.regenerate',
+        'bridge.api.logs',
+
+        'bridge.dogs.list',
+        'bridge.dogs.get',
+
+        'bridge.application.submit',
+        'bridge.application.status',
+        'bridge.application.list',
+        'bridge.application.approve',
+        'bridge.application.reject',
+
+        'bridge.adoptions.list',
+        'bridge.adoptions.get',
+        'bridge.adoptions.finalize',
+
+        'bridge.quiz.questions',
+        'bridge.quiz.submit',
+        'bridge.quiz.results',
+
+        'bridge.adoption.log.create',
+        'bridge.adoption.log.list',
+
+        'bridge.foster.apply',
+        'bridge.foster.list',
+        'bridge.foster.cancel',
+
+        'bridge.parks.list',
+
+        'bridge.resources.list',
+        'bridge.resources.get',
+
+        'bridge.stories.list',
+        'bridge.stories.submit',
+        'bridge.stories.approve',
+
+        'bridge.badges.list',
+        'bridge.badges.mine',
+
+        'bridge.enquiry.send',
+        'bridge.chat.start',
+        'bridge.chat.message',
+        'bridge.chat.history',
+
+        'bridge.meetgreet.schedule',
+        'bridge.meetgreet.list',
+        'bridge.meetgreet.cancel',
+
+        'bridge.notifications.list',
+        'bridge.notifications.read',
+
+        'bridge.result.auth.register',
+        'bridge.result.auth.login',
+        'bridge.result.auth.resetPassword',
+        'bridge.result.profile.update',
+
+        'bridge.result.shelters.list',
+        'bridge.result.shelters.get',
+
+        'bridge.result.api.key.get',
+        'bridge.result.api.key.regenerate',
+        'bridge.result.api.logs',
+
+        'bridge.result.dogs.list',
+        'bridge.result.dogs.get',
+
+        'bridge.result.application.submit',
+        'bridge.result.application.status',
+        'bridge.result.application.list',
+        'bridge.result.application.approve',
+        'bridge.result.application.reject',
+
+        'bridge.result.adoptions.list',
+        'bridge.result.adoptions.get',
+        'bridge.result.adoptions.finalize',
+
+        'bridge.result.quiz.questions',
+        'bridge.result.quiz.submit',
+        'bridge.result.quiz.results',
+
+        'bridge.result.adoption.log.create',
+        'bridge.result.adoption.log.list',
+
+        'bridge.result.foster.apply',
+        'bridge.result.foster.list',
+        'bridge.result.foster.cancel',
+
+        'bridge.result.parks.list',
+
+        'bridge.result.resources.list',
+        'bridge.result.resources.get',
+
+        'bridge.result.stories.list',
+        'bridge.result.stories.submit',
+        'bridge.result.stories.approve',
+
+        'bridge.result.badges.list',
+        'bridge.result.badges.mine',
+
+        'bridge.result.enquiry.send',
+        'bridge.result.chat.start',
+        'bridge.result.chat.message',
+        'bridge.result.chat.history',
+
+        'bridge.result.meetgreet.schedule',
+        'bridge.result.meetgreet.list',
+        'bridge.result.meetgreet.cancel',
+
+        'bridge.result.notifications.list',
+        'bridge.result.notifications.read',
 
         'db.auth.register',
         'db.auth.login',
+        'db.auth.resetPassword',
+        'db.profile.update',
 
         'db.shelters.list',
         'db.shelters.get',
@@ -191,6 +318,8 @@ final class RabbitMqClient
 
         'db.result.auth.register',
         'db.result.auth.login',
+        'db.result.auth.resetPassword',
+        'db.result.profile.update',
 
         'db.result.shelters.list',
         'db.result.shelters.get',
