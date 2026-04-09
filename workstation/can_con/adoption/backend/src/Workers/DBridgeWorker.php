@@ -10,7 +10,7 @@ final class DBridgeWorker
     {
     }
 
-    public function run(): void
+    public function run(bool &$running = true): void
     {
         echo "[DBridgeWorker] Registering consumers...\n";
 
@@ -61,7 +61,7 @@ final class DBridgeWorker
 
         echo "[DBridgeWorker] All consumers registered — listening\n";
 
-        $this->mq->wait();
+        $this->mq->wait($running);
     }
 
     private function fork(callable $fn, $msg): void

@@ -592,7 +592,9 @@ function handleQuery($queue, $data, $db) {
 $callback = function($msg) use ($host, $port, $user, $pass) {
     $queue         = $msg->delivery_info['routing_key'];
     $body          = $msg->body;
-    $correlationId = $msg->get_properties()['correlation_id'] ?? null;
+    $msgProps      = $msg->get_properties();
+    $correlationId = $msgProps['correlation_id'] ?? null;
+    $replyTo       = $msgProps['reply_to'] ?? '';
 
     logMsg("Message received from " . $queue);
     logMsg("Raw body: " . $body);
@@ -627,12 +629,19 @@ $callback = function($msg) use ($host, $port, $user, $pass) {
 
             $result = handleQuery($queue, $data, $childDb);
 
-            $resultQueue = "db.result." . explode("db.", $queue)[1];
+            $resultQueue = ($replyTo !== '')
+                ? $replyTo
+                : ("db.result." . substr($queue, strlen("db.")));
+
             $props = ['content_type' => 'application/json', 'delivery_mode' => 2];
             if ($correlationId) $props['correlation_id'] = $correlationId;
 
-            logMsg("[CHILD] Sending result to " . $resultQueue);
-            logMsg("[CHILD] Response: " . json_encode($result));
+            if ($replyTo !== '') {
+                $childChannel->queue_declare($resultQueue, false, false, true, true);
+            }
+
+            logMsg("Sending result to " . $resultQueue);
+            logMsg("Response: " . json_encode($result));
 
             $childChannel->basic_publish(
                 new AMQPMessage(json_encode($result), $props),
@@ -644,7 +653,7 @@ $callback = function($msg) use ($host, $port, $user, $pass) {
             $childConnection->close();
             $childDb->close();
 
-            logMsg("[CHILD] Done — exiting");
+            logMsg("Request processed");
         } catch (\Throwable $e) {
             logMsg("[CHILD] Error: " . $e->getMessage());
         }

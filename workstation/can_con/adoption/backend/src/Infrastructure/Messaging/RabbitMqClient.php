@@ -257,11 +257,11 @@ final class RabbitMqClient
         return null;
     }
 
-    public function wait(): void
+    public function wait(bool &$running = true): void
     {
         echo "[MQ] Event loop running...\n";
-        while ($this->channel->is_consuming()) {
-            $this->channel->wait();
+        while ($running && $this->channel->is_consuming()) {
+            try { $this->channel->wait(null, false, 1); } catch (\PhpAmqpLib\Exception\AMQPTimeoutException $e) {}
             pcntl_signal_dispatch();
         }
     }

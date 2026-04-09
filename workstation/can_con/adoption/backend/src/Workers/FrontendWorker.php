@@ -15,7 +15,7 @@ final class FrontendWorker
         $this->enc = new Encryption();
     }
 
-    public function run(): void
+    public function run(bool &$running = true): void
     {
         echo "[FrontendWorker] Registering consumers...\n";
 
@@ -66,7 +66,7 @@ final class FrontendWorker
 
         echo "[FrontendWorker] All consumers registered — listening\n";
 
-        $this->mq->wait();
+        $this->mq->wait($running);
     }
 
     private function childMq(): RabbitMqClient

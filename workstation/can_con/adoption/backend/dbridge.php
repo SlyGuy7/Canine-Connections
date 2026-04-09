@@ -27,7 +27,7 @@ while ($running) {
         echo "[DBridgeWorker] RabbitMQ connected\n";
 
         $worker = new DBridgeWorker($mq);
-        $worker->run();
+        $worker->run($running);
     } catch (\Throwable $e) {
         if (!$running) break;
         echo "[DBridgeWorker][ERROR] {$e->getMessage()}\n";

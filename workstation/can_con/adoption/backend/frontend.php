@@ -27,7 +27,7 @@ while ($running) {
         echo "[FrontendWorker] RabbitMQ connected\n";
 
         $worker = new FrontendWorker($mq);
-        $worker->run();
+        $worker->run($running);
     } catch (\Throwable $e) {
         if (!$running) break;
         echo "[FrontendWorker][ERROR] {$e->getMessage()}\n";
