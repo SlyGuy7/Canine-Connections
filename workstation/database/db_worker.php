@@ -636,10 +636,6 @@ $callback = function($msg) use ($host, $port, $user, $pass) {
             $props = ['content_type' => 'application/json', 'delivery_mode' => 2];
             if ($correlationId) $props['correlation_id'] = $correlationId;
 
-            if ($replyTo !== '') {
-                $childChannel->queue_declare($resultQueue, false, false, true, true);
-            }
-
             logMsg("Sending result to " . $resultQueue);
             logMsg("Response: " . json_encode($result));
 
