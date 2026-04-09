@@ -72,24 +72,47 @@ export async function sendMessage(type, payload) {
 
     const client = new Client({
       brokerURL: BROKER_URL,
-
       connectHeaders: {
         login: "admin",
         passcode: "REDACTED",
         host: "/",
       },
-
       reconnectDelay: 0,
-
-      debug: (str) => {
-        console.log(`[STOMP][DEBUG] ${str}`);
-      },
+      debug: (str) => console.log(`[STOMP][DEBUG] ${str}`),
 
       onConnect: () => {
         console.log("[STOMP] Connected to broker successfully");
         console.log("[STOMP] Creating reply subscription now...");
 
         try {
+          client.watchForReceipt(subscribeReceiptId, () => {
+            console.log("[STOMP] Reply subscription confirmed by broker");
+            console.log("[STOMP] Safe to publish request now");
+
+            try {
+              client.publish({
+                destination: requestDestination,
+                headers: {
+                  "correlation-id": correlationId,
+                  "reply-to": replyQueue,
+                },
+                body: JSON.stringify(payload),
+              });
+
+              console.log("[STOMP] Request published successfully");
+              console.log("[STOMP] Published to:", requestDestination);
+              console.log("[STOMP] reply-to header:", replyQueue);
+              console.log("[STOMP] correlation-id header:", correlationId);
+            } catch (err) {
+              console.error("[STOMP][ERROR] Failed to publish request:", err);
+              finish(
+                client,
+                { success: false, error: "Failed to publish request" },
+                "publish failed"
+              );
+            }
+          });
+
           subscription = client.subscribe(
             replyDestination,
             (message) => {
@@ -121,10 +144,7 @@ export async function sendMessage(type, payload) {
 
                 finish(client, parsed, "reply received");
               } catch (err) {
-                console.error(
-                  "[STOMP][ERROR] Failed to parse reply JSON:",
-                  err
-                );
+                console.error("[STOMP][ERROR] Failed to parse reply JSON:", err);
                 console.error(
                   "[STOMP][ERROR] This means the worker replied with invalid JSON."
                 );
@@ -187,7 +207,7 @@ export async function sendMessage(type, payload) {
             "[STOMP][ERROR] 2. The worker replied to the wrong queue name"
           );
           console.error(
-            "[STOMP][ERROR] 3. The broker subscription was not active before publish"
+            "[STOMP][ERROR] 3. The publish never happened"
           );
           console.error(
             "[STOMP][ERROR] 4. The backend reply body was invalid"
@@ -202,43 +222,6 @@ export async function sendMessage(type, payload) {
             "timeout"
           );
         }, REQUEST_TIMEOUT_MS);
-      },
-
-      onReceipt: (frame) => {
-        const receiptId = frame.headers["receipt-id"];
-        console.log("[STOMP] Receipt received:", receiptId);
-
-        if (receiptId === subscribeReceiptId) {
-          console.log("[STOMP] Reply subscription confirmed by broker");
-          console.log("[STOMP] Safe to publish request now");
-
-          try {
-            client.publish({
-              destination: requestDestination,
-              headers: {
-                "correlation-id": correlationId,
-                "reply-to": replyQueue,
-              },
-              body: JSON.stringify(payload),
-            });
-
-            console.log("[STOMP] Request published successfully");
-            console.log("[STOMP] Published to:", requestDestination);
-            console.log("[STOMP] reply-to header:", replyQueue);
-            console.log("[STOMP] correlation-id header:", correlationId);
-          } catch (err) {
-            console.error("[STOMP][ERROR] Failed to publish request:", err);
-
-            finish(
-              client,
-              {
-                success: false,
-                error: "Failed to publish request",
-              },
-              "publish failed"
-            );
-          }
-        }
       },
 
       onStompError: (frame) => {
