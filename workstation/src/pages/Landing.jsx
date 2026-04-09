@@ -10,7 +10,6 @@ function CategoryPreviewModal({ category, dogs, close, navigate }) {
   let title = "";
   let subtitle = "";
 
-  // Customize the text and filter the dogs based on the category
   if (category === "Small Dogs") {
     previewDogs = dogs.filter((d) => d.size === "Small");
     title = "Little Pups, Big Hearts 🐕";
@@ -25,7 +24,6 @@ function CategoryPreviewModal({ category, dogs, close, navigate }) {
     subtitle = "Young, energetic, and ready to join your family.";
   }
 
-  // Ensure we always show 4 dogs safely
   if (previewDogs.length < 4 && dogs.length > 0) {
     const extraDogs = dogs.filter(d => !previewDogs.includes(d));
     previewDogs = [...previewDogs, ...extraDogs].slice(0, 4);
@@ -35,20 +33,20 @@ function CategoryPreviewModal({ category, dogs, close, navigate }) {
 
   return (
     <div className="modal-overlay" onClick={close}>
-      <div 
-        className="modal-content" 
-        style={{ 
-          width: "850px", 
-          padding: "40px", 
-          backgroundColor: "#fffaf5", /* Fixed the transparent background */
+      <div
+        className="modal-content"
+        style={{
+          width: "850px",
+          padding: "40px",
+          backgroundColor: "#fffaf5",
           borderRadius: "24px",
           position: "relative",
           boxShadow: "0 24px 70px rgba(0,0,0,0.28)"
-        }} 
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        <button 
-          className="close-x" 
+        <button
+          className="close-x"
           onClick={close}
           style={{
             position: "absolute",
@@ -63,7 +61,7 @@ function CategoryPreviewModal({ category, dogs, close, navigate }) {
         >
           &times;
         </button>
-        
+
         <h2 style={{ marginTop: 0, color: "#2f241d", fontSize: "32px" }}>
           {title}
         </h2>
@@ -97,9 +95,9 @@ function CategoryPreviewModal({ category, dogs, close, navigate }) {
 
         <button
           className="nav-register-btn"
-          style={{ 
-            width: "100%", 
-            fontSize: "18px", 
+          style={{
+            width: "100%",
+            fontSize: "18px",
             padding: "16px",
             background: "#d97706",
             color: "white",
@@ -167,13 +165,13 @@ function DogModal({ dog, close, requireAuth }) {
 
   return (
     <div className="modal-overlay" onClick={close}>
-      <div 
-        className="modal-content" 
-        style={{ width: "900px", overflow: "hidden", display: "flex", flexDirection: "column" }} 
+      <div
+        className="modal-content"
+        style={{ width: "900px", overflow: "hidden", display: "flex", flexDirection: "column" }}
         onClick={(e) => e.stopPropagation()}
       >
         <button className="close-x" onClick={close}>&times;</button>
-        
+
         {dog.image ? (
           <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "340px", objectFit: "cover" }} />
         ) : (
@@ -188,18 +186,12 @@ function DogModal({ dog, close, requireAuth }) {
               <h2 style={{ fontSize: "32px", color: "#2f241d", margin: "0 0 5px 0" }}>{dog.name}</h2>
               <p style={{ color: "#d97706", fontWeight: "bold", margin: 0, fontSize: "18px" }}>{dog.breed}</p>
             </div>
-            
+
             <div style={{ display: "flex", gap: "10px" }}>
-              <button 
-                className="nav-login-btn" 
-                onClick={requireAuth}
-              >
+              <button className="nav-login-btn" onClick={requireAuth}>
                 ❤️ Save
               </button>
-              <button 
-                className="nav-register-btn" 
-                onClick={requireAuth}
-              >
+              <button className="nav-register-btn" onClick={requireAuth}>
                 Apply to Adopt
               </button>
             </div>
@@ -227,19 +219,15 @@ export default function Landing() {
   }, []);
 
   async function loadDogs() {
-    // Expanded fallback data to ensure the category filters have actual matches
     const fallbackDogs = [
-      // Large Dogs
       { id: 1, name: "Buddy", breed: "Labrador Mix", image: "", size: "Large", ageGroup: "Adult" },
       { id: 2, name: "Luna", breed: "Golden Retriever", image: "", size: "Large", ageGroup: "Adult" },
       { id: 3, name: "Duke", breed: "German Shepherd", image: "", size: "Large", ageGroup: "Adult" },
       { id: 4, name: "Bear", breed: "Mastiff Mix", image: "", size: "Large", ageGroup: "Adult" },
-      // Small Dogs
       { id: 5, name: "Bella", breed: "Pug", image: "", size: "Small", ageGroup: "Adult" },
       { id: 6, name: "Chloe", breed: "Chihuahua", image: "", size: "Small", ageGroup: "Adult" },
       { id: 7, name: "Penny", breed: "Dachshund", image: "", size: "Small", ageGroup: "Adult" },
       { id: 8, name: "Milo", breed: "French Bulldog", image: "", size: "Small", ageGroup: "Adult" },
-      // Puppies
       { id: 9, name: "Daisy", breed: "Beagle Mix", image: "", size: "Medium", ageGroup: "Puppy" },
       { id: 10, name: "Cooper", breed: "Terrier Mix", image: "", size: "Small", ageGroup: "Puppy" },
       { id: 11, name: "Stella", breed: "Pitbull Mix", image: "", size: "Large", ageGroup: "Puppy" },
@@ -247,9 +235,18 @@ export default function Landing() {
     ];
 
     try {
-      const result = await sendMessage("request.dogs.get", {});
-      if (result && result.dogs && result.dogs.length > 0) {
-        setDogs(result.dogs);
+      const result = await sendMessage("request.dogs.list", { limit: 12 });
+      if (result && result.success && Array.isArray(result.dogs) && result.dogs.length > 0) {
+        setDogs(result.dogs.map((dog) => ({
+          ...dog,
+          id: dog.dog_id,
+          image: dog.photos ? dog.photos.split(",")[0].trim() : "",
+          size: dog.size === "small" ? "Small"
+              : dog.size === "medium" ? "Medium"
+              : dog.size === "large" || dog.size === "extra_large" ? "Large"
+              : "Medium",
+          ageGroup: Number(dog.age_years) <= 1 ? "Puppy" : "Adult",
+        })));
       } else {
         setDogs(fallbackDogs);
       }
@@ -304,16 +301,16 @@ export default function Landing() {
 
       <section className="available-dogs-section">
         <h2>Dogs Available for Adoption</h2>
-        
+
         <div className="pet-grid">
           {featuredDogs.map((dog) => (
-            <div 
-              key={dog.id} 
-              className="pet-card" 
+            <div
+              key={dog.id}
+              className="pet-card"
               onClick={() => setSelectedDog(dog)}
             >
-              <div 
-                className="pet-card-heart" 
+              <div
+                className="pet-card-heart"
                 onClick={(e) => {
                   e.stopPropagation();
                   requireAuth();
@@ -342,26 +339,26 @@ export default function Landing() {
       </section>
 
       {previewCategory && (
-        <CategoryPreviewModal 
-          category={previewCategory} 
-          dogs={dogs} 
-          close={() => setPreviewCategory(null)} 
+        <CategoryPreviewModal
+          category={previewCategory}
+          dogs={dogs}
+          close={() => setPreviewCategory(null)}
           navigate={navigate}
         />
       )}
 
       {selectedDog && (
-        <DogModal 
-          dog={selectedDog} 
-          close={() => setSelectedDog(null)} 
-          requireAuth={requireAuth} 
+        <DogModal
+          dog={selectedDog}
+          close={() => setSelectedDog(null)}
+          requireAuth={requireAuth}
         />
       )}
 
       {applicationDog && (
-        <AdoptionFormModal 
-          dog={applicationDog} 
-          close={() => setApplicationDog(null)} 
+        <AdoptionFormModal
+          dog={applicationDog}
+          close={() => setApplicationDog(null)}
         />
       )}
 
