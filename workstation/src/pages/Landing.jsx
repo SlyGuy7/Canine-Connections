@@ -215,45 +215,27 @@ export default function Landing() {
   const [dogs, setDogs] = useState([]);
 
   useEffect(() => {
-    loadDogs();
+    const timer = setTimeout(() => {
+      sendMessage("request.dogs.list", { limit: 12 })
+        .then((result) => {
+          if (result && result.success && Array.isArray(result.dogs) && result.dogs.length > 0) {
+            setDogs(result.dogs.map((dog) => ({
+              ...dog,
+              id: dog.dog_id,
+              image: dog.photos ? dog.photos.split(",")[0].trim() : "",
+              size: dog.size === "small" ? "Small"
+                  : dog.size === "medium" ? "Medium"
+                  : dog.size === "large" || dog.size === "extra_large" ? "Large"
+                  : "Medium",
+              ageGroup: Number(dog.age_years) <= 1 ? "Puppy" : "Adult",
+            })));
+          }
+        })
+        .catch(() => {});
+    }, 5000);
+
+    return () => clearTimeout(timer);
   }, []);
-
-  async function loadDogs() {
-    const fallbackDogs = [
-      { id: 1, name: "Buddy", breed: "Labrador Mix", image: "", size: "Large", ageGroup: "Adult" },
-      { id: 2, name: "Luna", breed: "Golden Retriever", image: "", size: "Large", ageGroup: "Adult" },
-      { id: 3, name: "Duke", breed: "German Shepherd", image: "", size: "Large", ageGroup: "Adult" },
-      { id: 4, name: "Bear", breed: "Mastiff Mix", image: "", size: "Large", ageGroup: "Adult" },
-      { id: 5, name: "Bella", breed: "Pug", image: "", size: "Small", ageGroup: "Adult" },
-      { id: 6, name: "Chloe", breed: "Chihuahua", image: "", size: "Small", ageGroup: "Adult" },
-      { id: 7, name: "Penny", breed: "Dachshund", image: "", size: "Small", ageGroup: "Adult" },
-      { id: 8, name: "Milo", breed: "French Bulldog", image: "", size: "Small", ageGroup: "Adult" },
-      { id: 9, name: "Daisy", breed: "Beagle Mix", image: "", size: "Medium", ageGroup: "Puppy" },
-      { id: 10, name: "Cooper", breed: "Terrier Mix", image: "", size: "Small", ageGroup: "Puppy" },
-      { id: 11, name: "Stella", breed: "Pitbull Mix", image: "", size: "Large", ageGroup: "Puppy" },
-      { id: 12, name: "Tucker", breed: "Corgi", image: "", size: "Small", ageGroup: "Puppy" },
-    ];
-
-    try {
-      const result = await sendMessage("request.dogs.list", { limit: 12 });
-      if (result && result.success && Array.isArray(result.dogs) && result.dogs.length > 0) {
-        setDogs(result.dogs.map((dog) => ({
-          ...dog,
-          id: dog.dog_id,
-          image: dog.photos ? dog.photos.split(",")[0].trim() : "",
-          size: dog.size === "small" ? "Small"
-              : dog.size === "medium" ? "Medium"
-              : dog.size === "large" || dog.size === "extra_large" ? "Large"
-              : "Medium",
-          ageGroup: Number(dog.age_years) <= 1 ? "Puppy" : "Adult",
-        })));
-      } else {
-        setDogs(fallbackDogs);
-      }
-    } catch (error) {
-      setDogs(fallbackDogs);
-    }
-  }
 
   const featuredDogs = useMemo(() => {
     return dogs.slice(0, 4);
@@ -331,7 +313,7 @@ export default function Landing() {
 
           <div className="see-more-card" onClick={() => navigate("/browse-dogs")}>
             <div className="see-more-icon">🐾</div>
-            <h3>{Math.max(dogs.length - 4, 12)}+ more dogs</h3>
+            <h3>12+ more dogs</h3>
             <p>available on Canine Connections</p>
             <p style={{ marginTop: "15px", fontWeight: "bold" }}>MEET THEM</p>
           </div>
