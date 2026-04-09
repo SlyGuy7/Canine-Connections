@@ -73,6 +73,7 @@ final class DBridgeWorker
             return;
         }
         if ($pid === 0) {
+            try { $this->mq->close(); } catch (\Throwable $e) {}
             try {
                 $fn();
             } catch (\Throwable $e) {

@@ -88,6 +88,7 @@ final class FrontendWorker
             return;
         }
         if ($pid === 0) {
+            try { $this->mq->close(); } catch (\Throwable $e) {}
             try {
                 $mq = $this->childMq();
                 $fn($mq);
