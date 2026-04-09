@@ -1,6 +1,8 @@
 import { Client } from "@stomp/stompjs";
 
-const BROKER_URL = import.meta.env.VITE_MESSAGING_URL || "ws://100.87.19.28:15674/ws";
+const BROKER_URL =
+  import.meta.env.VITE_MESSAGING_URL || "ws://100.87.19.28:15674/ws";
+
 const REQUEST_TIMEOUT_MS = 15000;
 
 function makeCorrelationId() {
@@ -9,116 +11,296 @@ function makeCorrelationId() {
 
 export async function sendMessage(type, payload) {
   return new Promise((resolve) => {
-    console.log(`[STOMP] sendMessage called — type: ${type}`);
-    console.log(`[STOMP] Payload:`, payload);
-
     const correlationId = makeCorrelationId();
-    const replyQueue    = `${type}.reply.${correlationId}`;
+    const replyQueue = `${type}.reply.${correlationId}`;
+    const requestDestination = `/queue/${type}`;
+    const replyDestination = `/queue/${replyQueue}`;
+    const subscribeReceiptId = `sub-${correlationId}`;
 
-    console.log(`[STOMP] Request queue:  /queue/${type}`);
-    console.log(`[STOMP] Reply queue:    /queue/${replyQueue}`);
-    console.log(`[STOMP] Correlation ID: ${correlationId}`);
+    let finished = false;
+    let timeoutId = null;
+    let subscription = null;
 
-    let isResolved = false;
+    console.log("==================================================");
+    console.log("[STOMP] sendMessage() called");
+    console.log("[STOMP] Type:", type);
+    console.log("[STOMP] Payload:", payload);
+    console.log("[STOMP] Broker URL:", BROKER_URL);
+    console.log("[STOMP] Correlation ID:", correlationId);
+    console.log("[STOMP] Request destination:", requestDestination);
+    console.log("[STOMP] Reply queue name:", replyQueue);
+    console.log("[STOMP] Reply destination:", replyDestination);
+    console.log("[STOMP] Timeout (ms):", REQUEST_TIMEOUT_MS);
+    console.log("==================================================");
+
+    function finish(client, result, reason = "unknown") {
+      if (finished) {
+        console.warn("[STOMP][WARN] finish() called again, ignoring.");
+        return;
+      }
+
+      finished = true;
+
+      console.log("[STOMP] finish() called");
+      console.log("[STOMP] Finish reason:", reason);
+      console.log("[STOMP] Final result:", result);
+
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
+        console.log("[STOMP] Cleared timeout");
+      }
+
+      try {
+        if (subscription) {
+          console.log("[STOMP] Unsubscribing from reply destination");
+          subscription.unsubscribe();
+        }
+      } catch (err) {
+        console.warn("[STOMP][WARN] Failed to unsubscribe cleanly:", err);
+      }
+
+      try {
+        console.log("[STOMP] Deactivating STOMP client");
+        client.deactivate();
+      } catch (err) {
+        console.warn("[STOMP][WARN] Failed to deactivate client cleanly:", err);
+      }
+
+      resolve(result);
+    }
 
     const client = new Client({
       brokerURL: BROKER_URL,
+
       connectHeaders: {
         login: "admin",
         passcode: "REDACTED",
-        host: "/"
+        host: "/",
       },
+
       reconnectDelay: 0,
-      debug: (str) => console.log(`[STOMP][DEBUG] ${str}`),
+
+      debug: (str) => {
+        console.log(`[STOMP][DEBUG] ${str}`);
+      },
 
       onConnect: () => {
-        console.log(`[STOMP] Connected — subscribing to /queue/${replyQueue}`);
-        let finished = false;
+        console.log("[STOMP] Connected to broker successfully");
+        console.log("[STOMP] Creating reply subscription now...");
 
-        const subscription = client.subscribe(`/queue/${replyQueue}`, (message) => {
+        try {
+          subscription = client.subscribe(
+            replyDestination,
+            (message) => {
+              console.log("[STOMP] Reply message received");
+              console.log("[STOMP] Reply destination hit:", replyDestination);
+              console.log("[STOMP] Raw headers:", message.headers);
+              console.log("[STOMP] Raw body:", message.body);
+
+              if (finished) {
+                console.warn(
+                  "[STOMP][WARN] Received reply after request already finished. Ignoring."
+                );
+                return;
+              }
+
+              try {
+                const parsed = JSON.parse(message.body);
+                console.log("[STOMP] Parsed reply JSON:", parsed);
+
+                if (!parsed?.success) {
+                  console.warn(
+                    "[STOMP][WARN] Reply came back but success=false"
+                  );
+                  console.warn(
+                    "[STOMP][WARN] Backend error:",
+                    parsed?.error || "unknown error"
+                  );
+                }
+
+                finish(client, parsed, "reply received");
+              } catch (err) {
+                console.error(
+                  "[STOMP][ERROR] Failed to parse reply JSON:",
+                  err
+                );
+                console.error(
+                  "[STOMP][ERROR] This means the worker replied with invalid JSON."
+                );
+
+                finish(
+                  client,
+                  {
+                    success: false,
+                    error: "Invalid response from RabbitMQ",
+                  },
+                  "invalid JSON reply"
+                );
+              }
+            },
+            {
+              receipt: subscribeReceiptId,
+            }
+          );
+
+          console.log("[STOMP] Subscribe frame sent");
+          console.log(
+            "[STOMP] Waiting for subscription receipt before publishing..."
+          );
+          console.log("[STOMP] Subscribe receipt id:", subscribeReceiptId);
+        } catch (err) {
+          console.error(
+            "[STOMP][ERROR] Failed while creating subscription:",
+            err
+          );
+
+          finish(
+            client,
+            {
+              success: false,
+              error: "Failed to subscribe to reply queue",
+            },
+            "subscription creation failed"
+          );
+          return;
+        }
+
+        timeoutId = setTimeout(() => {
           if (finished) {
-            console.warn(`[STOMP][WARN] Already resolved — ignoring duplicate message`);
             return;
           }
 
-          finished = true;
-          isResolved = true;
+          console.error(
+            `[STOMP][ERROR] Request timed out after ${REQUEST_TIMEOUT_MS}ms`
+          );
+          console.error("[STOMP][ERROR] Type:", type);
+          console.error("[STOMP][ERROR] Correlation ID:", correlationId);
+          console.error("[STOMP][ERROR] Reply destination:", replyDestination);
+          console.error(
+            "[STOMP][ERROR] This usually means one of these things:"
+          );
+          console.error(
+            "[STOMP][ERROR] 1. The worker never replied to the reply queue"
+          );
+          console.error(
+            "[STOMP][ERROR] 2. The worker replied to the wrong queue name"
+          );
+          console.error(
+            "[STOMP][ERROR] 3. The broker subscription was not active before publish"
+          );
+          console.error(
+            "[STOMP][ERROR] 4. The backend reply body was invalid"
+          );
 
-          console.log(`[STOMP] Response received on /queue/${replyQueue}`);
-          console.log(`[STOMP] Raw response body: ${message.body}`);
+          finish(
+            client,
+            {
+              success: false,
+              error: "Request timed out",
+            },
+            "timeout"
+          );
+        }, REQUEST_TIMEOUT_MS);
+      },
+
+      onReceipt: (frame) => {
+        const receiptId = frame.headers["receipt-id"];
+        console.log("[STOMP] Receipt received:", receiptId);
+
+        if (receiptId === subscribeReceiptId) {
+          console.log("[STOMP] Reply subscription confirmed by broker");
+          console.log("[STOMP] Safe to publish request now");
 
           try {
-            const data = JSON.parse(message.body);
-            console.log(`[STOMP] Parsed response:`, data);
-            if (!data.success) {
-              console.warn(`[STOMP][WARN] success=false for ${type} — error: ${data.error || "unknown"}`);
-            }
-            cleanup(data);
-          } catch (error) {
-            console.error(`[STOMP][ERROR] Failed to parse response JSON for ${type}:`, error);
-            cleanup({ success: false, error: "Invalid response from RabbitMQ" });
-          }
-        });
+            client.publish({
+              destination: requestDestination,
+              headers: {
+                "correlation-id": correlationId,
+                "reply-to": replyQueue,
+              },
+              body: JSON.stringify(payload),
+            });
 
-        console.log(`[STOMP] Publishing to /queue/${type}`);
-        client.publish({
-          destination: `/queue/${type}`,
-          headers: {
-            "correlation-id": correlationId,
-            "reply-to":       `/queue/${replyQueue}`,
+            console.log("[STOMP] Request published successfully");
+            console.log("[STOMP] Published to:", requestDestination);
+            console.log("[STOMP] reply-to header:", replyQueue);
+            console.log("[STOMP] correlation-id header:", correlationId);
+          } catch (err) {
+            console.error("[STOMP][ERROR] Failed to publish request:", err);
+
+            finish(
+              client,
+              {
+                success: false,
+                error: "Failed to publish request",
+              },
+              "publish failed"
+            );
+          }
+        }
+      },
+
+      onStompError: (frame) => {
+        console.error("[STOMP][ERROR] Broker reported STOMP error");
+        console.error(
+          "[STOMP][ERROR] Message:",
+          frame.headers["message"] || "no message"
+        );
+        console.error("[STOMP][ERROR] Headers:", frame.headers);
+        console.error("[STOMP][ERROR] Body:", frame.body);
+        console.error(
+          "[STOMP][ERROR] This means RabbitMQ accepted the websocket but rejected the STOMP operation."
+        );
+
+        finish(
+          client,
+          {
+            success: false,
+            error:
+              "RabbitMQ STOMP error: " +
+              (frame.headers["message"] || "unknown"),
           },
-          body: JSON.stringify(payload),
-        });
-        console.log(`[STOMP] Message published — waiting for response (${REQUEST_TIMEOUT_MS / 1000}s timeout)`);
+          "broker STOMP error"
+        );
+      },
 
-        setTimeout(() => {
-          if (!finished) {
-            finished = true;
-            isResolved = true;
-            console.error(`[STOMP][ERROR] Request timed out after ${REQUEST_TIMEOUT_MS / 1000}s for type: ${type}`);
-            cleanup({ success: false, error: "Request timed out" });
-          }
-        }, REQUEST_TIMEOUT_MS);
+      onWebSocketError: (evt) => {
+        console.error("[STOMP][ERROR] WebSocket error");
+        console.error("[STOMP][ERROR] Broker URL:", BROKER_URL);
+        console.error("[STOMP][ERROR] Event:", evt);
+        console.error(
+          "[STOMP][ERROR] This means the browser could not talk cleanly to RabbitMQ over WebSocket."
+        );
 
-        function cleanup(resultData) {
-          console.log(`[STOMP] Cleaning up — type: ${type}`);
-          subscription.unsubscribe();
-          client.deactivate();
-          resolve(resultData);
+        finish(
+          client,
+          {
+            success: false,
+            error: "RabbitMQ WebSocket error",
+          },
+          "websocket error"
+        );
+      },
+
+      onWebSocketClose: (evt) => {
+        console.warn("[STOMP][WARN] WebSocket closed");
+        console.warn("[STOMP][WARN] Code:", evt.code);
+        console.warn("[STOMP][WARN] Reason:", evt.reason || "none");
+
+        if (!finished) {
+          console.warn(
+            "[STOMP][WARN] Socket closed before request finished. This can cause empty pages and timeouts."
+          );
         }
       },
 
       onDisconnect: () => {
-        console.log(`[STOMP] Client disconnected for type: ${type}`);
-      },
-
-      onStompError: (frame) => {
-        console.error(`[STOMP][ERROR] STOMP broker error for type: ${type}`);
-        console.error(`[STOMP][ERROR] Message: ${frame.headers["message"]}`);
-        console.error(`[STOMP][ERROR] Body: ${frame.body}`);
-        if (!isResolved) {
-          isResolved = true;
-          resolve({ success: false, error: "RabbitMQ STOMP error: " + frame.headers["message"] });
-        }
-      },
-
-      onWebSocketError: (evt) => {
-        console.error(`[STOMP][ERROR] WebSocket error for type: ${type}`);
-        console.error(`[STOMP][ERROR] Event:`, evt);
-        console.error(`[STOMP][ERROR] Broker URL was: ${BROKER_URL}`);
-        if (!isResolved) {
-          isResolved = true;
-          resolve({ success: false, error: "RabbitMQ WebSocket error" });
-        }
-      },
-
-      onWebSocketClose: (evt) => {
-        console.warn(`[STOMP][WARN] WebSocket closed for type: ${type}`);
-        console.warn(`[STOMP][WARN] Close code: ${evt.code} — reason: ${evt.reason || "none"}`);
+        console.log("[STOMP] Client disconnected");
       },
     });
 
-    console.log(`[STOMP] Activating STOMP client for type: ${type}`);
+    console.log("[STOMP] Activating client...");
     client.activate();
   });
 }

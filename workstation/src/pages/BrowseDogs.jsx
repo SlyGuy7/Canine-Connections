@@ -18,39 +18,97 @@ export default function BrowseDogs() {
   const { addToast } = useToast();
 
   useEffect(() => {
+    console.log("[BrowseDogs] Component mounted");
+    console.log("[BrowseDogs] Starting initial dog load");
     loadDogs();
   }, []);
 
+  useEffect(() => {
+    console.log("[BrowseDogs] allDogs changed");
+    console.log("[BrowseDogs] allDogs length:", allDogs.length);
+    console.log("[BrowseDogs] allDogs sample:", allDogs.slice(0, 3));
+  }, [allDogs]);
+
   async function loadDogs() {
+    console.log("==================================================");
+    console.log("[BrowseDogs] loadDogs() called");
+    console.log("[BrowseDogs] Sending request.dogs.list");
+    console.log("==================================================");
+
     try {
       const result = await sendMessage("request.dogs.list", {});
 
+      console.log("[BrowseDogs] Raw result from sendMessage:", result);
+
       if (result?.success && Array.isArray(result.dogs)) {
-        setAllDogs(result.dogs);
+        console.log("[BrowseDogs] Valid dogs response received");
+        console.log("[BrowseDogs] Dogs returned:", result.dogs.length);
+
+        const mappedDogs = result.dogs.map((dog, index) => {
+          const primaryImage = dog.photos
+            ? dog.photos.split(",")[0].trim()
+            : null;
+
+          const mappedDog = {
+            ...dog,
+            image: primaryImage,
+          };
+
+          if (index < 3) {
+            console.log(`[BrowseDogs] Dog ${index + 1} before mapping:`, dog);
+            console.log(
+              `[BrowseDogs] Dog ${index + 1} after mapping:`,
+              mappedDog
+            );
+          }
+
+          return mappedDog;
+        });
+
+        console.log("[BrowseDogs] Final mapped dogs length:", mappedDogs.length);
+        setAllDogs(mappedDogs);
       } else {
-        console.warn("Dogs list response was not valid:", result);
+        console.warn("[BrowseDogs][WARN] Dogs list response was not valid");
+        console.warn("[BrowseDogs][WARN] Result:", result);
+        console.warn(
+          "[BrowseDogs][WARN] This means the backend replied, but not in the format { success: true, dogs: [...] }"
+        );
+
         setAllDogs([]);
         addToast("No dogs were returned from the database.", "error");
       }
     } catch (err) {
-      console.error("API connection failed:", err);
+      console.error("[BrowseDogs][ERROR] loadDogs() failed:", err);
+      console.error(
+        "[BrowseDogs][ERROR] This usually means messaging.js failed or RabbitMQ could not be reached."
+      );
+
       setAllDogs([]);
       addToast("Failed to connect to the database.", "error");
     } finally {
+      console.log("[BrowseDogs] loadDogs() finished");
+      console.log("[BrowseDogs] Setting loading = false");
       setLoading(false);
     }
   }
 
   const handleSaveDog = (dog) => {
+    console.log("[BrowseDogs] handleSaveDog called for:", dog);
+
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
 
     if (savedDogs.some((d) => d.dog_id === dog.dog_id)) {
+      console.warn("[BrowseDogs][WARN] Dog already saved:", dog.dog_id, dog.name);
       addToast(`${dog.name} is already in your Vault!`, "error");
       return;
     }
 
     savedDogs.push(dog);
     localStorage.setItem("savedDogs", JSON.stringify(savedDogs));
+
+    console.log("[BrowseDogs] Dog saved successfully");
+    console.log("[BrowseDogs] Total saved dogs now:", savedDogs.length);
+
     addToast(`${dog.name} saved successfully!`, "success");
   };
 
@@ -77,7 +135,8 @@ export default function BrowseDogs() {
       filters.breed === "All" || dog.breed === filters.breed;
 
     const matchesSize =
-      filters.size === "All" || size.toLowerCase() === filters.size.toLowerCase();
+      filters.size === "All" ||
+      size.toLowerCase() === filters.size.toLowerCase();
 
     const matchesAge =
       filters.age === "All" || getAgeCategory(ageYears) === filters.age;
@@ -85,12 +144,21 @@ export default function BrowseDogs() {
     return matchesSearch && matchesBreed && matchesSize && matchesAge;
   });
 
+  console.log("[BrowseDogs] Current UI state");
+  console.log("[BrowseDogs] loading:", loading);
+  console.log("[BrowseDogs] searchTerm:", searchTerm);
+  console.log("[BrowseDogs] filters:", filters);
+  console.log("[BrowseDogs] allDogs count:", allDogs.length);
+  console.log("[BrowseDogs] filteredDogs count:", filteredDogs.length);
+
   const uniqueBreeds = [
     "All",
     ...new Set(allDogs.map((dog) => dog.breed).filter(Boolean)),
   ];
 
   if (loading) {
+    console.log("[BrowseDogs] Rendering loading skeleton");
+
     return (
       <div className="dashboard-wrapper">
         <Sidebar />
@@ -142,6 +210,8 @@ export default function BrowseDogs() {
     );
   }
 
+  console.log("[BrowseDogs] Rendering full page");
+
   return (
     <div className="dashboard-wrapper">
       <Sidebar />
@@ -175,7 +245,10 @@ export default function BrowseDogs() {
             }}
             placeholder="Search by name or breed."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => {
+              console.log("[BrowseDogs] Search input changed:", e.target.value);
+              setSearchTerm(e.target.value);
+            }}
           />
 
           <div
@@ -185,9 +258,10 @@ export default function BrowseDogs() {
             <select
               className="form-input"
               value={filters.breed}
-              onChange={(e) =>
-                setFilters({ ...filters, breed: e.target.value })
-              }
+              onChange={(e) => {
+                console.log("[BrowseDogs] Breed filter changed:", e.target.value);
+                setFilters({ ...filters, breed: e.target.value });
+              }}
             >
               {uniqueBreeds.map((breed) => (
                 <option key={breed} value={breed}>
@@ -199,22 +273,25 @@ export default function BrowseDogs() {
             <select
               className="form-input"
               value={filters.size}
-              onChange={(e) =>
-                setFilters({ ...filters, size: e.target.value })
-              }
+              onChange={(e) => {
+                console.log("[BrowseDogs] Size filter changed:", e.target.value);
+                setFilters({ ...filters, size: e.target.value });
+              }}
             >
               <option value="All">All Sizes</option>
               <option value="small">Small</option>
               <option value="medium">Medium</option>
               <option value="large">Large</option>
+              <option value="extra_large">Extra Large</option>
             </select>
 
             <select
               className="form-input"
               value={filters.age}
-              onChange={(e) =>
-                setFilters({ ...filters, age: e.target.value })
-              }
+              onChange={(e) => {
+                console.log("[BrowseDogs] Age filter changed:", e.target.value);
+                setFilters({ ...filters, age: e.target.value });
+              }}
             >
               <option value="All">All Ages</option>
               <option value="Puppy (0-1 yrs)">Puppy (0-1 yrs)</option>
@@ -239,7 +316,20 @@ export default function BrowseDogs() {
               }}
             >
               <h2>No Dogs Found</h2>
-              <p>Check your database connection or adjust your search filters.</p>
+              <p>
+                Check your database connection, RabbitMQ logs, or adjust your
+                search filters.
+              </p>
+
+              <div style={{ marginTop: "20px", fontSize: "14px" }}>
+                <p><strong>Debug Info</strong></p>
+                <p>allDogs count: {allDogs.length}</p>
+                <p>filteredDogs count: {filteredDogs.length}</p>
+                <p>searchTerm: {searchTerm || "(empty)"}</p>
+                <p>breed filter: {filters.breed}</p>
+                <p>size filter: {filters.size}</p>
+                <p>age filter: {filters.age}</p>
+              </div>
             </div>
           ) : (
             filteredDogs.map((dog) => {
@@ -266,7 +356,7 @@ export default function BrowseDogs() {
                       justifyContent: "center",
                     }}
                   >
-                    {dog.image ? (
+                    {dog.image && dog.image !== "" ? (
                       <img
                         src={dog.image}
                         alt={dog.name}
@@ -274,6 +364,19 @@ export default function BrowseDogs() {
                           width: "100%",
                           height: "100%",
                           objectFit: "cover",
+                        }}
+                        onLoad={() => {
+                          console.log(
+                            `[BrowseDogs] Image loaded successfully for dog ${dogId}:`,
+                            dog.image
+                          );
+                        }}
+                        onError={(e) => {
+                          console.error(
+                            `[BrowseDogs][ERROR] Image failed to load for dog ${dogId}:`,
+                            dog.image
+                          );
+                          e.currentTarget.style.display = "none";
                         }}
                       />
                     ) : (
@@ -305,7 +408,12 @@ export default function BrowseDogs() {
                       <button
                         className="btn btn-primary"
                         style={{ flex: 1 }}
-                        onClick={() => navigate(`/dogs/${dogId}`)}
+                        onClick={() => {
+                          console.log(
+                            `[BrowseDogs] Navigating to details page for dog ${dogId}`
+                          );
+                          navigate(`/dogs/${dogId}`);
+                        }}
                       >
                         Details
                       </button>
