@@ -13,8 +13,15 @@ export async function sendMessage(type, payload) {
   return new Promise((resolve) => {
     const correlationId = makeCorrelationId();
     const replyQueue = `${type}.reply.${correlationId}`;
+
+    // Keep request publish as /queue because that part is already working.
     const requestDestination = `/queue/${type}`;
-    const replyDestination = `/queue/${replyQueue}`;
+
+    // IMPORTANT:
+    // Replies are published by PHP workers directly to AMQP queue names.
+    // To subscribe to an existing AMQP queue from STOMP, use /amq/queue/<name>.
+    const replyDestination = `/amq/queue/${replyQueue}`;
+
     const subscribeReceiptId = `sub-${correlationId}`;
 
     let finished = false;
@@ -133,9 +140,7 @@ export async function sendMessage(type, payload) {
                 console.log("[STOMP] Parsed reply JSON:", parsed);
 
                 if (!parsed?.success) {
-                  console.warn(
-                    "[STOMP][WARN] Reply came back but success=false"
-                  );
+                  console.warn("[STOMP][WARN] Reply came back but success=false");
                   console.warn(
                     "[STOMP][WARN] Backend error:",
                     parsed?.error || "unknown error"
@@ -145,10 +150,6 @@ export async function sendMessage(type, payload) {
                 finish(client, parsed, "reply received");
               } catch (err) {
                 console.error("[STOMP][ERROR] Failed to parse reply JSON:", err);
-                console.error(
-                  "[STOMP][ERROR] This means the worker replied with invalid JSON."
-                );
-
                 finish(
                   client,
                   {
@@ -165,15 +166,10 @@ export async function sendMessage(type, payload) {
           );
 
           console.log("[STOMP] Subscribe frame sent");
-          console.log(
-            "[STOMP] Waiting for subscription receipt before publishing..."
-          );
+          console.log("[STOMP] Waiting for subscription receipt before publishing...");
           console.log("[STOMP] Subscribe receipt id:", subscribeReceiptId);
         } catch (err) {
-          console.error(
-            "[STOMP][ERROR] Failed while creating subscription:",
-            err
-          );
+          console.error("[STOMP][ERROR] Failed while creating subscription:", err);
 
           finish(
             client,
@@ -191,27 +187,15 @@ export async function sendMessage(type, payload) {
             return;
           }
 
-          console.error(
-            `[STOMP][ERROR] Request timed out after ${REQUEST_TIMEOUT_MS}ms`
-          );
+          console.error(`[STOMP][ERROR] Request timed out after ${REQUEST_TIMEOUT_MS}ms`);
           console.error("[STOMP][ERROR] Type:", type);
           console.error("[STOMP][ERROR] Correlation ID:", correlationId);
           console.error("[STOMP][ERROR] Reply destination:", replyDestination);
-          console.error(
-            "[STOMP][ERROR] This usually means one of these things:"
-          );
-          console.error(
-            "[STOMP][ERROR] 1. The worker never replied to the reply queue"
-          );
-          console.error(
-            "[STOMP][ERROR] 2. The worker replied to the wrong queue name"
-          );
-          console.error(
-            "[STOMP][ERROR] 3. The publish never happened"
-          );
-          console.error(
-            "[STOMP][ERROR] 4. The backend reply body was invalid"
-          );
+          console.error("[STOMP][ERROR] This usually means one of these things:");
+          console.error("[STOMP][ERROR] 1. The worker never replied to the reply queue");
+          console.error("[STOMP][ERROR] 2. The worker replied to the wrong queue name");
+          console.error("[STOMP][ERROR] 3. The browser subscribed to the wrong STOMP destination");
+          console.error("[STOMP][ERROR] 4. The backend reply body was invalid");
 
           finish(
             client,
@@ -232,9 +216,6 @@ export async function sendMessage(type, payload) {
         );
         console.error("[STOMP][ERROR] Headers:", frame.headers);
         console.error("[STOMP][ERROR] Body:", frame.body);
-        console.error(
-          "[STOMP][ERROR] This means RabbitMQ accepted the websocket but rejected the STOMP operation."
-        );
 
         finish(
           client,
@@ -252,9 +233,6 @@ export async function sendMessage(type, payload) {
         console.error("[STOMP][ERROR] WebSocket error");
         console.error("[STOMP][ERROR] Broker URL:", BROKER_URL);
         console.error("[STOMP][ERROR] Event:", evt);
-        console.error(
-          "[STOMP][ERROR] This means the browser could not talk cleanly to RabbitMQ over WebSocket."
-        );
 
         finish(
           client,
