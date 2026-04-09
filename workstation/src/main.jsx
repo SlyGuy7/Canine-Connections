@@ -18,7 +18,7 @@ import ApplicationForm from "./pages/ApplicationForm.jsx"
 import Shelters from "./pages/Shelters.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
-<React.StrictMode>
+
 <ToastProvider>
 <BrowserRouter>
 <Routes>
@@ -124,5 +124,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(
     </Routes>
   </BrowserRouter>
 </ToastProvider>
-</React.StrictMode>
+
 )
