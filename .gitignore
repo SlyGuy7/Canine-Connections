@@ -30,3 +30,4 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+workstation/can_con/adoption/backend/vendor/
