@@ -3,7 +3,15 @@
         'name' => 'adoption/backend',
         'pretty_version' => 'dev-main',
         'version' => 'dev-main',
+<<<<<<< HEAD
         'reference' => 'a4afedfe9239dc7f139ad73d991f77cbb0bd47ec',
+=======
+<<<<<<< Updated upstream
+        'reference' => '56c017c6fbb665fcb6409e481c7cd51846fcd495',
+=======
+        'reference' => 'efd3595c807720cca6e80378fa06e904d4a71170',
+>>>>>>> Stashed changes
+>>>>>>> 0b31058 (stashed files under workstation)
         'type' => 'project',
         'install_path' => __DIR__ . '/../../',
         'aliases' => array(),
@@ -13,7 +21,15 @@
         'adoption/backend' => array(
             'pretty_version' => 'dev-main',
             'version' => 'dev-main',
+<<<<<<< HEAD
             'reference' => 'a4afedfe9239dc7f139ad73d991f77cbb0bd47ec',
+=======
+<<<<<<< Updated upstream
+            'reference' => '56c017c6fbb665fcb6409e481c7cd51846fcd495',
+=======
+            'reference' => 'efd3595c807720cca6e80378fa06e904d4a71170',
+>>>>>>> Stashed changes
+>>>>>>> 0b31058 (stashed files under workstation)
             'type' => 'project',
             'install_path' => __DIR__ . '/../../',
             'aliases' => array(),

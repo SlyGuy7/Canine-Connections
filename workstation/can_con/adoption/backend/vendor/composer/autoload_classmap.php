@@ -6,6 +6,7 @@ $vendorDir = dirname(__DIR__);
 $baseDir = dirname($vendorDir);
 
 return array(
+<<<<<<< Updated upstream
     'App\\Bootstrap\\App' => $baseDir . '/src/Bootstrap/App.php',
     'App\\Bootstrap\\Container' => $baseDir . '/src/Bootstrap/Container.php',
     'App\\Config\\Config' => $baseDir . '/src/Config/Config.php',
@@ -611,4 +612,7 @@ return array(
     'phpseclib3\\System\\SSH\\Agent' => $vendorDir . '/phpseclib/phpseclib/phpseclib/System/SSH/Agent.php',
     'phpseclib3\\System\\SSH\\Agent\\Identity' => $vendorDir . '/phpseclib/phpseclib/phpseclib/System/SSH/Agent/Identity.php',
     'phpseclib3\\System\\SSH\\Common\\Traits\\ReadBytes' => $vendorDir . '/phpseclib/phpseclib/phpseclib/System/SSH/Common/Traits/ReadBytes.php',
+=======
+    'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
+>>>>>>> Stashed changes
 );

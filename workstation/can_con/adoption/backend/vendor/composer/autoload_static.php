@@ -87,6 +87,7 @@ class ComposerStaticInitc0c71165c2a9bfb177b7f310de70683f
     );
 
     public static $classMap = array (
+<<<<<<< Updated upstream
         'App\\Bootstrap\\App' => __DIR__ . '/../..' . '/src/Bootstrap/App.php',
         'App\\Bootstrap\\Container' => __DIR__ . '/../..' . '/src/Bootstrap/Container.php',
         'App\\Config\\Config' => __DIR__ . '/../..' . '/src/Config/Config.php',
@@ -692,6 +693,9 @@ class ComposerStaticInitc0c71165c2a9bfb177b7f310de70683f
         'phpseclib3\\System\\SSH\\Agent' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/System/SSH/Agent.php',
         'phpseclib3\\System\\SSH\\Agent\\Identity' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/System/SSH/Agent/Identity.php',
         'phpseclib3\\System\\SSH\\Common\\Traits\\ReadBytes' => __DIR__ . '/..' . '/phpseclib/phpseclib/phpseclib/System/SSH/Common/Traits/ReadBytes.php',
+=======
+        'Composer\\InstalledVersions' => __DIR__ . '/..' . '/composer/InstalledVersions.php',
+>>>>>>> Stashed changes
     );
 
     public static function getInitializer(ClassLoader $loader)

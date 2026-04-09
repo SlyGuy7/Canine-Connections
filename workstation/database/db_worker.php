@@ -589,7 +589,7 @@ function handleQuery($queue, $data, $db) {
     }
 }
 
-$callback = function($msg) use ($host, $port, $user, $pass) {
+$callback = function($msg) use ($channel, $db) {
     $queue         = $msg->delivery_info['routing_key'];
     $body          = $msg->body;
     $msgProps      = $msg->get_properties();
@@ -599,65 +599,32 @@ $callback = function($msg) use ($host, $port, $user, $pass) {
     logMsg("Message received from " . $queue);
     logMsg("Raw body: " . $body);
 
-    $pid = pcntl_fork();
-
-    if ($pid === -1) {
-        logMsg("Fork failed for queue: " . $queue);
-        return;
+    try {
+        $data = json_decode($body, true);
+        if (!is_array($data)) $data = [];
+        $result = handleQuery($queue, $data, $db);
+    } catch (\Throwable $e) {
+        logMsg("Error: " . $e->getMessage());
+        $result = ['success' => false, 'error' => $e->getMessage()];
     }
 
-    if ($pid === 0) {
-        try {
-            $childDb = new mysqli(
-                $_ENV['DB_HOST'],
-                $_ENV['DB_USER'],
-                $_ENV['DB_PASS'],
-                $_ENV['DB_NAME'],
-                (int) $_ENV['DB_PORT']
-            );
+    $resultQueue = ($replyTo !== '')
+        ? $replyTo
+        : ("db.result." . substr($queue, strlen("db.")));
 
-            if ($childDb->connect_error) {
-                logMsg("[CHILD] MySQL connection failed: " . $childDb->connect_error);
-                exit(1);
-            }
+    $props = ['content_type' => 'application/json', 'delivery_mode' => 2];
+    if ($correlationId) $props['correlation_id'] = $correlationId;
 
-            $childConnection = new AMQPStreamConnection($host, $port, $user, $pass, "/");
-            $childChannel    = $childConnection->channel();
+    logMsg("Sending result to " . $resultQueue);
+    logMsg("Response: " . json_encode($result));
 
-            $data = json_decode($body, true);
-            if (!is_array($data)) $data = [];
+    $channel->basic_publish(
+        new AMQPMessage(json_encode($result), $props),
+        '',
+        $resultQueue
+    );
 
-            $result = handleQuery($queue, $data, $childDb);
-
-            $resultQueue = ($replyTo !== '')
-                ? $replyTo
-                : ("db.result." . substr($queue, strlen("db.")));
-
-            $props = ['content_type' => 'application/json', 'delivery_mode' => 2];
-            if ($correlationId) $props['correlation_id'] = $correlationId;
-
-            logMsg("Sending result to " . $resultQueue);
-            logMsg("Response: " . json_encode($result));
-
-            $childChannel->basic_publish(
-                new AMQPMessage(json_encode($result), $props),
-                '',
-                $resultQueue
-            );
-
-            $childChannel->close();
-            $childConnection->close();
-            $childDb->close();
-
-            logMsg("Request processed");
-        } catch (\Throwable $e) {
-            logMsg("[CHILD] Error: " . $e->getMessage());
-        }
-
-        exit(0);
-    }
-
-    pcntl_waitpid(-1, $status, WNOHANG);
+    logMsg("Request processed");
 };
 
 foreach ($queues as $q) {
@@ -668,5 +635,4 @@ logMsg("DATABASE IS RUNNING VERSION 2.0");
 
 while ($channel->is_consuming()) {
     $channel->wait();
-    pcntl_waitpid(-1, $status, WNOHANG);
 }
