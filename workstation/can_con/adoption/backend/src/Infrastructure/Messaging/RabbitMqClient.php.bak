@@ -191,17 +191,7 @@ final class RabbitMqClient
     {
         $replyQueue = $requestQueue . '.reply.' . $correlationId;
 
-        // Non-exclusive, non-auto-delete, durable=false, with TTL of 60s
-        // This prevents the reply queue from corrupting the parent connection on child exit
-        $this->channel->queue_declare(
-            $replyQueue,
-            false,  // passive
-            false,  // durable
-            false,  // exclusive
-            true,   // auto_delete
-            false,  // nowait
-            new \PhpAmqpLib\Wire\AMQPTable(['x-message-ttl' => 60000])
-        );
+        $this->channel->queue_declare($replyQueue, false, false, true, true);
 
         $this->publish($requestQueue, $payload, $correlationId, $replyQueue);
 
@@ -278,7 +268,7 @@ final class RabbitMqClient
 
     public function close(): void
     {
-        try { $this->channel->close(); } catch (\Throwable $e) {}
-        try { $this->connection->close(); } catch (\Throwable $e) {}
+        $this->channel->close();
+        $this->connection->close();
     }
 }
