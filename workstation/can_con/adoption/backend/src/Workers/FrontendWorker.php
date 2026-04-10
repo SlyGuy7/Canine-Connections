@@ -69,7 +69,7 @@ final class FrontendWorker
         $this->mq->wait($running);
     }
 
-    private function childMq(): RabbitMqClient
+    private function newMq(): RabbitMqClient
     {
         return new RabbitMqClient(
             $_ENV['RABBITMQ_HOST'],
@@ -88,9 +88,11 @@ final class FrontendWorker
             return;
         }
         if ($pid === 0) {
-            try { $this->mq->close(); } catch (\Throwable $e) {}
+            // In child: close the inherited socket without sending AMQP frames.
+            // This leaves the parent's TCP connection completely intact.
+            $this->mq->afterFork();
             try {
-                $mq = $this->childMq();
+                $mq = $this->newMq();
                 $fn($mq);
                 $mq->close();
             } catch (\Throwable $e) {
@@ -98,6 +100,7 @@ final class FrontendWorker
             }
             exit(0);
         }
+        // Parent: ack immediately and reap zombie without blocking
         $msg->ack();
         pcntl_waitpid(-1, $status, WNOHANG);
     }
@@ -113,9 +116,11 @@ final class FrontendWorker
 
     private function respond(RabbitMqClient $mq, string $fallbackQueue, string $replyTo, array $payload, ?string $corrId): void
     {
-        $queue = $replyTo !== '' ? ltrim($replyTo, '/queue/') : $fallbackQueue;
-        if (str_starts_with($replyTo, '/queue/')) {
-            $queue = substr($replyTo, strlen('/queue/'));
+        $queue = $fallbackQueue;
+        if ($replyTo !== '') {
+            $queue = str_starts_with($replyTo, '/queue/')
+                ? substr($replyTo, strlen('/queue/'))
+                : $replyTo;
         }
         $mq->publish($queue, $payload, $corrId);
     }
@@ -352,15 +357,10 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            $userId = $data['user_id'] ?? null;
-            $dogId  = $data['dog_id']  ?? null;
             try {
-                if (empty($userId) || empty($dogId)) {
-                    $this->respond($mq, 'response.application.submit', $replyTo, ['success' => false, 'error' => 'user_id and dog_id are required'], $corrId);
-                    return;
-                }
+                if (empty($data['user_id']) || empty($data['dog_id'])) { $this->respond($mq, 'response.application.submit', $replyTo, ['success' => false, 'error' => 'user_id and dog_id are required'], $corrId); return; }
                 $result = $mq->publishAndWait('bridge.application.submit', [
-                    'user_id' => $userId, 'dog_id' => $dogId,
+                    'user_id' => $data['user_id'], 'dog_id' => $data['dog_id'],
                     'full_name' => $this->enc($data['full_name'] ?? ''), 'address' => $this->enc($data['address'] ?? ''), 'phone' => $this->enc($data['phone'] ?? ''),
                     'housing_type' => $data['housing_type'] ?? null, 'has_yard' => $data['has_yard'] ?? false, 'has_other_pets' => $data['has_other_pets'] ?? false,
                     'other_pets_description' => $data['other_pets_description'] ?? null, 'has_children' => $data['has_children'] ?? false,
@@ -369,7 +369,7 @@ final class FrontendWorker
                 ], $corrId);
                 $this->respond($mq, 'response.application.submit', $replyTo, $result ?? ['success' => false, 'error' => 'Could not submit application'], $corrId);
                 if (isset($result['success']) && $result['success']) {
-                    $mq->publish('notifications', ['event' => 'application_received', 'user_id' => $userId, 'message' => 'Your adoption application has been received.']);
+                    $mq->publish('notifications', ['event' => 'application_received', 'user_id' => $data['user_id'], 'message' => 'Your adoption application has been received.']);
                     Mailer::applicationReceived($data['email'] ?? '', $data['first_name'] ?? '', $data['dog_name'] ?? 'your chosen dog');
                 }
             } catch (\Throwable $e) { $this->respond($mq, 'response.application.submit', $replyTo, ['success' => false, 'error' => 'Could not submit application'], $corrId); }
@@ -492,9 +492,8 @@ final class FrontendWorker
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            $userId = $data['user_id'] ?? null;
             try {
-                $result = $mq->publishAndWait('bridge.quiz.submit', ['user_id' => $userId, 'answers' => $data['answers'] ?? []], $corrId);
+                $result = $mq->publishAndWait('bridge.quiz.submit', ['user_id' => $data['user_id'] ?? null, 'answers' => $data['answers'] ?? []], $corrId);
                 $this->respond($mq, 'response.quiz.result', $replyTo, $result ?? ['success' => false, 'error' => 'Quiz failed'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.quiz.result', $replyTo, ['success' => false, 'error' => 'Quiz failed'], $corrId); }
         }, $msg);

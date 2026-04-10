@@ -73,7 +73,9 @@ final class DBridgeWorker
             return;
         }
         if ($pid === 0) {
-            try { $this->mq->close(); } catch (\Throwable $e) {}
+            // In child: close the inherited socket without sending AMQP frames.
+            // This leaves the parent's TCP connection completely intact.
+            $this->mq->afterFork();
             try {
                 $fn();
             } catch (\Throwable $e) {

@@ -214,28 +214,28 @@ export default function Landing() {
   const [previewCategory, setPreviewCategory] = useState(null);
   const [dogs, setDogs] = useState([]);
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      sendMessage("request.dogs.list", { limit: 12 })
-        .then((result) => {
-          if (result && result.success && Array.isArray(result.dogs) && result.dogs.length > 0) {
-            setDogs(result.dogs.map((dog) => ({
-              ...dog,
-              id: dog.dog_id,
-              image: dog.photos ? dog.photos.split(",")[0].trim() : "",
-              size: dog.size === "small" ? "Small"
-                  : dog.size === "medium" ? "Medium"
-                  : dog.size === "large" || dog.size === "extra_large" ? "Large"
-                  : "Medium",
-              ageGroup: Number(dog.age_years) <= 1 ? "Puppy" : "Adult",
-            })));
-          }
-        })
-        .catch(() => {});
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, []);
+  // useEffect(() => {
+  //   const timer = setTimeout(() => {
+  //     sendMessage("request.dogs.list", { limit: 12 })
+  //       .then((result) => {
+  //         if (result && result.success && Array.isArray(result.dogs) && result.dogs.length > 0) {
+  //           setDogs(result.dogs.map((dog) => ({
+  //             ...dog,
+  //             id: dog.dog_id,
+  //             image: dog.photos ? dog.photos.split(",")[0].trim() : "",
+  //             size: dog.size === "small" ? "Small"
+  //                 : dog.size === "medium" ? "Medium"
+  //                 : dog.size === "large" || dog.size === "extra_large" ? "Large"
+  //                 : "Medium",
+  //             ageGroup: Number(dog.age_years) <= 1 ? "Puppy" : "Adult",
+  //           })));
+  //         }
+  //       })
+  //       .catch(() => {});
+  //   }, 5000);
+  //
+  //   return () => clearTimeout(timer);
+  // }, []);
 
   const featuredDogs = useMemo(() => {
     return dogs.slice(0, 4);

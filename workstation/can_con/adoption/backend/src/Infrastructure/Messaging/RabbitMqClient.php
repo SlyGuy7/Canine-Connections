@@ -4,6 +4,7 @@ namespace App\Infrastructure\Messaging;
 
 use PhpAmqpLib\Connection\AMQPStreamConnection;
 use PhpAmqpLib\Message\AMQPMessage;
+use PhpAmqpLib\Wire\AMQPTable;
 
 final class RabbitMqClient
 {
@@ -191,16 +192,14 @@ final class RabbitMqClient
     {
         $replyQueue = $requestQueue . '.reply.' . $correlationId;
 
-        // Non-exclusive, non-auto-delete, durable=false, with TTL of 60s
-        // This prevents the reply queue from corrupting the parent connection on child exit
         $this->channel->queue_declare(
             $replyQueue,
-            false,  // passive
-            false,  // durable
-            false,  // exclusive
-            true,   // auto_delete
-            false,  // nowait
-            new \PhpAmqpLib\Wire\AMQPTable(['x-message-ttl' => 60000])
+            false,
+            false,
+            false,
+            true,
+            false,
+            new AMQPTable(['x-message-ttl' => 60000])
         );
 
         $this->publish($requestQueue, $payload, $correlationId, $replyQueue);
@@ -241,38 +240,26 @@ final class RabbitMqClient
         );
     }
 
-    public function waitForResponse(string $queue, string $correlationId, int $timeoutSeconds = 25): ?array
-    {
-        $startTime = time();
-        echo "[MQ] Waiting on {$queue} (corr:{$correlationId})...\n";
-
-        while (true) {
-            $msg = $this->channel->basic_get($queue, true);
-            if ($msg) {
-                $msgProps  = $msg->get_properties();
-                $msgCorrId = $msgProps['correlation_id'] ?? null;
-                if ($msgCorrId === $correlationId) {
-                    $result = json_decode($msg->body, true) ?? [];
-                    echo "[MQ] ← {$queue} received\n";
-                    return $result;
-                }
-            }
-            if ((time() - $startTime) >= $timeoutSeconds) {
-                echo "[MQ][WARN] Timeout on {$queue}\n";
-                break;
-            }
-            usleep(50000);
-        }
-
-        return null;
-    }
-
     public function wait(bool &$running = true): void
     {
         echo "[MQ] Event loop running...\n";
         while ($running && $this->channel->is_consuming()) {
-            try { $this->channel->wait(null, false, 1); } catch (\PhpAmqpLib\Exception\AMQPTimeoutException $e) {}
+            try {
+                $this->channel->wait(null, false, 1);
+            } catch (\PhpAmqpLib\Exception\AMQPTimeoutException $e) {
+            }
             pcntl_signal_dispatch();
+        }
+    }
+
+    public function afterFork(): void
+    {
+        try {
+            $sock = $this->connection->getSocket();
+            if (is_resource($sock)) {
+                fclose($sock);
+            }
+        } catch (\Throwable $e) {
         }
     }
 
