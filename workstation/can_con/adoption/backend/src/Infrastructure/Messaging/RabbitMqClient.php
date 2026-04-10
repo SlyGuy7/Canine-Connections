@@ -255,7 +255,8 @@ final class RabbitMqClient
     public function afterFork(): void
     {
         try {
-            $sock = $this->connection->getSocket();
+            $io   = (new \ReflectionProperty($this->connection, 'io'))->getValue($this->connection);
+            $sock = (new \ReflectionProperty($io, 'sock'))->getValue($io);
             if (is_resource($sock)) {
                 fclose($sock);
             }
