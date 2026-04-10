@@ -12,6 +12,11 @@ export default function Register() {
   const [confirm, setConfirm] = useState("");
   const [strength, setStrength] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // New state for Dexter's Law IDs
+  const [idOne, setIdOne] = useState(null);
+  const [idTwo, setIdTwo] = useState(null);
+  
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -27,6 +32,38 @@ export default function Register() {
     if (/[^A-Za-z0-9]/.test(val)) s += 1;
 
     setStrength(s);
+  };
+
+  const handleFileChange = (e, setFileState, otherFileState) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/") && file.type !== "application/pdf") {
+      setError("Please upload a valid image (JPG, PNG, WebP) or PDF.");
+      e.target.value = null;
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setError("File is too large. Maximum size is 5MB.");
+      e.target.value = null;
+      return;
+    }
+
+    // New: Prevent uploading the same file twice
+    if (
+      otherFileState && 
+      file.name === otherFileState.name && 
+      file.size === otherFileState.size && 
+      file.lastModified === otherFileState.lastModified
+    ) {
+      setError("You cannot use the exact same file for both forms of ID.");
+      e.target.value = null;
+      return;
+    }
+
+    setFileState(file);
+    setError(""); 
   };
 
   const onSubmit = async (e) => {
@@ -48,6 +85,11 @@ export default function Register() {
       return;
     }
 
+    if (!idOne || !idTwo) {
+      setError("Dexter's Law requires two forms of ID to register.");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -59,6 +101,7 @@ export default function Register() {
         email,
         password,
         confirm,
+        idVerificationComplete: true // Tells backend the files were uploaded
       });
 
       if (result.success) {
@@ -202,6 +245,38 @@ export default function Register() {
         </div>
       </div>
 
+      {/* Dexter's Law Identity Verification Section */}
+      <div style={styles.identityContainer}>
+        <h3 style={styles.identityTitle}>Dexter's Law Compliance</h3>
+        <p style={styles.identityText}>
+          To protect our animals, two forms of photo ID are required.
+        </p>
+        
+      <div style={{ marginBottom: "12px" }}>
+          <label style={styles.label}>Primary ID (Driver's License / State ID) *</label>
+          <input 
+            type="file" 
+            accept="image/png, image/jpeg, image/jpg, image/webp, application/pdf" 
+            // Pass idTwo as the third argument here
+            onChange={(e) => handleFileChange(e, setIdOne, idTwo)} 
+            style={styles.fileInput} 
+          />
+          {idOne && <p style={styles.fileSuccess}>✓ {idOne.name} attached</p>}
+        </div>
+
+        <div>
+          <label style={styles.label}>Secondary ID (Passport / Work ID / Bill) *</label>
+          <input 
+            type="file" 
+            accept="image/png, image/jpeg, image/jpg, image/webp, application/pdf" 
+            // Pass idOne as the third argument here
+            onChange={(e) => handleFileChange(e, setIdTwo, idOne)} 
+            style={styles.fileInput} 
+          />
+          {idTwo && <p style={styles.fileSuccess}>✓ {idTwo.name} attached</p>}
+        </div>
+      </div>
+
       <button style={styles.button} type="submit" disabled={loading}>
         {loading ? "Creating Account..." : "Create Account"}
       </button>
@@ -281,4 +356,42 @@ const styles = {
     marginBottom: "10px",
     fontSize: "13px",
   },
+  identityContainer: {
+    marginTop: "12px",
+    marginBottom: "12px",
+    padding: "16px",
+    background: "#fffaf5",
+    borderRadius: "12px",
+    border: "1px solid #efdfd1",
+  },
+  identityTitle: {
+    fontSize: "16px",
+    color: "#d97706",
+    marginBottom: "8px",
+    marginTop: 0,
+  },
+  identityText: {
+    fontSize: "13px",
+    color: "#6f5848",
+    marginBottom: "16px",
+    marginTop: 0,
+  },
+  fileInput: {
+    width: "100%",
+    padding: "10px",
+    borderRadius: "10px",
+    border: "2px dashed #dcc8b7",
+    background: "#fafaf9",
+    color: "#6f5848",
+    fontSize: "13px",
+    cursor: "pointer",
+    boxSizing: "border-box",
+  },
+  fileSuccess: {
+    color: "#166534",
+    fontSize: "12px",
+    marginTop: "6px",
+    fontWeight: "bold",
+    marginBottom: 0,
+  }
 };

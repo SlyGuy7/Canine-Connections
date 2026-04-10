@@ -14,6 +14,8 @@ import Quiz from "./pages/Quiz"
 import QuizResults from "./pages/QuizResults"
 import ApplicationForm from "./pages/ApplicationForm"
 import Applications from "./pages/Applications"
+import Register from "./pages/Register"
+import Journal from "./pages/Journal"
 import NotFound from "./pages/NotFound"
 
 import AdminLogin from "./pages/AdminLogin"
@@ -28,6 +30,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/"                element={<Landing />} />
+      <Route path="/register"        element={<Register />} />
       <Route path="/dashboard"       element={<Dashboard />} />
       <Route path="/browse-dogs"     element={<BrowseDogs />} />
       <Route path="/dogs/:id"        element={<DogProfile />} />
@@ -37,11 +40,11 @@ export default function App() {
       <Route path="/settings"        element={<Settings />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       
-      {/* Added your missing routes here */}
       <Route path="/apply"           element={<ApplicationForm />} />
       <Route path="/applications"    element={<Applications />} />
       <Route path="/quiz"            element={<Quiz />} />
       <Route path="/quiz-results"    element={<QuizResults />} />
+      <Route path="/journal" element={<div style={{padding: '100px', fontSize: '50px'}}>JOURNAL TEST IS WORKING</div>} />
 
       <Route path="/admin"           element={<AdminLogin />} />
       <Route path="/admin/dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />

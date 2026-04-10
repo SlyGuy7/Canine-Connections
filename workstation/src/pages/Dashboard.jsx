@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import Sidebar from "../components/Sidebar"
+import BadgeGallery from "../components/BadgeGallery"
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -17,7 +18,7 @@ export default function Dashboard() {
   const [logForm, setLogForm] = useState({ log_type: "general", title: "", notes: "", log_date: new Date().toISOString().split("T")[0] })
   const [savingLog, setSavingLog] = useState(false)
   const [showLogForm, setShowLogForm] = useState(false)
-  const [stats, setStats] = useState({ saved: 0, applications: 0 })
+  const [stats, setStats] = useState({ saved: 0, applications: 0, journalCount: 0 })
 
   useEffect(() => {
     loadAll()
@@ -40,17 +41,23 @@ export default function Dashboard() {
   }
 
   function loadStats() {
-    const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]")
-    const applications = JSON.parse(localStorage.getItem("myApplications") || "[]")
-    setStats({ saved: saved.length, applications: applications.length })
+    const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
+    const applications = JSON.parse(localStorage.getItem("myApplications") || "[]");
+    const journalEntries = JSON.parse(localStorage.getItem("journal_entries") || "[]");
+    
+    setStats({ 
+      saved: saved.length, 
+      applications: applications.length,
+      journalCount: journalEntries.length 
+    });
   }
 
   async function loadFeaturedDog() {
     setLoadingDog(true)
     try {
-      const result = await sendMessage("request.dogs.list", {})
+      const result = await sendMessage("request.dogs.list", { limit: 1 })
       if (result?.success && result.dogs?.length > 0) {
-        setFeaturedDog(result.dogs[Math.floor(Math.random() * result.dogs.length)])
+        setFeaturedDog(result.dogs[0])
       }
     } catch (err) {
       setFeaturedDog(null)
@@ -123,10 +130,10 @@ export default function Dashboard() {
   }
 
   const nextSteps = useMemo(() => [
-    { label: "Complete your profile",        done: !!localStorage.getItem("userEmail"),          path: "/settings" },
-    { label: "Save a dog you like",          done: stats.saved > 0,                              path: "/browse-dogs" },
-    { label: "Submit your first application",done: stats.applications > 0,                       path: "/browse-dogs" },
-    { label: "Take the compatibility quiz",  done: !!localStorage.getItem("quizMatchedDogIds"),  path: "/quiz" },
+    { label: "Complete your profile",         done: !!localStorage.getItem("userEmail"),          path: "/settings" },
+    { label: "Save a dog you like",           done: stats.saved > 0,                               path: "/browse-dogs" },
+    { label: "Submit your first application", done: stats.applications > 0,                        path: "/browse-dogs" },
+    { label: "Take the compatibility quiz",   done: !!localStorage.getItem("quizMatchedDogIds"),  path: "/quiz" },
   ], [stats])
 
   const logTypeBadge = (type) => {
@@ -178,26 +185,46 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <section className="stats-grid">
-          <StatCard value={stats.saved}        label="Saved Dogs"      onClick={() => navigate("/my-dogs")} />
-          <StatCard value={stats.applications} label="Applications"    onClick={() => navigate("/applications")} />
-          <StatCard value={adoptedDogs.length} label="Adopted Dogs"    onClick={() => {}} />
-          <StatCard value={logs.length}        label="Journal Entries" onClick={() => {}} />
+        <section className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', marginBottom: '32px' }}>
+          <StatCard 
+            value={stats.saved} 
+            label="Saved Dogs" 
+            icon="❤️" 
+            color="#ef4444" 
+            onClick={() => navigate("/my-dogs")} 
+          />
+          <StatCard 
+            value={stats.applications} 
+            label="Applications" 
+            icon="📩" 
+            color="#3b82f6" 
+            onClick={() => navigate("/applications")} 
+          />
+          <StatCard 
+            value={adoptedDogs.length} 
+            label="Adopted Dogs" 
+            icon="🏡" 
+            color="#10b981" 
+            onClick={() => {}} 
+          />
+          <StatCard 
+            value={stats.journalCount || 0} 
+            label="Journal Entries" 
+            icon="📖" 
+            color="#d97706" 
+            onClick={() => navigate("/journal")} 
+          />
         </section>
 
         <section className="dashboard-main-grid">
-
-          <div className="dashboard-panel highlight-panel">
+          <div className="dashboard-panel highlight-panel" style={{ background: 'linear-gradient(135deg, #ffffff 0%, #fffaf5 100%)', borderRadius: '24px', border: '1px solid #efdfd1' }}>
             <div className="panel-header">
               <h2>{loadingDog ? "Featured Companion" : featuredDog ? `Meet ${featuredDog.name}` : "Featured Companion"}</h2>
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: "24px", flexWrap: "wrap" }}>
               <div style={{ flex: 1, minWidth: "200px" }}>
                 {loadingDog ? (
-                  <>
-                    <div style={{ height: "16px", width: "80%", background: "#e0e0e0", borderRadius: "6px", marginBottom: "10px" }} />
-                    <div style={{ height: "16px", width: "60%", background: "#e0e0e0", borderRadius: "6px", marginBottom: "20px" }} />
-                  </>
+                  <div style={{ padding: "20px" }}>Loading...</div>
                 ) : featuredDog ? (
                   <>
                     <p className="activity-subtext" style={{ marginBottom: "8px" }}>
@@ -214,7 +241,7 @@ export default function Dashboard() {
                   <p className="activity-subtext">Browse our available dogs to find your perfect companion.</p>
                 )}
               </div>
-              <div style={{ width: "160px", height: "160px", borderRadius: "50%", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0 }}>
+              <div style={{ width: "160px", height: "160px", borderRadius: "20px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", flexShrink: 0, boxShadow: '0 8px 16px rgba(0,0,0,0.05)' }}>
                 {featuredPhoto ? (
                   <img src={featuredPhoto} alt={featuredDog?.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
@@ -224,7 +251,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="dashboard-panel">
+          <div className="dashboard-panel" style={{ borderRadius: '24px', border: '1px solid #efdfd1' }}>
             <div className="panel-header">
               <h2>Your Progress</h2>
             </div>
@@ -242,9 +269,11 @@ export default function Dashboard() {
               ))}
             </div>
           </div>
-
         </section>
 
+        <BadgeGallery />
+
+        {/* Remaining Adopted Dogs and Journal Sections */}
         {adoptedDogs.length > 0 && (
           <section style={{ marginTop: "32px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px", flexWrap: "wrap", gap: "12px" }}>
@@ -252,8 +281,8 @@ export default function Dashboard() {
                 <h2 style={{ margin: "0 0 4px 0", color: "var(--text-main)" }}>Post-Adoption Journal</h2>
                 <p className="page-subtitle" style={{ margin: 0 }}>Track vet visits, feeding, training milestones, and more.</p>
               </div>
-              <button className="btn btn-primary" onClick={() => setShowLogForm((v) => !v)}>
-                {showLogForm ? "Cancel" : "Add Entry"}
+              <button className="btn btn-primary" onClick={() => navigate("/journal")}>
+                Go to Journal
               </button>
             </div>
 
@@ -263,7 +292,7 @@ export default function Dashboard() {
                   <button
                     key={dog.dog_id}
                     className="btn"
-                    style={{ fontSize: "14px", background: selectedDogId === dog.dog_id ? "var(--brand)" : "white", color: selectedDogId === dog.dog_id ? "white" : "var(--text-main)", border: "1px solid #d8c1af" }}
+                    style={{ fontSize: "14px", background: selectedDogId === dog.dog_id ? "var(--brand)" : "white", color: selectedDogId === dog.dog_id ? "white" : "var(--text-main)", border: "1px solid #d8c1af", borderRadius: '8px' }}
                     onClick={() => handleDogSelect(dog.dog_id)}
                   >
                     {dog.dog_name || `Dog #${dog.dog_id}`}
@@ -272,61 +301,17 @@ export default function Dashboard() {
               </div>
             )}
 
-            {showLogForm && (
-              <div className="settings-card" style={{ marginBottom: "24px" }}>
-                <h3 style={{ margin: "0 0 20px 0", color: "var(--text-main)" }}>
-                  New Journal Entry {selectedDog ? `for ${selectedDog.dog_name}` : ""}
-                </h3>
-                <form onSubmit={handleAddLog} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <div className="form-row">
-                    <div className="flex-1">
-                      <label className="form-label">Entry Type</label>
-                      <select name="log_type" value={logForm.log_type} onChange={handleLogChange} className="form-input">
-                        <option value="general">General Note</option>
-                        <option value="vet">Vet Appointment</option>
-                        <option value="feeding">Feeding Log</option>
-                        <option value="training">Training Session</option>
-                        <option value="milestone">Milestone</option>
-                      </select>
-                    </div>
-                    <div className="flex-1">
-                      <label className="form-label">Date</label>
-                      <input type="date" name="log_date" value={logForm.log_date} onChange={handleLogChange} className="form-input" />
-                    </div>
-                  </div>
-                  <div>
-                    <label className="form-label">Title</label>
-                    <input required name="title" value={logForm.title} onChange={handleLogChange} className="form-input" placeholder="e.g. First vet checkup, Learned sit command" />
-                  </div>
-                  <div>
-                    <label className="form-label">Notes <span style={{ color: "var(--text-muted)", fontWeight: "400" }}>(optional)</span></label>
-                    <textarea name="notes" value={logForm.notes} onChange={handleLogChange} className="form-input" rows="3" placeholder="Add any details, observations, or reminders." style={{ resize: "vertical", minHeight: "80px" }} />
-                  </div>
-                  <button type="submit" className="btn btn-primary" disabled={savingLog} style={{ alignSelf: "flex-start", minWidth: "140px" }}>
-                    {savingLog ? "Saving..." : "Save Entry"}
-                  </button>
-                </form>
-              </div>
-            )}
-
             {loadingLogs ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {[1, 2, 3].map((i) => (
-                  <div key={i} className="settings-card" style={{ padding: "16px" }}>
-                    <div style={{ height: "16px", width: "40%", background: "#e0e0e0", borderRadius: "6px", marginBottom: "8px" }} />
-                    <div style={{ height: "14px", width: "70%", background: "#e0e0e0", borderRadius: "6px" }} />
-                  </div>
-                ))}
-              </div>
+               <div style={{ padding: '20px' }}>Loading logs...</div>
             ) : logs.length === 0 ? (
-              <div className="settings-card" style={{ textAlign: "center", padding: "40px 20px" }}>
-                <p style={{ color: "var(--text-muted)", margin: "0 0 16px 0" }}>No journal entries yet. Add your first entry to start tracking your dog's journey.</p>
-                <button className="btn btn-primary" onClick={() => setShowLogForm(true)}>Add First Entry</button>
+              <div className="settings-card" style={{ textAlign: "center", padding: "40px 20px", borderRadius: '24px', border: '1px solid #efdfd1' }}>
+                <p style={{ color: "var(--text-muted)", margin: "0 0 16px 0" }}>No journal entries yet.</p>
+                <button className="btn btn-primary" onClick={() => navigate("/journal")}>Add First Entry</button>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 {logs.map((log, index) => (
-                  <div key={log.log_id || index} className="settings-card" style={{ padding: "20px" }}>
+                  <div key={log.log_id || index} className="settings-card" style={{ padding: "20px", borderRadius: '16px', border: '1px solid #efdfd1' }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "8px" }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
@@ -348,28 +333,59 @@ export default function Dashboard() {
 
         {adoptedDogs.length === 0 && (
           <section style={{ marginTop: "32px" }}>
-            <div className="settings-card" style={{ textAlign: "center", padding: "48px 24px" }}>
+            <div className="settings-card" style={{ textAlign: "center", padding: "48px 24px", borderRadius: '24px', border: '2px dashed #e5d5c5' }}>
               <h3 style={{ margin: "0 0 12px 0", color: "var(--text-main)" }}>Post-Adoption Journal</h3>
               <p style={{ color: "var(--text-muted)", margin: "0 0 24px 0", maxWidth: "400px", marginLeft: "auto", marginRight: "auto" }}>
-                Once an adoption is finalized, your journal will appear here. Track vet appointments, feeding logs, training milestones, and celebrate every moment with your new companion.
+                Once an adoption is finalized, your journal will appear here. Track vet appointments, feeding logs, and training milestones.
               </p>
-              <button className="btn btn-primary" onClick={() => navigate("/browse-dogs")}>
-                Start Your Adoption Journey
+              <button className="btn btn-primary" onClick={() => navigate("/journal")}>
+                Go to Journal
               </button>
             </div>
           </section>
         )}
-
       </div>
     </div>
   )
 }
 
-function StatCard({ value, label, onClick }) {
+function StatCard({ value, label, icon, color, onClick }) {
   return (
-    <div className="stat-card" onClick={onClick} role="button" tabIndex="0" style={{ cursor: "pointer" }}>
-      <div className="stat-number">{value}</div>
-      <div className="stat-label">{label}</div>
+    <div 
+      className="stat-card" 
+      onClick={onClick} 
+      role="button" 
+      tabIndex="0" 
+      style={{ 
+        cursor: "pointer", 
+        background: 'white', 
+        padding: '24px', 
+        borderRadius: '20px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        gap: '20px', 
+        border: '1px solid #efdfd1', 
+        boxShadow: '0 4px 12px rgba(47, 36, 29, 0.04)',
+        transition: 'transform 0.2s ease'
+      }}
+    >
+      <div style={{ 
+        fontSize: '28px', 
+        backgroundColor: `${color}15`, 
+        color: color, 
+        width: '60px', 
+        height: '60px', 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        borderRadius: '16px' 
+      }}>
+        {icon}
+      </div>
+      <div>
+        <div style={{ fontSize: '32px', fontWeight: '800', color: '#2f241d', lineHeight: '1' }}>{value}</div>
+        <div style={{ fontSize: '14px', color: '#6f5848', fontWeight: '600', marginTop: '4px' }}>{label}</div>
+      </div>
     </div>
   )
 }
