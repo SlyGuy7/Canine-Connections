@@ -87,7 +87,11 @@ export default function DogProfile() {
     );
   }
 
-  const photos = dog.photos ? dog.photos.split(",").map((p) => p.trim()).filter(Boolean) : [];
+  const photos = Array.isArray(dog.photos)
+    ? dog.photos.map((p) => p.photo_url).filter(Boolean)
+    : dog.photos
+    ? dog.photos.split(",").map((p) => p.trim()).filter(Boolean)
+    : [];
   const currentPhoto = photos[activePhoto] || null;
 
   return (
