@@ -1,11 +1,9 @@
 import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-
 export default function Sidebar() {
   const location = useLocation();
   const [hoveredPath, setHoveredPath] = useState(null);
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
-
   const navLinks = [
     { path: "/dashboard", label: "Dashboard", icon: "🏠" },
     { path: "/browse-dogs", label: "Browse Dogs", icon: "🔍" },
@@ -13,9 +11,9 @@ export default function Sidebar() {
     { path: "/my-dogs", label: "My Dogs", icon: "🐾" },
     { path: "/applications", label: "Applications", icon: "📄" },
     { path: "/messages", label: "Messages", icon: "💬" },
+    { path: "/quiz", label: "Quiz", icon: "🧩" },
     { path: "/journal", label: "Journal", icon: "📖" },
   ];
-
   return (
     <aside className="sidebar" style={{ fontFamily: "'Inter', sans-serif", width: '260px', height: '100vh', position: 'fixed', left: 0, top: 0, backgroundColor: 'white', borderRight: '1px solid #efdfd1', display: 'flex', flexDirection: 'column', padding: '32px 20px' }}>
       
@@ -28,7 +26,6 @@ export default function Sidebar() {
         {navLinks.map((link) => {
           const isActive = location.pathname === link.path;
           const isHovered = hoveredPath === link.path;
-
           return (
             <Link 
               key={link.path}

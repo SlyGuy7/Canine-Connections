@@ -232,22 +232,14 @@ export default function Dashboard() {
             </div>
             <div className="activity-list">
               {nextSteps.map((step) => (
-                <div key={step.label} className="activity-item">
+                <div key={step.label} className="activity-item" style={{ cursor: "pointer" }} onClick={() => !step.done && navigate(step.path)}>
                   <div>
                     <p className="activity-title">{step.label}</p>
                     <p className="activity-subtext">{step.done ? "Completed" : "Tap to get started"}</p>
                   </div>
-                  {step.done ? (
-                    <span className="status-badge approved">Done</span>
-                  ) : (
-                    <button
-                      className="btn btn-primary"
-                      style={{ fontSize: "13px", padding: "6px 14px", whiteSpace: "nowrap" }}
-                      onClick={() => navigate(step.path)}
-                    >
-                      Start
-                    </button>
-                  )}
+                  <span className={`status-badge ${step.done ? "approved" : "pending"}`}>
+                    {step.done ? "Done" : "To Do"}
+                  </span>
                 </div>
               ))}
             </div>
