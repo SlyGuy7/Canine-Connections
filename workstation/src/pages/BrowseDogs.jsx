@@ -159,7 +159,17 @@ export default function BrowseDogs() {
                         src={dog.image}
                         alt={dog.name}
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                        onError={(e) => { e.currentTarget.style.display = "none"; }}
+                        onError={(e) => {
+                          const photos = dog.photos ? dog.photos.split(",").map(p => p.trim()) : [];
+                          const currentSrc = e.currentTarget.src;
+                          const currentIndex = photos.indexOf(currentSrc);
+                          const nextPhoto = photos[currentIndex + 1];
+                          if (nextPhoto) {
+                            e.currentTarget.src = nextPhoto;
+                          } else {
+                            e.currentTarget.style.display = "none";
+                          }
+                        }}
                       />
                     ) : (
                       <span style={{ fontSize: "64px" }}>🐕</span>
