@@ -475,8 +475,10 @@ function handleQuery($queue, $data, $db) {
                 $opts = fetchAllAssoc($stmt->get_result());
                 $traitScores = [];
                 foreach ($opts as $opt) {
-                    if (!empty($opt['trait_key']) && $opt['trait_value'] !== '') {
-                        $traitScores[$opt['trait_key']] = $opt['trait_value'];
+                    $key = !empty($opt['trait_key']) ? $opt['trait_key'] : ($opt['maps_to_attribute'] ?? '');
+                    $val = isset($opt['trait_value']) ? $opt['trait_value'] : ($opt['maps_to_value'] ?? '');
+                    if (!empty($key) && $val !== '') {
+                        $traitScores[$key] = $val;
                     }
                 }
                 $sql = "SELECT dog_id FROM dogs WHERE status='available'";
