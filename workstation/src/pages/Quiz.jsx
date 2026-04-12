@@ -39,7 +39,7 @@ export default function Quiz() {
   }
 
   const handleAnswer = (questionId, optionId) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: optionId }));
+    setAnswers((prev) => ({ ...prev, [questionId]: Number(optionId) }));
   };
 
   const allAnswered = questions.length > 0 && questions.every((q) => answers[q.question_id] !== undefined);
@@ -59,7 +59,7 @@ export default function Quiz() {
     try {
       const result = await sendMessage("request.quiz.submit", {
         user_id: userId,
-        answers: Object.values(answers),
+        answers: Object.values(answers).map(Number),
       });
       if (result?.success) {
         localStorage.setItem("quizMatchedDogIds", JSON.stringify(result.matched_dog_ids || []));
