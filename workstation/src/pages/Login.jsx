@@ -1,73 +1,57 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-
 export default function Login({ switchToRegister, switchToForgot }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-
   const navigate = useNavigate();
-
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
-
     if (!email || !password) {
       setError("Please fill in all fields");
       return;
     }
-
     setLoading(true);
-
     try {
       const result = await sendMessage("request.auth.login", {
         email,
         password,
       });
-
       if (result.success) {
-        const fName = result.user?.firstName || result.first_name;
-        const lName = result.user?.lastName || result.last_name;
-
+        const user = result.user || {};
+        const fName = user.first_name || user.firstName || "";
+        const lName = user.last_name  || user.lastName  || "";
         if (fName) localStorage.setItem("userFirstName", fName);
         if (lName) localStorage.setItem("userLastName", lName);
-        
         if (fName || lName) {
-          localStorage.setItem(
-            "userFullName",
-            `${fName || ""} ${lName || ""}`.trim()
-          );
+          localStorage.setItem("userFullName", `${fName} ${lName}`.trim());
         }
-
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("userEmail", email);
-
+        localStorage.setItem("userId", user.user_id || "");
+        localStorage.setItem("userRole", user.role || "adopter");
         setLoading(false);
         navigate("/dashboard");
-        return; 
+        return;
       }
-
       setLoading(false);
       setError(result.error || "Login failed. Invalid credentials.");
-      
     } catch (err) {
       setLoading(false);
       setError("Login failed. Backend or database may be offline.");
       console.log("Login error", err);
     }
   }
-
   const handleForgotPassword = (e) => {
-  e.preventDefault();
-  switchToForgot(); 
-};
-
+    e.preventDefault();
+    switchToForgot();
+  };
   return (
     <form onSubmit={onSubmit} style={styles.form}>
       {error && <p style={styles.error}>{error}</p>}
-
       <div>
         <label style={styles.label}>Email</label>
         <input
@@ -78,7 +62,6 @@ export default function Login({ switchToRegister, switchToForgot }) {
           autoComplete="email"
         />
       </div>
-
       <div>
         <div style={styles.passwordHeader}>
           <label style={styles.label}>Password</label>
@@ -94,14 +77,12 @@ export default function Login({ switchToRegister, switchToForgot }) {
           autoComplete="current-password"
         />
       </div>
-
       <button style={styles.button} type="submit" disabled={loading}>
         {loading ? "Logging In..." : "Login"}
       </button>
     </form>
   );
 }
-
 const styles = {
   form: {
     display: "flex",
