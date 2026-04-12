@@ -27,19 +27,32 @@ logMsg("RabbitMQ connected");
 
 logMsg("Connecting to MySQL...");
 
-$db = new mysqli(
-    $_ENV['DB_HOST'],
-    $_ENV['DB_USER'],
-    $_ENV['DB_PASS'],
-    $_ENV['DB_NAME'],
-    (int) $_ENV['DB_PORT']
-);
+$dbHosts = array_filter([
+    $_ENV['DB_HOST']   ?? null,
+    $_ENV['DB_HOST_2'] ?? null,
+    $_ENV['DB_HOST_3'] ?? null,
+]);
 
-if ($db->connect_error) {
-    die("MySQL connection failed: " . $db->connect_error . PHP_EOL);
+$db = null;
+foreach ($dbHosts as $dbHost) {
+    $conn = new mysqli(
+        $dbHost,
+        $_ENV['DB_USER'],
+        $_ENV['DB_PASS'],
+        $_ENV['DB_NAME'],
+        (int)$_ENV['DB_PORT']
+    );
+    if (!$conn->connect_error) {
+        $db = $conn;
+        logMsg("MySQL connected to " . $dbHost);
+        break;
+    }
+    logMsg("Could not connect to " . $dbHost . " — trying next node");
 }
 
-logMsg("MySQL connected");
+if (!$db) {
+    die("MySQL connection failed on all nodes" . PHP_EOL);
+}
 
 $queues = [
     'db.auth.register',
@@ -124,6 +137,18 @@ function fetchOneAssoc($result) {
     return $result->fetch_assoc();
 }
 
+function reconnectDb(array $dbHosts, string $dbUser, string $dbPass, string $dbName, int $dbPort): ?mysqli {
+    foreach ($dbHosts as $dbHost) {
+        $conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName, $dbPort);
+        if (!$conn->connect_error) {
+            logMsg("MySQL reconnected to " . $dbHost);
+            return $conn;
+        }
+        logMsg("Reconnect failed for " . $dbHost . " — trying next node");
+    }
+    return null;
+}
+
 function handleQuery($queue, $data, $db) {
     logMsg("Processing queue: " . $queue);
     logMsg("Payload: " . json_encode($data));
@@ -133,7 +158,6 @@ function handleQuery($queue, $data, $db) {
             if (!isset($data["email"]) || !isset($data["password_hash"])) {
                 return ["success" => false, "error" => "Missing email or password_hash"];
             }
-
             $email        = $db->real_escape_string($data["email"]);
             $passwordHash = $db->real_escape_string($data["password_hash"]);
             $firstName    = $db->real_escape_string($data["first_name"] ?? '');
@@ -141,42 +165,30 @@ function handleQuery($queue, $data, $db) {
             $phone        = $db->real_escape_string($data["phone"] ?? '');
             $address      = $db->real_escape_string($data["address"] ?? '');
             $role         = $db->real_escape_string($data["role"] ?? 'adopter');
-
             $check = $db->query("SELECT user_id FROM users WHERE email='{$email}' LIMIT 1");
             if ($check && $check->num_rows > 0) {
                 return ["success" => false, "error" => "Email already registered"];
             }
-
             $sql = "INSERT INTO users (email, password_hash, first_name, last_name, phone, address, role)
                     VALUES ('{$email}', '{$passwordHash}', '{$firstName}', '{$lastName}', '{$phone}', '{$address}', '{$role}')";
-
             logMsg("Executing SQL: " . $sql);
-
             if (!$db->query($sql)) {
                 return ["success" => false, "error" => $db->error];
             }
-
             return ["success" => true, "user_id" => $db->insert_id];
 
         case "db.auth.login":
             if (!isset($data["email"])) {
                 return ["success" => false, "error" => "Missing email"];
             }
-
             $email = $db->real_escape_string($data["email"]);
-
             $sql = "SELECT user_id, email, password_hash, role, first_name, last_name
-                    FROM users
-                    WHERE email='{$email}'
-                    LIMIT 1";
+                    FROM users WHERE email='{$email}' LIMIT 1";
             logMsg("Executing SQL: " . $sql);
-
             $result = $db->query($sql);
-
             if (!$result || $result->num_rows === 0) {
                 return ["success" => false, "user" => null];
             }
-
             return ["success" => true, "user" => $result->fetch_assoc()];
 
         case "db.auth.resetPassword":
@@ -240,13 +252,75 @@ function handleQuery($queue, $data, $db) {
             $shelter = fetchOneAssoc($result);
             return $shelter ? ["success" => true, "shelter" => $shelter] : ["success" => false, "error" => "Shelter not found"];
 
+        case "db.api.key.get":
+            if (!isset($data["shelter_id"])) return ["success" => false, "error" => "Missing shelter_id"];
+            $id = (int)$data["shelter_id"];
+            $result = $db->query("SELECT * FROM api_keys WHERE shelter_id={$id} AND is_active=1 LIMIT 1");
+            if (!$result) return ["success" => false, "error" => $db->error];
+            $key = fetchOneAssoc($result);
+            return $key ? ["success" => true, "key" => $key] : ["success" => false, "error" => "No active API key found"];
+
+        case "db.api.key.regenerate":
+            if (!isset($data["shelter_id"])) return ["success" => false, "error" => "Missing shelter_id"];
+            $id     = (int)$data["shelter_id"];
+            $newKey = $db->real_escape_string(bin2hex(random_bytes(32)));
+            $db->query("UPDATE api_keys SET api_key='{$newKey}', updated_at=NOW() WHERE shelter_id={$id}");
+            return ["success" => true, "api_key" => $newKey];
+
+        case "db.api.key.validate":
+            if (!isset($data["api_key"])) return ["success" => false, "error" => "Missing api_key"];
+            $key = $db->real_escape_string($data["api_key"]);
+            $result = $db->query("SELECT shelter_id FROM api_keys WHERE api_key='{$key}' AND is_active=1 LIMIT 1");
+            if (!$result || $result->num_rows === 0) return ["valid" => false];
+            $row = $result->fetch_assoc();
+            $db->query("UPDATE api_keys SET last_used_at=NOW() WHERE api_key='{$key}'");
+            return ["valid" => true, "shelter_id" => $row["shelter_id"]];
+
+        case "db.api.logs":
+            if (!isset($data["shelter_id"])) return ["success" => false, "error" => "Missing shelter_id"];
+            $id     = (int)$data["shelter_id"];
+            $limit  = (int)($data["limit"] ?? 50);
+            $offset = (int)($data["offset"] ?? 0);
+            $result = $db->query("SELECT * FROM api_logs WHERE shelter_id={$id} ORDER BY called_at DESC LIMIT {$limit} OFFSET {$offset}");
+            if (!$result) return ["success" => false, "error" => $db->error];
+            return ["success" => true, "logs" => fetchAllAssoc($result)];
+
+        case "db.api.log":
+            $shelterId = (int)($data["shelter_id"] ?? 0);
+            $endpoint  = $db->real_escape_string($data["endpoint"] ?? '');
+            $method    = $db->real_escape_string($data["method"] ?? 'POST');
+            $summary   = $db->real_escape_string($data["payload_summary"] ?? '');
+            $status    = (int)($data["response_status"] ?? 200);
+            $ip        = $db->real_escape_string($data["ip_address"] ?? '');
+            $db->query("INSERT INTO api_logs (shelter_id, endpoint, method, payload_summary, response_status, ip_address, called_at)
+                        VALUES ({$shelterId}, '{$endpoint}', '{$method}', '{$summary}', {$status}, '{$ip}', NOW())");
+            return ["success" => true];
+
         case "db.application.submit":
             if (!isset($data["user_id"]) || !isset($data["dog_id"])) {
                 return ["success" => false, "error" => "Missing user_id or dog_id"];
             }
-            $userId = (int)$data["user_id"];
-            $dogId = (int)$data["dog_id"];
-            $sql = "INSERT INTO adoption_applications (user_id, dog_id, status) VALUES ({$userId}, {$dogId}, 'pending')";
+            $userId    = (int)$data["user_id"];
+            $dogId     = (int)$data["dog_id"];
+            $fullName  = $db->real_escape_string($data["full_name"] ?? '');
+            $address   = $db->real_escape_string($data["address"] ?? '');
+            $phone     = $db->real_escape_string($data["phone"] ?? '');
+            $housing   = $db->real_escape_string($data["housing_type"] ?? 'house');
+            $yard      = (int)($data["has_yard"] ?? 0);
+            $otherPets = (int)($data["has_other_pets"] ?? 0);
+            $petsDesc  = $db->real_escape_string($data["other_pets_description"] ?? '');
+            $children  = (int)($data["has_children"] ?? 0);
+            $childAges = $db->real_escape_string($data["children_ages"] ?? '');
+            $exp       = $db->real_escape_string($data["prior_pet_experience"] ?? '');
+            $reason    = $db->real_escape_string($data["reason_for_adopting"] ?? '');
+            $vetRef    = $db->real_escape_string($data["vet_reference"] ?? '');
+            $sql = "INSERT INTO adoption_applications
+                    (user_id, dog_id, full_name, address, phone, housing_type, has_yard, has_other_pets,
+                     other_pets_description, has_children, children_ages, prior_pet_experience,
+                     reason_for_adopting, vet_reference, status)
+                    VALUES ({$userId}, {$dogId}, '{$fullName}', '{$address}', '{$phone}', '{$housing}',
+                    {$yard}, {$otherPets}, '{$petsDesc}', {$children}, '{$childAges}', '{$exp}',
+                    '{$reason}', '{$vetRef}', 'pending')";
             logMsg("Executing SQL: " . $sql);
             if (!$db->query($sql)) return ["success" => false, "error" => $db->error];
             return ["success" => true, "application_id" => $db->insert_id];
@@ -260,21 +334,38 @@ function handleQuery($queue, $data, $db) {
             return $app ? ["success" => true, "application" => $app] : ["success" => false, "error" => "Application not found"];
 
         case "db.application.list":
-            $result = $db->query("SELECT * FROM adoption_applications ORDER BY application_id DESC");
+            $userId     = (int)($data["user_id"] ?? 0);
+            $shelterId  = (int)($data["shelter_id"] ?? 0);
+            if ($shelterId) {
+                $sql = "SELECT aa.*, u.email, u.first_name, u.last_name
+                        FROM adoption_applications aa JOIN users u ON aa.user_id = u.user_id
+                        WHERE EXISTS (SELECT 1 FROM dogs WHERE dog_id = aa.dog_id AND shelter_id = {$shelterId})
+                        ORDER BY aa.application_id DESC";
+            } else {
+                $sql = "SELECT aa.*, u.email, u.first_name, u.last_name
+                        FROM adoption_applications aa JOIN users u ON aa.user_id = u.user_id
+                        WHERE aa.user_id = {$userId}
+                        ORDER BY aa.application_id DESC";
+            }
+            $result = $db->query($sql);
             if (!$result) return ["success" => false, "error" => $db->error];
             return ["success" => true, "applications" => fetchAllAssoc($result)];
 
         case "db.application.approve":
             if (!isset($data["application_id"])) return ["success" => false, "error" => "Missing application_id"];
-            $id = (int)$data["application_id"];
-            $db->query("UPDATE adoption_applications SET status='approved' WHERE application_id={$id}");
+            $id          = (int)$data["application_id"];
+            $reviewedBy  = isset($data["reviewed_by"]) ? (int)$data["reviewed_by"] : "NULL";
+            $notes       = $db->real_escape_string($data["reviewer_notes"] ?? '');
+            $db->query("UPDATE adoption_applications SET status='approved', reviewed_by={$reviewedBy}, reviewer_notes='{$notes}' WHERE application_id={$id}");
             $row = fetchOneAssoc($db->query("SELECT user_id FROM adoption_applications WHERE application_id={$id}"));
             return ["success" => true, "user_id" => $row['user_id'] ?? null];
 
         case "db.application.reject":
             if (!isset($data["application_id"])) return ["success" => false, "error" => "Missing application_id"];
-            $id = (int)$data["application_id"];
-            $db->query("UPDATE adoption_applications SET status='rejected' WHERE application_id={$id}");
+            $id         = (int)$data["application_id"];
+            $reviewedBy = isset($data["reviewed_by"]) ? (int)$data["reviewed_by"] : "NULL";
+            $notes      = $db->real_escape_string($data["reviewer_notes"] ?? '');
+            $db->query("UPDATE adoption_applications SET status='rejected', reviewed_by={$reviewedBy}, reviewer_notes='{$notes}' WHERE application_id={$id}");
             $row = fetchOneAssoc($db->query("SELECT user_id FROM adoption_applications WHERE application_id={$id}"));
             return ["success" => true, "user_id" => $row['user_id'] ?? null];
 
@@ -315,26 +406,30 @@ function handleQuery($queue, $data, $db) {
             return ["success" => true];
 
         case "db.stories.list":
-            $limit = (int)($data['limit'] ?? 10);
+            $limit  = (int)($data['limit']  ?? 10);
             $offset = (int)($data['offset'] ?? 0);
-            $result = $db->query("SELECT ss.*, u.first_name, u.last_name FROM success_stories ss JOIN users u ON ss.user_id = u.user_id WHERE ss.status='approved' ORDER BY ss.created_at DESC LIMIT {$limit} OFFSET {$offset}");
+            $result = $db->query("SELECT ss.*, u.first_name, u.last_name FROM success_stories ss
+                                  JOIN users u ON ss.user_id = u.user_id
+                                  WHERE ss.status='approved'
+                                  ORDER BY ss.created_at DESC LIMIT {$limit} OFFSET {$offset}");
             if (!$result) return ["success" => false, "error" => $db->error];
             return ["success" => true, "stories" => fetchAllAssoc($result)];
 
         case "db.stories.submit":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
-            $userId = (int)$data["user_id"];
-            $dogId = isset($data["dog_id"]) ? (int)$data["dog_id"] : "NULL";
-            $title = $db->real_escape_string($data["title"] ?? '');
-            $story = $db->real_escape_string($data["story"] ?? '');
-            $photoUrl = $db->real_escape_string($data["photo_url"] ?? '');
-            $dogIdVal = is_int($dogId) ? $dogId : "NULL";
-            $db->query("INSERT INTO success_stories (user_id, dog_id, title, story, photo_url, status, created_at) VALUES ({$userId}, {$dogIdVal}, '{$title}', '{$story}', '{$photoUrl}', 'pending', NOW())");
+            $userId    = (int)$data["user_id"];
+            $dogId     = isset($data["dog_id"]) ? (int)$data["dog_id"] : "NULL";
+            $title     = $db->real_escape_string($data["title"] ?? '');
+            $story     = $db->real_escape_string($data["story"] ?? '');
+            $photoUrl  = $db->real_escape_string($data["photo_url"] ?? '');
+            $dogIdVal  = is_int($dogId) ? $dogId : "NULL";
+            $db->query("INSERT INTO success_stories (user_id, dog_id, title, story, photo_url, status, created_at)
+                        VALUES ({$userId}, {$dogIdVal}, '{$title}', '{$story}', '{$photoUrl}', 'pending', NOW())");
             return ["success" => true, "story_id" => $db->insert_id];
 
         case "db.stories.approve":
             if (!isset($data["story_id"])) return ["success" => false, "error" => "Missing story_id"];
-            $id = (int)$data["story_id"];
+            $id         = (int)$data["story_id"];
             $approvedBy = isset($data["approved_by"]) ? (int)$data["approved_by"] : "NULL";
             $db->query("UPDATE success_stories SET status='approved', approved_by={$approvedBy} WHERE story_id={$id}");
             return ["success" => true];
@@ -357,16 +452,18 @@ function handleQuery($queue, $data, $db) {
                     }
                 }
             }
-            $result = $db->query("SELECT b.*, ub.earned_at FROM user_badges ub JOIN badges b ON ub.badge_id = b.badge_id WHERE ub.user_id={$userId} ORDER BY ub.earned_at DESC");
+            $result = $db->query("SELECT b.*, ub.earned_at FROM user_badges ub
+                                  JOIN badges b ON ub.badge_id = b.badge_id
+                                  WHERE ub.user_id={$userId} ORDER BY ub.earned_at DESC");
             if (!$result) return ["success" => false, "error" => $db->error];
             return ["success" => true, "badges" => fetchAllAssoc($result)];
 
         case "db.chat.start":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
-            $userId = (int)$data["user_id"];
-            $dogId = (int)($data["dog_id"] ?? 0);
+            $userId    = (int)$data["user_id"];
+            $dogId     = (int)($data["dog_id"] ?? 0);
             $shelterId = (int)($data["shelter_id"] ?? 0);
-            $existing = fetchOneAssoc($db->query("SELECT session_id FROM chat_sessions WHERE user_id={$userId} AND dog_id={$dogId} AND shelter_id={$shelterId} AND status='open' LIMIT 1"));
+            $existing  = fetchOneAssoc($db->query("SELECT session_id FROM chat_sessions WHERE user_id={$userId} AND dog_id={$dogId} AND shelter_id={$shelterId} AND status='open' LIMIT 1"));
             if ($existing) return ["success" => true, "session_id" => $existing["session_id"]];
             $db->query("INSERT INTO chat_sessions (user_id, dog_id, shelter_id, status) VALUES ({$userId}, {$dogId}, {$shelterId}, 'open')");
             return ["success" => true, "session_id" => $db->insert_id];
@@ -374,96 +471,105 @@ function handleQuery($queue, $data, $db) {
         case "db.chat.message":
             if (!isset($data["session_id"]) || !isset($data["sender_id"])) return ["success" => false, "error" => "Missing fields"];
             $sessionId = (int)$data["session_id"];
-            $senderId = (int)$data["sender_id"];
-            $message = $db->real_escape_string($data["message"] ?? '');
+            $senderId  = (int)$data["sender_id"];
+            $message   = $db->real_escape_string($data["message"] ?? '');
             $db->query("INSERT INTO chat_messages (session_id, sender_id, message, created_at) VALUES ({$sessionId}, {$senderId}, '{$message}', NOW())");
             return ["success" => true, "message_id" => $db->insert_id];
 
         case "db.chat.history":
             if (!isset($data["session_id"])) return ["success" => false, "error" => "Missing session_id"];
             $sessionId = (int)$data["session_id"];
-            $result = $db->query("SELECT cm.*, u.first_name, u.last_name FROM chat_messages cm JOIN users u ON cm.sender_id = u.user_id WHERE cm.session_id={$sessionId} ORDER BY cm.created_at ASC");
+            $result    = $db->query("SELECT cm.*, u.first_name, u.last_name FROM chat_messages cm
+                                     JOIN users u ON cm.sender_id = u.user_id
+                                     WHERE cm.session_id={$sessionId} ORDER BY cm.created_at ASC");
             if (!$result) return ["success" => false, "error" => $db->error];
             return ["success" => true, "messages" => fetchAllAssoc($result)];
 
         case "db.meetgreet.schedule":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
-            $userId = (int)$data["user_id"];
-            $dogId = (int)($data["dog_id"] ?? 0);
+            $userId    = (int)$data["user_id"];
+            $dogId     = (int)($data["dog_id"] ?? 0);
             $shelterId = (int)($data["shelter_id"] ?? 0);
-            $date = $db->real_escape_string($data["scheduled_date"] ?? '');
-            $time = $db->real_escape_string($data["scheduled_time"] ?? '');
-            $link = $db->real_escape_string($data["video_link"] ?? '');
-            $db->query("INSERT INTO meet_greet_sessions (user_id, dog_id, shelter_id, scheduled_date, scheduled_time, video_link, status) VALUES ({$userId}, {$dogId}, {$shelterId}, '{$date}', '{$time}', '{$link}', 'scheduled')");
+            $date      = $db->real_escape_string($data["scheduled_date"] ?? '');
+            $time      = $db->real_escape_string($data["scheduled_time"] ?? '');
+            $link      = $db->real_escape_string($data["video_link"] ?? '');
+            $db->query("INSERT INTO meet_greet_sessions (user_id, dog_id, shelter_id, scheduled_date, scheduled_time, video_link, status)
+                        VALUES ({$userId}, {$dogId}, {$shelterId}, '{$date}', '{$time}', '{$link}', 'scheduled')");
             return ["success" => true, "session_id" => $db->insert_id];
 
         case "db.meetgreet.list":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
             $userId = (int)$data["user_id"];
-            $result = $db->query("SELECT mg.*, d.name as dog_name FROM meet_greet_sessions mg JOIN dogs d ON mg.dog_id = d.dog_id WHERE mg.user_id={$userId} ORDER BY mg.scheduled_date ASC");
+            $result = $db->query("SELECT mg.*, d.name as dog_name FROM meet_greet_sessions mg
+                                  JOIN dogs d ON mg.dog_id = d.dog_id
+                                  WHERE mg.user_id={$userId} ORDER BY mg.scheduled_date ASC");
             if (!$result) return ["success" => false, "error" => $db->error];
             return ["success" => true, "sessions" => fetchAllAssoc($result)];
 
         case "db.meetgreet.cancel":
             if (!isset($data["session_id"])) return ["success" => false, "error" => "Missing session_id"];
-            $id = (int)$data["session_id"];
+            $id     = (int)$data["session_id"];
             $userId = (int)($data["user_id"] ?? 0);
             $db->query("UPDATE meet_greet_sessions SET status='cancelled' WHERE session_id={$id} AND user_id={$userId}");
             return ["success" => true];
 
         case "db.foster.apply":
             if (!isset($data["user_id"]) || !isset($data["dog_id"])) return ["success" => false, "error" => "Missing fields"];
-            $userId = (int)$data["user_id"];
-            $dogId = (int)$data["dog_id"];
-            $amount = (float)($data["sponsorship_amount"] ?? 0);
+            $userId    = (int)$data["user_id"];
+            $dogId     = (int)$data["dog_id"];
+            $amount    = (float)($data["sponsorship_amount"] ?? 0);
             $startDate = $db->real_escape_string($data["start_date"] ?? date('Y-m-d'));
-            $db->query("INSERT INTO virtual_foster (user_id, dog_id, sponsorship_amount, status, start_date) VALUES ({$userId}, {$dogId}, {$amount}, 'active', '{$startDate}')");
+            $db->query("INSERT INTO virtual_foster (user_id, dog_id, sponsorship_amount, status, start_date)
+                        VALUES ({$userId}, {$dogId}, {$amount}, 'active', '{$startDate}')");
             return ["success" => true, "foster_id" => $db->insert_id];
 
         case "db.foster.list":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
             $userId = (int)$data["user_id"];
-            $result = $db->query("SELECT vf.*, d.name as dog_name FROM virtual_foster vf JOIN dogs d ON vf.dog_id = d.dog_id WHERE vf.user_id={$userId} ORDER BY vf.start_date DESC");
+            $result = $db->query("SELECT vf.*, d.name as dog_name FROM virtual_foster vf
+                                  JOIN dogs d ON vf.dog_id = d.dog_id
+                                  WHERE vf.user_id={$userId} ORDER BY vf.start_date DESC");
             if (!$result) return ["success" => false, "error" => $db->error];
             return ["success" => true, "fosters" => fetchAllAssoc($result)];
 
         case "db.foster.cancel":
             if (!isset($data["foster_id"])) return ["success" => false, "error" => "Missing foster_id"];
-            $id = (int)$data["foster_id"];
+            $id     = (int)$data["foster_id"];
             $userId = (int)($data["user_id"] ?? 0);
             $db->query("UPDATE virtual_foster SET status='cancelled' WHERE foster_id={$id} AND user_id={$userId}");
             return ["success" => true];
 
         case "db.adoption.log.create":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
-            $userId = (int)$data["user_id"];
-            $dogId = (int)($data["dog_id"] ?? 0);
+            $userId  = (int)$data["user_id"];
+            $dogId   = (int)($data["dog_id"] ?? 0);
             $logType = $db->real_escape_string($data["log_type"] ?? 'general');
-            $title = $db->real_escape_string($data["title"] ?? '');
-            $notes = $db->real_escape_string($data["notes"] ?? '');
+            $title   = $db->real_escape_string($data["title"] ?? '');
+            $notes   = $db->real_escape_string($data["notes"] ?? '');
             $logDate = $db->real_escape_string($data["log_date"] ?? date('Y-m-d'));
-            $db->query("INSERT INTO post_adoption_logs (user_id, dog_id, log_type, title, notes, log_date) VALUES ({$userId}, {$dogId}, '{$logType}', '{$title}', '{$notes}', '{$logDate}')");
+            $db->query("INSERT INTO post_adoption_logs (user_id, dog_id, log_type, title, notes, log_date)
+                        VALUES ({$userId}, {$dogId}, '{$logType}', '{$title}', '{$notes}', '{$logDate}')");
             return ["success" => true, "log_id" => $db->insert_id];
 
         case "db.adoption.log.list":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
             $userId = (int)$data["user_id"];
-            $dogId = (int)($data["dog_id"] ?? 0);
+            $dogId  = (int)($data["dog_id"] ?? 0);
             $result = $db->query("SELECT * FROM post_adoption_logs WHERE user_id={$userId} AND dog_id={$dogId} ORDER BY log_date DESC");
             if (!$result) return ["success" => false, "error" => $db->error];
             return ["success" => true, "logs" => fetchAllAssoc($result)];
 
         case "db.quiz.questions":
             $questions = fetchAllAssoc($db->query("SELECT * FROM quiz_questions ORDER BY question_id ASC"));
-            $options = fetchAllAssoc($db->query("SELECT * FROM quiz_options ORDER BY question_id ASC, option_id ASC"));
-            $optMap = [];
+            $options   = fetchAllAssoc($db->query("SELECT * FROM quiz_options ORDER BY question_id ASC, option_id ASC"));
+            $optMap    = [];
             foreach ($options as $opt) $optMap[$opt['question_id']][] = $opt;
             foreach ($questions as &$q) $q['options'] = $optMap[$q['question_id']] ?? [];
             return ["success" => true, "questions" => $questions];
 
         case "db.quiz.submit":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
-            $userId = (int)$data["user_id"];
+            $userId  = (int)$data["user_id"];
             $answers = $data["answers"] ?? [];
             $matched = [];
             if (!empty($answers)) {
@@ -475,23 +581,23 @@ function handleQuery($queue, $data, $db) {
                 $opts = fetchAllAssoc($stmt->get_result());
                 $traitScores = [];
                 foreach ($opts as $opt) {
-                    $key = !empty($opt['trait_key']) ? $opt['trait_key'] : ($opt['maps_to_attribute'] ?? '');
-                    $val = isset($opt['trait_value']) ? $opt['trait_value'] : ($opt['maps_to_value'] ?? '');
+                    $key = !empty($opt['maps_to_attribute']) ? $opt['maps_to_attribute'] : '';
+                    $val = isset($opt['maps_to_value']) ? $opt['maps_to_value'] : '';
                     if (!empty($key) && $val !== '') {
                         $traitScores[$key] = $val;
                     }
                 }
                 $scoreParts = [];
-                if (!empty($traitScores['energy_level']))     { $scoreParts[] = "(energy_level='".$db->real_escape_string($traitScores['energy_level'])."')"; }
-                if (!empty($traitScores['size']))              { $scoreParts[] = "(size='".$db->real_escape_string($traitScores['size'])."')"; }
-                if (isset($traitScores['good_with_kids']) && $traitScores['good_with_kids'] !== '')     { $scoreParts[] = "(good_with_kids=".(int)$traitScores['good_with_kids'].")"; }
+                if (!empty($traitScores['energy_level']))                                              { $scoreParts[] = "(energy_level='".$db->real_escape_string($traitScores['energy_level'])."')"; }
+                if (!empty($traitScores['size']))                                                       { $scoreParts[] = "(size='".$db->real_escape_string($traitScores['size'])."')"; }
+                if (isset($traitScores['good_with_kids']) && $traitScores['good_with_kids'] !== '')    { $scoreParts[] = "(good_with_kids=".(int)$traitScores['good_with_kids'].")"; }
                 if (isset($traitScores['apartment_friendly']) && $traitScores['apartment_friendly'] !== '') { $scoreParts[] = "(apartment_friendly=".(int)$traitScores['apartment_friendly'].")"; }
-                if (isset($traitScores['good_with_dogs']) && $traitScores['good_with_dogs'] !== '')     { $scoreParts[] = "(good_with_dogs=".(int)$traitScores['good_with_dogs'].")"; }
-                if (isset($traitScores['good_with_cats']) && $traitScores['good_with_cats'] !== '')     { $scoreParts[] = "(good_with_cats=".(int)$traitScores['good_with_cats'].")"; }
-                if (isset($traitScores['requires_yard']) && $traitScores['requires_yard'] !== '')       { $scoreParts[] = "(requires_yard=".(int)$traitScores['requires_yard'].")"; }
-                if (!empty($traitScores['gender']))            { $scoreParts[] = "(gender='".$db->real_escape_string($traitScores['gender'])."')"; }
-                if (isset($traitScores['is_vaccinated']) && $traitScores['is_vaccinated'] !== '')       { $scoreParts[] = "(is_vaccinated=".(int)$traitScores['is_vaccinated'].")"; }
-                $total = count($scoreParts);
+                if (isset($traitScores['good_with_dogs']) && $traitScores['good_with_dogs'] !== '')    { $scoreParts[] = "(good_with_dogs=".(int)$traitScores['good_with_dogs'].")"; }
+                if (isset($traitScores['good_with_cats']) && $traitScores['good_with_cats'] !== '')    { $scoreParts[] = "(good_with_cats=".(int)$traitScores['good_with_cats'].")"; }
+                if (isset($traitScores['requires_yard']) && $traitScores['requires_yard'] !== '')      { $scoreParts[] = "(requires_yard=".(int)$traitScores['requires_yard'].")"; }
+                if (!empty($traitScores['gender']))                                                     { $scoreParts[] = "(gender='".$db->real_escape_string($traitScores['gender'])."')"; }
+                if (isset($traitScores['is_vaccinated']) && $traitScores['is_vaccinated'] !== '')      { $scoreParts[] = "(is_vaccinated=".(int)$traitScores['is_vaccinated'].")"; }
+                $total     = count($scoreParts);
                 $threshold = $total > 0 ? ceil($total * 0.6) : 1;
                 if (!empty($scoreParts)) {
                     $scoreExpr = implode(" + ", $scoreParts);
@@ -500,12 +606,14 @@ function handleQuery($queue, $data, $db) {
                     $sql = "SELECT dog_id FROM dogs WHERE status='available' LIMIT 10";
                 }
                 logMsg("Quiz SQL: " . $sql);
-                $result = $db->query($sql);
+                $result  = $db->query($sql);
                 $matched = array_column(fetchAllAssoc($result), 'dog_id');
             }
             $answersJson = $db->real_escape_string(json_encode($answers));
             $matchedJson = $db->real_escape_string(json_encode($matched));
-            $db->query("INSERT INTO quiz_results (user_id, answers_json, matched_dog_ids) VALUES ({$userId}, '{$answersJson}', '{$matchedJson}') ON DUPLICATE KEY UPDATE answers_json='{$answersJson}', matched_dog_ids='{$matchedJson}'");
+            $db->query("INSERT INTO quiz_results (user_id, answers_json, matched_dog_ids)
+                        VALUES ({$userId}, '{$answersJson}', '{$matchedJson}')
+                        ON DUPLICATE KEY UPDATE answers_json='{$answersJson}', matched_dog_ids='{$matchedJson}'");
             return ["success" => true, "matched_dog_ids" => $matched];
 
         case "db.quiz.results":
@@ -517,59 +625,77 @@ function handleQuery($queue, $data, $db) {
         case "db.adoptions.list":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
             $userId = (int)$data["user_id"];
-            $result = $db->query("SELECT a.*, d.name as dog_name, d.breed FROM adoptions a JOIN dogs d ON a.dog_id = d.dog_id WHERE a.user_id={$userId} ORDER BY a.adoption_id DESC");
+            $result = $db->query("SELECT a.*, d.name as dog_name, d.breed FROM adoptions a
+                                  JOIN dogs d ON a.dog_id = d.dog_id
+                                  WHERE a.user_id={$userId} ORDER BY a.adoption_id DESC");
             if (!$result) return ["success" => false, "error" => $db->error];
             return ["success" => true, "adoptions" => fetchAllAssoc($result)];
 
+        case "db.adoptions.get":
+            if (!isset($data["adoption_id"])) return ["success" => false, "error" => "Missing adoption_id"];
+            $id     = (int)$data["adoption_id"];
+            $userId = (int)($data["user_id"] ?? 0);
+            $result = $db->query("SELECT a.*, d.name as dog_name FROM adoptions a
+                                  JOIN dogs d ON a.dog_id = d.dog_id
+                                  WHERE a.adoption_id={$id} AND a.user_id={$userId} LIMIT 1");
+            if (!$result) return ["success" => false, "error" => $db->error];
+            $row = fetchOneAssoc($result);
+            return $row ? ["success" => true, "adoption" => $row] : ["success" => false, "error" => "Not found"];
+
         case "db.adoptions.finalize":
             if (!isset($data["application_id"])) return ["success" => false, "error" => "Missing application_id"];
-            $appId = (int)$data["application_id"];
-            $app = fetchOneAssoc($db->query("SELECT * FROM adoption_applications WHERE application_id={$appId} LIMIT 1"));
+            $appId       = (int)$data["application_id"];
+            $app         = fetchOneAssoc($db->query("SELECT * FROM adoption_applications WHERE application_id={$appId} LIMIT 1"));
             if (!$app) return ["success" => false, "error" => "Application not found"];
             $finalizedBy = isset($data["finalized_by"]) ? (int)$data["finalized_by"] : "NULL";
-            $notes = $db->real_escape_string($data["notes"] ?? '');
-            $db->query("INSERT INTO adoptions (user_id, dog_id, application_id, finalized_by, notes, adopted_at) VALUES ({$app['user_id']}, {$app['dog_id']}, {$appId}, {$finalizedBy}, '{$notes}', NOW())");
+            $notes       = $db->real_escape_string($data["notes"] ?? '');
+            $db->query("INSERT INTO adoptions (user_id, dog_id, application_id, finalized_by, notes, adopted_at)
+                        VALUES ({$app['user_id']}, {$app['dog_id']}, {$appId}, {$finalizedBy}, '{$notes}', NOW())");
             $db->query("UPDATE dogs SET status='adopted' WHERE dog_id={$app['dog_id']}");
             $db->query("UPDATE adoption_applications SET status='finalized' WHERE application_id={$appId}");
             return ["success" => true, "user_id" => $app["user_id"], "dog_id" => $app["dog_id"]];
 
         case "db.enquiry.send":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
-            $userId = (int)$data["user_id"];
-            $dogId = (int)($data["dog_id"] ?? 0);
+            $userId    = (int)$data["user_id"];
+            $dogId     = (int)($data["dog_id"] ?? 0);
             $shelterId = (int)($data["shelter_id"] ?? 0);
-            $message = $db->real_escape_string($data["message"] ?? '');
+            $message   = $db->real_escape_string($data["message"] ?? '');
             $db->query("INSERT INTO chat_sessions (user_id, dog_id, shelter_id, status) VALUES ({$userId}, {$dogId}, {$shelterId}, 'open')");
             $sessionId = $db->insert_id;
             $db->query("INSERT INTO chat_messages (session_id, sender_id, message, created_at) VALUES ({$sessionId}, {$userId}, '{$message}', NOW())");
             return ["success" => true, "session_id" => $sessionId];
 
         case "db.api.dog.upsert":
-            $shelterId = (int)($data['shelter_id'] ?? 0);
-            $externalId = $db->real_escape_string($data['external_id'] ?? '');
-            $name = $db->real_escape_string($data['name'] ?? '');
-            $breed = $db->real_escape_string($data['breed'] ?? '');
-            $ageYears = (int)($data['age_years'] ?? 0);
-            $size = $db->real_escape_string($data['size'] ?? 'medium');
-            $gender = $db->real_escape_string($data['gender'] ?? 'male');
+            $shelterId   = (int)($data['shelter_id'] ?? 0);
+            $externalId  = $db->real_escape_string($data['external_id'] ?? '');
+            $name        = $db->real_escape_string($data['name'] ?? '');
+            $breed       = $db->real_escape_string($data['breed'] ?? '');
+            $ageYears    = (int)($data['age_years'] ?? 0);
+            $size        = $db->real_escape_string($data['size'] ?? 'medium');
+            $gender      = $db->real_escape_string($data['gender'] ?? 'male');
             $description = $db->real_escape_string($data['description'] ?? '');
-            $energy = $db->real_escape_string($data['energy_level'] ?? 'medium');
-            $goodKids = !empty($data['good_with_kids']) ? 1 : 0;
-            $goodDogs = !empty($data['good_with_dogs']) ? 1 : 0;
-            $goodCats = !empty($data['good_with_cats']) ? 1 : 0;
-            $apartment = !empty($data['apartment_friendly']) ? 1 : 0;
-            $vaccinated = !empty($data['is_vaccinated']) ? 1 : 0;
-            $spayed = !empty($data['is_spayed_neutered']) ? 1 : 0;
-            $intakeDate = $db->real_escape_string($data['intake_date'] ?? date('Y-m-d'));
-            $status = $db->real_escape_string($data['status'] ?? 'available');
+            $energy      = $db->real_escape_string($data['energy_level'] ?? 'medium');
+            $training    = $db->real_escape_string($data['training_level'] ?? 'basic');
+            $activity    = $db->real_escape_string($data['ideal_owner_activity'] ?? 'moderate');
+            $goodKids    = !empty($data['good_with_kids']) ? 1 : 0;
+            $goodDogs    = !empty($data['good_with_dogs']) ? 1 : 0;
+            $goodCats    = !empty($data['good_with_cats']) ? 1 : 0;
+            $apartment   = !empty($data['apartment_friendly']) ? 1 : 0;
+            $yard        = !empty($data['requires_yard']) ? 1 : 0;
+            $vaccinated  = !empty($data['is_vaccinated']) ? 1 : 0;
+            $spayed      = !empty($data['is_spayed_neutered']) ? 1 : 0;
+            $intakeDate  = $db->real_escape_string($data['intake_date'] ?? date('Y-m-d'));
+            $status      = $db->real_escape_string($data['status'] ?? 'available');
+            $source      = $db->real_escape_string($data['source'] ?? 'api');
 
-            $dogId = null;
+            $dogId  = null;
             $action = 'inserted';
 
             if ($externalId) {
                 $check = $db->query("SELECT dog_id FROM dogs WHERE shelter_id={$shelterId} AND external_id='{$externalId}' LIMIT 1");
                 if ($check && $check->num_rows > 0) {
-                    $dogId = (int)$check->fetch_assoc()['dog_id'];
+                    $dogId  = (int)$check->fetch_assoc()['dog_id'];
                     $action = 'updated';
                 }
             }
@@ -577,17 +703,21 @@ function handleQuery($queue, $data, $db) {
             if ($dogId) {
                 $sql = "UPDATE dogs SET name='{$name}', breed='{$breed}', age_years={$ageYears},
                         size='{$size}', gender='{$gender}', description='{$description}',
-                        energy_level='{$energy}', good_with_kids={$goodKids}, good_with_dogs={$goodDogs},
-                        good_with_cats={$goodCats}, apartment_friendly={$apartment},
-                        is_vaccinated={$vaccinated}, is_spayed_neutered={$spayed}, status='{$status}'
+                        energy_level='{$energy}', training_level='{$training}', ideal_owner_activity='{$activity}',
+                        good_with_kids={$goodKids}, good_with_dogs={$goodDogs}, good_with_cats={$goodCats},
+                        apartment_friendly={$apartment}, requires_yard={$yard},
+                        is_vaccinated={$vaccinated}, is_spayed_neutered={$spayed},
+                        status='{$status}', source='{$source}', last_synced_at=NOW()
                         WHERE dog_id={$dogId}";
             } else {
                 $sql = "INSERT INTO dogs (shelter_id, name, breed, age_years, size, gender, description,
-                        energy_level, good_with_kids, good_with_dogs, good_with_cats, apartment_friendly,
-                        is_vaccinated, is_spayed_neutered, intake_date, status, external_id)
+                        energy_level, training_level, ideal_owner_activity, good_with_kids, good_with_dogs,
+                        good_with_cats, apartment_friendly, requires_yard, is_vaccinated, is_spayed_neutered,
+                        intake_date, status, source, external_id, last_synced_at)
                         VALUES ({$shelterId}, '{$name}', '{$breed}', {$ageYears}, '{$size}', '{$gender}',
-                        '{$description}', '{$energy}', {$goodKids}, {$goodDogs}, {$goodCats}, {$apartment},
-                        {$vaccinated}, {$spayed}, '{$intakeDate}', '{$status}', '{$externalId}')";
+                        '{$description}', '{$energy}', '{$training}', '{$activity}', {$goodKids}, {$goodDogs},
+                        {$goodCats}, {$apartment}, {$yard}, {$vaccinated}, {$spayed},
+                        '{$intakeDate}', '{$status}', '{$source}', '{$externalId}', NOW())";
             }
 
             logMsg("Executing SQL: " . $sql);
@@ -599,8 +729,8 @@ function handleQuery($queue, $data, $db) {
                 $hasPrimary = false;
                 foreach ($data['photos'] as $photo) {
                     if (empty($photo['url'])) continue;
-                    $url = $db->real_escape_string($photo['url']);
-                    $caption = $db->real_escape_string($photo['caption'] ?? '');
+                    $url       = $db->real_escape_string($photo['url']);
+                    $caption   = $db->real_escape_string($photo['caption'] ?? '');
                     $isPrimary = (!$hasPrimary && !empty($photo['is_primary'])) ? 1 : 0;
                     if ($isPrimary) $hasPrimary = true;
                     $db->query("INSERT INTO dog_photos (dog_id, photo_url, is_primary, caption) VALUES ({$dogId}, '{$url}', {$isPrimary}, '{$caption}')");
@@ -616,7 +746,7 @@ function handleQuery($queue, $data, $db) {
     }
 }
 
-$callback = function($msg) use ($channel, $db) {
+$callback = function($msg) use ($channel, &$db, $dbHosts) {
     $queue         = $msg->delivery_info['routing_key'];
     $body          = $msg->body;
     $msgProps      = $msg->get_properties();
@@ -627,6 +757,22 @@ $callback = function($msg) use ($channel, $db) {
     logMsg("Raw body: " . $body);
 
     try {
+        // Auto reconnect if DB connection dropped
+        if (!$db->ping()) {
+            logMsg("DB connection lost — reconnecting...");
+            $db = reconnectDb(
+                $dbHosts,
+                $_ENV['DB_USER'],
+                $_ENV['DB_PASS'],
+                $_ENV['DB_NAME'],
+                (int)$_ENV['DB_PORT']
+            );
+            if (!$db) {
+                logMsg("Could not reconnect to any DB node");
+                return;
+            }
+        }
+
         $data = json_decode($body, true);
         if (!is_array($data)) $data = [];
         $result = handleQuery($queue, $data, $db);
@@ -658,7 +804,7 @@ foreach ($queues as $q) {
     $channel->basic_consume($q, '', false, true, false, false, $callback);
 }
 
-logMsg("DATABASE IS RUNNING VERSION 2.0");
+logMsg("DATABASE IS RUNNING VERSION 3.0 — 3-Node Cluster Active");
 
 while ($channel->is_consuming()) {
     $channel->wait();
