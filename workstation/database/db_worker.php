@@ -481,17 +481,24 @@ function handleQuery($queue, $data, $db) {
                         $traitScores[$key] = $val;
                     }
                 }
-                $sql = "SELECT dog_id FROM dogs WHERE status='available'";
-                if (!empty($traitScores['energy_level']))     { $sql .= " AND energy_level='".$db->real_escape_string($traitScores['energy_level'])."'"; }
-                if (!empty($traitScores['size']))              { $sql .= " AND size='".$db->real_escape_string($traitScores['size'])."'"; }
-                if (isset($traitScores['good_with_kids']) && $traitScores['good_with_kids'] !== '')     { $sql .= " AND good_with_kids=".(int)$traitScores['good_with_kids']; }
-                if (isset($traitScores['apartment_friendly']) && $traitScores['apartment_friendly'] !== '') { $sql .= " AND apartment_friendly=".(int)$traitScores['apartment_friendly']; }
-                if (isset($traitScores['good_with_dogs']) && $traitScores['good_with_dogs'] !== '')     { $sql .= " AND good_with_dogs=".(int)$traitScores['good_with_dogs']; }
-                if (isset($traitScores['good_with_cats']) && $traitScores['good_with_cats'] !== '')     { $sql .= " AND good_with_cats=".(int)$traitScores['good_with_cats']; }
-                if (isset($traitScores['requires_yard']) && $traitScores['requires_yard'] !== '')       { $sql .= " AND requires_yard=".(int)$traitScores['requires_yard']; }
-                if (!empty($traitScores['gender']))            { $sql .= " AND gender='".$db->real_escape_string($traitScores['gender'])."'"; }
-                if (isset($traitScores['is_vaccinated']) && $traitScores['is_vaccinated'] !== '')       { $sql .= " AND is_vaccinated=".(int)$traitScores['is_vaccinated']; }
-                $sql .= " LIMIT 10";
+                $scoreParts = [];
+                if (!empty($traitScores['energy_level']))     { $scoreParts[] = "(energy_level='".$db->real_escape_string($traitScores['energy_level'])."')"; }
+                if (!empty($traitScores['size']))              { $scoreParts[] = "(size='".$db->real_escape_string($traitScores['size'])."')"; }
+                if (isset($traitScores['good_with_kids']) && $traitScores['good_with_kids'] !== '')     { $scoreParts[] = "(good_with_kids=".(int)$traitScores['good_with_kids'].")"; }
+                if (isset($traitScores['apartment_friendly']) && $traitScores['apartment_friendly'] !== '') { $scoreParts[] = "(apartment_friendly=".(int)$traitScores['apartment_friendly'].")"; }
+                if (isset($traitScores['good_with_dogs']) && $traitScores['good_with_dogs'] !== '')     { $scoreParts[] = "(good_with_dogs=".(int)$traitScores['good_with_dogs'].")"; }
+                if (isset($traitScores['good_with_cats']) && $traitScores['good_with_cats'] !== '')     { $scoreParts[] = "(good_with_cats=".(int)$traitScores['good_with_cats'].")"; }
+                if (isset($traitScores['requires_yard']) && $traitScores['requires_yard'] !== '')       { $scoreParts[] = "(requires_yard=".(int)$traitScores['requires_yard'].")"; }
+                if (!empty($traitScores['gender']))            { $scoreParts[] = "(gender='".$db->real_escape_string($traitScores['gender'])."')"; }
+                if (isset($traitScores['is_vaccinated']) && $traitScores['is_vaccinated'] !== '')       { $scoreParts[] = "(is_vaccinated=".(int)$traitScores['is_vaccinated'].")"; }
+                $total = count($scoreParts);
+                $threshold = $total > 0 ? ceil($total * 0.6) : 1;
+                if (!empty($scoreParts)) {
+                    $scoreExpr = implode(" + ", $scoreParts);
+                    $sql = "SELECT dog_id, ({$scoreExpr}) as match_score FROM dogs WHERE status='available' HAVING match_score >= {$threshold} ORDER BY match_score DESC LIMIT 10";
+                } else {
+                    $sql = "SELECT dog_id FROM dogs WHERE status='available' LIMIT 10";
+                }
                 logMsg("Quiz SQL: " . $sql);
                 $result = $db->query($sql);
                 $matched = array_column(fetchAllAssoc($result), 'dog_id');
