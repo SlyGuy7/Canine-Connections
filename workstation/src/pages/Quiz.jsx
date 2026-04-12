@@ -39,10 +39,11 @@ export default function Quiz() {
   }
 
   const handleAnswer = (questionId, optionId) => {
-    setAnswers((prev) => ({ ...prev, [questionId]: Number(optionId) }));
+    setAnswers((prev) => ({ ...prev, [String(questionId)]: String(optionId) }));
   };
 
-  const allAnswered = questions.length > 0 && questions.every((q) => answers[q.question_id] !== undefined);
+  const allAnswered = questions.length > 0 && questions.every((q) => answers[String(q.question_id)] !== undefined);
+  const answered = questions.filter((q) => answers[String(q.question_id)] !== undefined).length;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -108,8 +109,6 @@ export default function Quiz() {
     );
   }
 
-  const answered = Object.keys(answers).length;
-
   return (
     <div className="dashboard-wrapper">
       <Sidebar />
@@ -124,21 +123,29 @@ export default function Quiz() {
             {answered} of {questions.length} answered
           </span>
           <div style={{ height: "8px", flex: 1, margin: "0 20px", background: "#fcedda", borderRadius: "99px", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${(answered / questions.length) * 100}%`, background: "#d97706", borderRadius: "99px", transition: "width 0.3s ease" }} />
+            <div style={{ height: "100%", width: `${questions.length > 0 ? (answered / questions.length) * 100 : 0}%`, background: "#d97706", borderRadius: "99px", transition: "width 0.3s ease" }} />
           </div>
-          <span style={{ color: "#d97706", fontWeight: "bold", fontSize: "15px" }}>{Math.round((answered / questions.length) * 100)}%</span>
+          <span style={{ color: "#d97706", fontWeight: "bold", fontSize: "15px" }}>
+            {questions.length > 0 ? Math.round((answered / questions.length) * 100) : 0}%
+          </span>
         </div>
 
         <form onSubmit={handleSubmit}>
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             {questions.map((question, index) => (
-              <div key={question.question_id} style={{ background: "white", borderRadius: "16px", padding: "28px", border: answers[question.question_id] ? "2px solid #d97706" : "1px solid #efdfd1" }}>
+              <div
+                key={question.question_id}
+                style={{
+                  background: "white", borderRadius: "16px", padding: "28px",
+                  border: answers[String(question.question_id)] ? "2px solid #d97706" : "1px solid #efdfd1"
+                }}
+              >
                 <p style={{ margin: "0 0 20px 0", fontWeight: "600", color: "#2f241d", fontSize: "16px" }}>
                   {index + 1}. {question.question_text}
                 </p>
                 <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                   {(question.options || []).map((option) => {
-                    const selected = answers[question.question_id] === option.option_id;
+                    const selected = answers[String(question.question_id)] === String(option.option_id);
                     return (
                       <label
                         key={option.option_id}
@@ -150,15 +157,14 @@ export default function Quiz() {
                           color: "#2f241d", fontWeight: selected ? "600" : "400",
                           transition: "all 0.15s ease",
                         }}
+                        onClick={() => handleAnswer(question.question_id, option.option_id)}
                       >
-                        <input
-                          type="radio"
-                          name={`question_${question.question_id}`}
-                          value={option.option_id}
-                          checked={selected}
-                          onChange={() => handleAnswer(question.question_id, option.option_id)}
-                          style={{ accentColor: "#b45309" }}
-                        />
+                        <div style={{
+                          width: "20px", height: "20px", borderRadius: "50%", flexShrink: 0,
+                          border: selected ? "6px solid #b45309" : "2px solid #dcc8b7",
+                          background: selected ? "#fff7ed" : "white",
+                          transition: "all 0.15s ease",
+                        }} />
                         {option.option_text}
                       </label>
                     );
