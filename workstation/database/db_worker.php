@@ -216,7 +216,7 @@ function handleQuery($queue, $data, $db) {
             return ["success" => true, "dogs" => fetchAllAssoc($result)];
 
         case "db.dogs.get":
-            if (!isset($data["dog_id"])) return ["success" => false, "error" => "Missing dog_id"];
+            if (!isset($data["dog_id"])) return ["success" => false, "error" => "dog_id is required"];
             $id = (int)$data["dog_id"];
             $result = $db->query("SELECT * FROM dogs WHERE dog_id={$id} LIMIT 1");
             if (!$result) return ["success" => false, "error" => $db->error];
@@ -250,6 +250,14 @@ function handleQuery($queue, $data, $db) {
             logMsg("Executing SQL: " . $sql);
             if (!$db->query($sql)) return ["success" => false, "error" => $db->error];
             return ["success" => true, "application_id" => $db->insert_id];
+
+        case "db.application.status":
+            if (!isset($data["application_id"])) return ["success" => false, "error" => "Missing application_id"];
+            $id = (int)$data["application_id"];
+            $result = $db->query("SELECT * FROM adoption_applications WHERE application_id={$id} LIMIT 1");
+            if (!$result) return ["success" => false, "error" => $db->error];
+            $app = fetchOneAssoc($result);
+            return $app ? ["success" => true, "application" => $app] : ["success" => false, "error" => "Application not found"];
 
         case "db.application.list":
             $result = $db->query("SELECT * FROM adoption_applications ORDER BY application_id DESC");
@@ -429,7 +437,7 @@ function handleQuery($queue, $data, $db) {
         case "db.adoption.log.create":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
             $userId = (int)$data["user_id"];
-            $dogId = (int)$data["dog_id"] ?? 0;
+            $dogId = (int)($data["dog_id"] ?? 0);
             $logType = $db->real_escape_string($data["log_type"] ?? 'general');
             $title = $db->real_escape_string($data["title"] ?? '');
             $notes = $db->real_escape_string($data["notes"] ?? '');
@@ -440,7 +448,7 @@ function handleQuery($queue, $data, $db) {
         case "db.adoption.log.list":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
             $userId = (int)$data["user_id"];
-            $dogId = (int)$data["dog_id"] ?? 0;
+            $dogId = (int)($data["dog_id"] ?? 0);
             $result = $db->query("SELECT * FROM post_adoption_logs WHERE user_id={$userId} AND dog_id={$dogId} ORDER BY log_date DESC");
             if (!$result) return ["success" => false, "error" => $db->error];
             return ["success" => true, "logs" => fetchAllAssoc($result)];
@@ -466,13 +474,23 @@ function handleQuery($queue, $data, $db) {
                 $stmt->execute();
                 $opts = fetchAllAssoc($stmt->get_result());
                 $traitScores = [];
-                foreach ($opts as $opt) if (!empty($opt['trait_key'])) $traitScores[$opt['trait_key']] = $opt['trait_value'];
+                foreach ($opts as $opt) {
+                    if (!empty($opt['trait_key']) && $opt['trait_value'] !== '') {
+                        $traitScores[$opt['trait_key']] = $opt['trait_value'];
+                    }
+                }
                 $sql = "SELECT dog_id FROM dogs WHERE status='available'";
-                if (!empty($traitScores['energy_level'])) { $sql .= " AND energy_level='".$db->real_escape_string($traitScores['energy_level'])."'"; }
-                if (!empty($traitScores['size'])) { $sql .= " AND size='".$db->real_escape_string($traitScores['size'])."'"; }
-                if (isset($traitScores['good_with_kids'])) { $sql .= " AND good_with_kids=".(int)$traitScores['good_with_kids']; }
-                if (isset($traitScores['apartment_friendly'])) { $sql .= " AND apartment_friendly=".(int)$traitScores['apartment_friendly']; }
+                if (!empty($traitScores['energy_level']))     { $sql .= " AND energy_level='".$db->real_escape_string($traitScores['energy_level'])."'"; }
+                if (!empty($traitScores['size']))              { $sql .= " AND size='".$db->real_escape_string($traitScores['size'])."'"; }
+                if (isset($traitScores['good_with_kids']) && $traitScores['good_with_kids'] !== '')     { $sql .= " AND good_with_kids=".(int)$traitScores['good_with_kids']; }
+                if (isset($traitScores['apartment_friendly']) && $traitScores['apartment_friendly'] !== '') { $sql .= " AND apartment_friendly=".(int)$traitScores['apartment_friendly']; }
+                if (isset($traitScores['good_with_dogs']) && $traitScores['good_with_dogs'] !== '')     { $sql .= " AND good_with_dogs=".(int)$traitScores['good_with_dogs']; }
+                if (isset($traitScores['good_with_cats']) && $traitScores['good_with_cats'] !== '')     { $sql .= " AND good_with_cats=".(int)$traitScores['good_with_cats']; }
+                if (isset($traitScores['requires_yard']) && $traitScores['requires_yard'] !== '')       { $sql .= " AND requires_yard=".(int)$traitScores['requires_yard']; }
+                if (!empty($traitScores['gender']))            { $sql .= " AND gender='".$db->real_escape_string($traitScores['gender'])."'"; }
+                if (isset($traitScores['is_vaccinated']) && $traitScores['is_vaccinated'] !== '')       { $sql .= " AND is_vaccinated=".(int)$traitScores['is_vaccinated']; }
                 $sql .= " LIMIT 10";
+                logMsg("Quiz SQL: " . $sql);
                 $result = $db->query($sql);
                 $matched = array_column(fetchAllAssoc($result), 'dog_id');
             }
