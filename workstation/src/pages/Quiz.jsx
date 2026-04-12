@@ -46,7 +46,7 @@ export default function Quiz() {
   const answered = questions.filter((q) => answers[String(q.question_id)] !== undefined).length;
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!allAnswered) {
       addToast("Please answer all questions before submitting.", "error");
       return;
@@ -175,11 +175,14 @@ export default function Quiz() {
           </div>
 
           <div style={{ marginTop: "32px" }}>
+            <div style={{ marginBottom: "12px", padding: "12px", background: "#f0f0f0", borderRadius: "8px", fontSize: "13px", color: "#666" }}>
+              Debug: {answered}/{questions.length} answered | allAnswered: {String(allAnswered)} | answers: {JSON.stringify(Object.keys(answers))}
+            </div>
             <button
-              type="submit"
+              type="button"
               className="btn btn-primary"
               style={{ width: "100%", padding: "18px", fontSize: "16px", opacity: (!allAnswered || submitting) ? 0.6 : 1 }}
-              disabled={submitting || !allAnswered}
+              onClick={handleSubmit}
             >
               {submitting ? "Finding your matches..." : `Find My Match ${allAnswered ? "✓" : `(${answered}/${questions.length})`}`}
             </button>
