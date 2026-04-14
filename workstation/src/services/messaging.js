@@ -1,6 +1,6 @@
 import { Client } from "@stomp/stompjs";
 
-const BROKER_URL = import.meta.env.VITE_MESSAGING_URL || "ws://100.87.19.28:15674/ws";
+const BROKER_URL = import.meta.env.VITE_MESSAGING_URL || "ws://100.99.21.39:15674/ws";
 const REQUEST_TIMEOUT_MS = 15000;
 
 function makeCorrelationId() {

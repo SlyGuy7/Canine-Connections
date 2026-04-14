@@ -2,13 +2,14 @@
 
 namespace App\Infrastructure\Messaging;
 
-use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Connection\AMQPConnectionFactory;
+use PhpAmqpLib\Connection\AMQPConnectionConfig;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
 
 final class RabbitMqClient
 {
-    private AMQPStreamConnection $connection;
+    private $connection;
     private $channel;
 
     private array $queues = [
@@ -151,12 +152,25 @@ final class RabbitMqClient
     ];
 
     public function __construct(
-        string $host = '127.0.0.1',
-        int    $port = 5672,
-        string $user = 'guest',
-        string $pass = 'guest'
+        string $host  = '127.0.0.1',
+        int    $port  = 5672,
+        string $user  = 'guest',
+        string $pass  = 'guest'
     ) {
-        $this->connection = new AMQPStreamConnection($host, $port, $user, $pass);
+        $host2 = $_ENV['RABBITMQ_HOST2'] ?? $host;
+        $host3 = $_ENV['RABBITMQ_HOST3'] ?? $host;
+
+        $config = new AMQPConnectionConfig();
+        $config->setHosts([
+            ['host' => $host,  'port' => $port, 'user' => $user, 'password' => $pass, 'vhost' => '/'],
+            ['host' => $host2, 'port' => $port, 'user' => $user, 'password' => $pass, 'vhost' => '/'],
+            ['host' => $host3, 'port' => $port, 'user' => $user, 'password' => $pass, 'vhost' => '/'],
+        ]);
+        $config->setIsLazy(false);
+        $config->setIoReadTimeout(30);
+        $config->setIoWriteTimeout(30);
+
+        $this->connection = AMQPConnectionFactory::create($config);
         $this->channel    = $this->connection->channel();
 
         foreach ($this->queues as $queue) {
