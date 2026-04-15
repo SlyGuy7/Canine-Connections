@@ -8,7 +8,6 @@ git pull origin main
 
 # Step 2: Build the React project
 echo "Building production assets..."
-cd workstation
 npm install
 npm run build
 
