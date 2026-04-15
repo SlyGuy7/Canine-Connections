@@ -7,7 +7,7 @@ echo "Pulling latest code from GitHub..."
 git pull origin main
 
 # Step 2: Build the React project
-echo "Building production assets..."
+echo "Building production assets
 npm install
 npm run build
 
