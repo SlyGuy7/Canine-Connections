@@ -82,7 +82,7 @@ export async function sendMessage(type, payload) {
             destination: `/queue/${type}`,
             headers: {
               "correlation-id": correlationId,
-              "reply-to": replyQueue,
+              "reply-to": replyDestination,
             },
             body: JSON.stringify(payload),
           });
