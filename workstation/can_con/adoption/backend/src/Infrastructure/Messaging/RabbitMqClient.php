@@ -2,14 +2,14 @@
 
 namespace App\Infrastructure\Messaging;
 
-use PhpAmqpLib\Connection\AMQPConnectionFactory;
-use PhpAmqpLib\Connection\AMQPConnectionConfig;
+use PhpAmqpLib\Connection\AMQPStreamConnection;
+use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
 
 final class RabbitMqClient
 {
-    private $connection;
+    private AMQPStreamConnection $connection;
     private $channel;
 
     private array $queues = [
@@ -58,6 +58,7 @@ final class RabbitMqClient
         'request.notifications.list',
         'request.notifications.read',
         'notifications',
+
         'bridge.auth.register',
         'bridge.auth.login',
         'bridge.auth.resetPassword',
@@ -102,6 +103,7 @@ final class RabbitMqClient
         'bridge.meetgreet.cancel',
         'bridge.notifications.list',
         'bridge.notifications.read',
+
         'db.auth.register',
         'db.auth.login',
         'db.auth.resetPassword',
@@ -152,37 +154,67 @@ final class RabbitMqClient
     ];
 
     public function __construct(
-        string $host  = '127.0.0.1',
-        int    $port  = 5672,
-        string $user  = 'guest',
-        string $pass  = 'guest'
+        string $host = '127.0.0.1',
+        int $port = 5672,
+        string $user = 'guest',
+        string $pass = 'guest'
     ) {
         $host2 = $_ENV['RABBITMQ_HOST2'] ?? $host;
         $host3 = $_ENV['RABBITMQ_HOST3'] ?? $host;
 
-        $config = new AMQPConnectionConfig();
-        $config->setHosts([
-            ['host' => $host,  'port' => $port, 'user' => $user, 'password' => $pass, 'vhost' => '/'],
-            ['host' => $host2, 'port' => $port, 'user' => $user, 'password' => $pass, 'vhost' => '/'],
-            ['host' => $host3, 'port' => $port, 'user' => $user, 'password' => $pass, 'vhost' => '/'],
-        ]);
-        $config->setIsLazy(false);
-        $config->setIoReadTimeout(30);
-        $config->setIoWriteTimeout(30);
+        $hosts = [
+            [
+                'host' => $host,
+                'port' => $port,
+                'user' => $user,
+                'password' => $pass,
+                'vhost' => '/',
+            ],
+            [
+                'host' => $host2,
+                'port' => $port,
+                'user' => $user,
+                'password' => $pass,
+                'vhost' => '/',
+            ],
+            [
+                'host' => $host3,
+                'port' => $port,
+                'user' => $user,
+                'password' => $pass,
+                'vhost' => '/',
+            ],
+        ];
 
-        $this->connection = AMQPConnectionFactory::create($config);
-        $this->channel    = $this->connection->channel();
+        $hosts = array_values(array_unique($hosts, SORT_REGULAR));
+
+        $this->connection = AMQPStreamConnection::create_connection(
+            $hosts,
+            [
+                'connection_timeout' => 10.0,
+                'read_write_timeout' => 30.0,
+                'heartbeat' => 0,
+                'keepalive' => false,
+                'channel_rpc_timeout' => 30.0,
+            ]
+        );
+
+        $this->channel = $this->connection->channel();
 
         foreach ($this->queues as $queue) {
             $this->channel->queue_declare($queue, false, true, false, false);
         }
     }
 
-    public function publish(string $queue, array $payload, ?string $correlationId = null, ?string $replyTo = null): void
-    {
+    public function publish(
+        string $queue,
+        array $payload,
+        ?string $correlationId = null,
+        ?string $replyTo = null
+    ): void {
         $props = [
             'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT,
-            'content_type'  => 'application/json',
+            'content_type' => 'application/json',
         ];
 
         if ($correlationId !== null) {
@@ -193,8 +225,13 @@ final class RabbitMqClient
             $props['reply_to'] = $replyTo;
         }
 
+        $body = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        if ($body === false) {
+            throw new \RuntimeException('Failed to encode RabbitMQ payload to JSON.');
+        }
+
         $this->channel->basic_publish(
-            new AMQPMessage(json_encode($payload), $props),
+            new AMQPMessage($body, $props),
             '',
             $queue
         );
@@ -202,8 +239,12 @@ final class RabbitMqClient
         echo "[MQ] → {$queue}" . ($correlationId ? " (corr:{$correlationId})" : '') . "\n";
     }
 
-    public function publishAndWait(string $requestQueue, array $payload, string $correlationId, int $timeoutSeconds = 25): ?array
-    {
+    public function publishAndWait(
+        string $requestQueue,
+        array $payload,
+        string $correlationId,
+        int $timeoutSeconds = 25
+    ): ?array {
         $replyQueue = $requestQueue . '.reply.' . $correlationId;
 
         $this->channel->queue_declare(
@@ -221,17 +262,21 @@ final class RabbitMqClient
         echo "[MQ] Waiting on {$replyQueue} (corr:{$correlationId})...\n";
 
         $startTime = time();
+
         while (true) {
             $msg = $this->channel->basic_get($replyQueue, true);
+
             if ($msg) {
                 $result = json_decode($msg->body, true) ?? [];
                 echo "[MQ] ← {$replyQueue} received\n";
                 return $result;
             }
+
             if ((time() - $startTime) >= $timeoutSeconds) {
                 echo "[MQ][WARN] Timeout on {$replyQueue}\n";
                 break;
             }
+
             usleep(50000);
         }
 
@@ -243,12 +288,19 @@ final class RabbitMqClient
         $this->channel->basic_qos(null, 1, null);
 
         $this->channel->basic_consume(
-            $queue, '', false, false, false, false,
+            $queue,
+            '',
+            false,
+            false,
+            false,
+            false,
             function ($msg) use ($callback, $queue) {
-                $data     = json_decode($msg->body, true) ?? [];
+                $data = json_decode($msg->body, true) ?? [];
                 $msgProps = $msg->get_properties();
-                $corrId   = $msgProps['correlation_id'] ?? null;
+                $corrId = $msgProps['correlation_id'] ?? null;
+
                 echo "[MQ] ← {$queue}" . ($corrId ? " (corr:{$corrId})" : '') . "\n";
+
                 $callback($data, $msg, $corrId);
             }
         );
@@ -257,30 +309,64 @@ final class RabbitMqClient
     public function wait(bool &$running = true): void
     {
         echo "[MQ] Event loop running...\n";
+
         while ($running && $this->channel->is_consuming()) {
             try {
                 $this->channel->wait(null, false, 1);
-            } catch (\PhpAmqpLib\Exception\AMQPTimeoutException $e) {
+            } catch (AMQPTimeoutException $e) {
+                
             }
-            pcntl_signal_dispatch();
+
+            if (function_exists('pcntl_signal_dispatch')) {
+                pcntl_signal_dispatch();
+            }
         }
     }
 
     public function afterFork(): void
     {
         try {
-            $io   = (new \ReflectionProperty($this->connection, 'io'))->getValue($this->connection);
-            $sock = (new \ReflectionProperty($io, 'sock'))->getValue($io);
+            $connectionReflection = new \ReflectionObject($this->connection);
+
+            if (!$connectionReflection->hasProperty('io')) {
+                return;
+            }
+
+            $ioProp = $connectionReflection->getProperty('io');
+            $ioProp->setAccessible(true);
+            $io = $ioProp->getValue($this->connection);
+
+            if (!is_object($io)) {
+                return;
+            }
+
+            $ioReflection = new \ReflectionObject($io);
+            if (!$ioReflection->hasProperty('sock')) {
+                return;
+            }
+
+            $sockProp = $ioReflection->getProperty('sock');
+            $sockProp->setAccessible(true);
+            $sock = $sockProp->getValue($io);
+
             if (is_resource($sock)) {
                 fclose($sock);
             }
         } catch (\Throwable $e) {
+            
         }
     }
 
     public function close(): void
     {
-        try { $this->channel->close(); } catch (\Throwable $e) {}
-        try { $this->connection->close(); } catch (\Throwable $e) {}
+        try {
+            $this->channel->close();
+        } catch (\Throwable $e) {
+        }
+
+        try {
+            $this->connection->close();
+        } catch (\Throwable $e) {
+        }
     }
 }
