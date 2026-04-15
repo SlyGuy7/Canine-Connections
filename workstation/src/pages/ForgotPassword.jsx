@@ -114,10 +114,6 @@ export default function ForgotPassword({ switchToLogin }) {
           {loading ? "Processing..." : "Update Password"}
         </button>
       </form>
-      
-      <button type="button" onClick={switchToLogin} style={linkStyle}>
-        Return to Login
-      </button>
     </div>
   );
 }
