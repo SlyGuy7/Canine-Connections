@@ -28,7 +28,10 @@ export default function DogProfile() {
   async function loadDogDetails() {
     setLoading(true);
     try {
-      const result = await sendMessage("request.dogs.get", { dog_id: id });
+      // Convert the URL string parameter into an integer
+      const numericId = parseInt(id, 10);
+      const result = await sendMessage("request.dogs.get", { dog_id: numericId });
+      
       if (result?.success && result.dog) {
         setDog(result.dog);
         checkIfSaved(result.dog.dog_id);
