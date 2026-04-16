@@ -12,8 +12,8 @@ export default function MyDogs() {
     setSavedDogs(dogs);
   }, []);
 
-  function handleRemoveDog(id) {
-    const updated = savedDogs.filter((dog) => dog.id !== id);
+  function handleRemoveDog(dogId) {
+    const updated = savedDogs.filter((dog) => dog.dog_id !== dogId);
     localStorage.setItem("savedDogs", JSON.stringify(updated));
     setSavedDogs(updated);
     addToast("Removed from Vault", "success");
@@ -42,7 +42,7 @@ export default function MyDogs() {
       ) : (
         <div className="dog-grid">
           {savedDogs.map((dog) => (
-            <article key={dog.id} className="dog-card">
+            <article key={dog.dog_id} className="dog-card">
               <div className="dog-card-image">
                 {dog.image ? (
                   <img src={dog.image} alt={dog.name} />
@@ -56,7 +56,7 @@ export default function MyDogs() {
                 
                 <div className="dog-card-stats">
                   <div className="dog-card-stat"><strong>Breed:</strong> {dog.breed || "Mixed"}</div>
-                  <div className="dog-card-stat"><strong>Age:</strong> {dog.age || "N/A"}</div>
+                  <div className="dog-card-stat"><strong>Age:</strong> {dog.age_years || "N/A"}</div>
                   <div className="dog-card-stat"><strong>Size:</strong> {dog.size || "Unknown"}</div>
                 </div>
 
@@ -64,14 +64,14 @@ export default function MyDogs() {
                   <button 
                     className="btn btn-primary" 
                     style={{ flex: 2 }}
-                    onClick={() => navigate(`/dogs/${dog.id}`)}
+                    onClick={() => navigate(`/dogs/${dog.dog_id}`)}
                   >
                     Profile
                   </button>
                   <button
                     className="btn"
                     style={{ flex: 1, background: '#fff1f2', color: '#e11d48' }}
-                    onClick={() => handleRemoveDog(dog.id)}
+                    onClick={() => handleRemoveDog(dog.dog_id)}
                   >
                     Remove
                   </button>
