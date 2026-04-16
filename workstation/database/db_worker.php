@@ -44,14 +44,14 @@ foreach ($dbHosts as $dbHost) {
     );
     if (!$conn->connect_error) {
         $db = $conn;
-        logMsg("MySQL connected to " . $dbHost);
+        logMsg("[CLUSTER] MySQL connected to node: " . $dbHost);
         break;
     }
-    logMsg("Could not connect to " . $dbHost . " — trying next node");
+    logMsg("[CLUSTER] DB node " . $dbHost . " is down — switching to next node in cluster");
 }
 
 if (!$db) {
-    die("MySQL connection failed on all nodes" . PHP_EOL);
+    die("[CLUSTER] All MySQL nodes unreachable — cluster is down" . PHP_EOL);
 }
 
 $queues = [
@@ -141,10 +141,10 @@ function reconnectDb(array $dbHosts, string $dbUser, string $dbPass, string $dbN
     foreach ($dbHosts as $dbHost) {
         $conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName, $dbPort);
         if (!$conn->connect_error) {
-            logMsg("MySQL reconnected to " . $dbHost);
+            logMsg("[CLUSTER] MySQL reconnected to node: " . $dbHost);
             return $conn;
         }
-        logMsg("Reconnect failed for " . $dbHost . " — trying next node");
+        logMsg("[CLUSTER] Reconnect failed for " . $dbHost . " — switching to next node in cluster");
     }
     return null;
 }

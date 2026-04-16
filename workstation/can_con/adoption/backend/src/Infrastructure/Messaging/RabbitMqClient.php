@@ -187,6 +187,7 @@ final class RabbitMqClient
         ];
 
         $hosts = array_values(array_unique($hosts, SORT_REGULAR));
+        foreach ($hosts as $i => $h) { error_log("[CLUSTER] RabbitMQ node " . ($i + 1) . ": " . $h["host"]); }
 
         $this->connection = AMQPStreamConnection::create_connection(
             $hosts,
