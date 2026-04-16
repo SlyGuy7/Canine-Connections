@@ -19,6 +19,13 @@ export default function MyDogs() {
     addToast("Removed from Vault", "success");
   }
 
+  function formatAge(ageVal) {
+    if (!ageVal && ageVal !== 0) return "N/A";
+    const num = Math.round(Number(ageVal));
+    if (isNaN(num)) return "N/A";
+    return `${num} ${num === 1 ? "year" : "years"}`;
+  }
+
   return (
     <div className="page-container">
       <header className="content-header">
@@ -56,7 +63,7 @@ export default function MyDogs() {
                 
                 <div className="dog-card-stats">
                   <div className="dog-card-stat"><strong>Breed:</strong> {dog.breed || "Mixed"}</div>
-                  <div className="dog-card-stat"><strong>Age:</strong> {dog.age_years || "N/A"}</div>
+                  <div className="dog-card-stat"><strong>Age:</strong> {formatAge(dog.age_years)}</div>
                   <div className="dog-card-stat"><strong>Size:</strong> {dog.size || "Unknown"}</div>
                 </div>
 
