@@ -15,13 +15,13 @@ export default function Shelters() {
   function loadShelters() {
     // Mock data for shelters until your backend is ready
     const mockShelters = [
-      { id: 1, name: "Happy Paws Rescue", location: "New York, NY", phone: "(555) 123-4567", dogsAvailable: 12 },
-      { id: 2, name: "Safe Haven Shelter", location: "Los Angeles, CA", phone: "(555) 987-6543", dogsAvailable: 8 },
-      { id: 3, name: "Second Chance Hounds", location: "Austin, TX", phone: "(555) 456-7890", dogsAvailable: 15 },
-      { id: 4, name: "Forever Friends Network", location: "Chicago, IL", phone: "(555) 222-3333", dogsAvailable: 5 },
-      { id: 5, name: "Paws & Hearts Rescue", location: "Seattle, WA", phone: "(555) 444-5555", dogsAvailable: 20 },
-      { id: 6, name: "Sunny Days Sanctuary", location: "Miami, FL", phone: "(555) 666-7777", dogsAvailable: 7 },
-    ];
+    { id: 1, name: "Happy Paws Rescue", location: "Newark, NJ", phone: "(973) 123-4567" },
+    { id: 2, name: "Safe Haven Shelter", location: "Jersey City, NJ", phone: "(201) 987-6543" },
+    { id: 3, name: "Second Chance Hounds", location: "Elizabeth, NJ", phone: "(908) 456-7890" },
+    { id: 4, name: "Forever Friends Network", location: "Montclair, NJ", phone: "(973) 222-3333" },
+    { id: 5, name: "Paws & Hearts Rescue", location: "Morristown, NJ", phone: "(973) 444-5555" },
+    { id: 6, name: "Sunny Days Sanctuary", location: "Hoboken, NJ", phone: "(201) 666-7777" }
+  ];
     
     setShelters(mockShelters);
     setLoading(false);
