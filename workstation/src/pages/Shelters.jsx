@@ -74,7 +74,7 @@ export default function Shelters() {
                     <strong>📞 Phone:</strong> {shelter.phone}
                   </p>
                   <p style={{ margin: "8px 0", color: "#6f5848", fontSize: "15px" }}>
-                    <strong>🐶 Available:</strong> {shelter.dogsAvailable} dogs
+                    <strong>🐶 Available:</strong> {shelter.dogsAvailable} Contact Shelter for More Info.
                   </p>
 
                   <div style={{ marginTop: "25px" }}>
