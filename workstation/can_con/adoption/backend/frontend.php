@@ -30,7 +30,9 @@ while ($running) {
         $worker->run($running);
     } catch (\Throwable $e) {
         if (!$running) break;
-        echo "[FrontendWorker][ERROR] {$e->getMessage()}\n";
+        echo "[FrontendWorker][ERROR] " . $e->getMessage() . "
+" . $e->getTraceAsString() . "
+";
         echo "[FrontendWorker] Reconnecting in 2 seconds...\n";
         for ($i = 0; $i < 20 && $running; $i++) {
             usleep(100000);

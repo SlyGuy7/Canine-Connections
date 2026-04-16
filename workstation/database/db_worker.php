@@ -13,17 +13,35 @@ function logMsg($msg) {
 $dotenv = Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
-$host = $_ENV['RABBITMQ_HOST'];
 $port = (int) $_ENV['RABBITMQ_PORT'];
 $user = $_ENV['RABBITMQ_USER'];
 $pass = $_ENV['RABBITMQ_PASS'];
 
+$rmqHosts = array_filter([
+    $_ENV['RABBITMQ_HOST']  ?? null,
+    $_ENV['RABBITMQ_HOST2'] ?? null,
+    $_ENV['RABBITMQ_HOST3'] ?? null,
+]);
+
 logMsg("Connecting to RabbitMQ...");
 
-$connection = new AMQPStreamConnection($host, $port, $user, $pass, "/");
-$channel = $connection->channel();
+$connection = null;
+foreach ($rmqHosts as $i => $rmqHost) {
+    try {
+        $connection = new AMQPStreamConnection($rmqHost, $port, $user, $pass, "/");
+        logMsg("[CLUSTER] RabbitMQ connected to node " . ($i + 1) . ": " . $rmqHost);
+        break;
+    } catch (\Throwable $e) {
+        logMsg("[CLUSTER] RabbitMQ node " . ($i + 1) . " (" . $rmqHost . ") is down — switching to next node in cluster");
+    }
+}
 
-logMsg("RabbitMQ connected");
+if (!$connection) {
+    die("[CLUSTER] All RabbitMQ nodes unreachable — cluster is down" . PHP_EOL);
+}
+
+$channel = $connection->channel();
+logMsg("[CLUSTER] RabbitMQ channel ready");
 
 logMsg("Connecting to MySQL...");
 
@@ -149,6 +167,19 @@ function reconnectDb(array $dbHosts, string $dbUser, string $dbPass, string $dbN
     return null;
 }
 
+function reconnectRmq(array $rmqHosts, int $port, string $user, string $pass): ?AMQPStreamConnection {
+    foreach ($rmqHosts as $i => $rmqHost) {
+        try {
+            $conn = new AMQPStreamConnection($rmqHost, $port, $user, $pass, "/");
+            logMsg("[CLUSTER] RabbitMQ reconnected to node " . ($i + 1) . ": " . $rmqHost);
+            return $conn;
+        } catch (\Throwable $e) {
+            logMsg("[CLUSTER] RabbitMQ reconnect failed for node " . ($i + 1) . " (" . $rmqHost . ") — switching to next node in cluster");
+        }
+    }
+    return null;
+}
+
 function handleQuery($queue, $data, $db) {
     logMsg("Processing queue: " . $queue);
     logMsg("Payload: " . json_encode($data));
@@ -217,11 +248,25 @@ function handleQuery($queue, $data, $db) {
             return ["success" => true];
 
         case "db.dogs.list":
+            $status      = $db->real_escape_string($data['status'] ?? 'available');
+            $breed       = isset($data['breed']) && $data['breed'] ? $db->real_escape_string($data['breed']) : null;
+            $size        = isset($data['size']) && $data['size'] ? $db->real_escape_string($data['size']) : null;
+            $energyLevel = isset($data['energy_level']) && $data['energy_level'] ? $db->real_escape_string($data['energy_level']) : null;
+            $shelterId   = isset($data['shelter_id']) && $data['shelter_id'] ? (int)$data['shelter_id'] : null;
+            $limit       = isset($data['limit']) ? (int)$data['limit'] : 20;
+            $offset      = isset($data['offset']) ? (int)$data['offset'] : 0;
+            $where       = ["d.status = '{$status}'"];
+            if ($breed)      $where[] = "d.breed = '{$breed}'";
+            if ($size)       $where[] = "d.size = '{$size}'";
+            if ($energyLevel) $where[] = "d.energy_level = '{$energyLevel}'";
+            if ($shelterId)  $where[] = "d.shelter_id = {$shelterId}";
+            $whereClause = implode(' AND ', $where);
             $sql = "SELECT d.*, GROUP_CONCAT(p.photo_url ORDER BY p.is_primary DESC) as photos
                     FROM dogs d
                     LEFT JOIN dog_photos p ON d.dog_id = p.dog_id
-                    WHERE d.status = 'available'
-                    GROUP BY d.dog_id";
+                    WHERE {$whereClause}
+                    GROUP BY d.dog_id
+                    LIMIT {$limit} OFFSET {$offset}";
             logMsg("Executing SQL: " . $sql);
             $result = $db->query($sql);
             if (!$result) return ["success" => false, "error" => $db->error];
@@ -334,8 +379,8 @@ function handleQuery($queue, $data, $db) {
             return $app ? ["success" => true, "application" => $app] : ["success" => false, "error" => "Application not found"];
 
         case "db.application.list":
-            $userId     = (int)($data["user_id"] ?? 0);
-            $shelterId  = (int)($data["shelter_id"] ?? 0);
+            $userId    = (int)($data["user_id"] ?? 0);
+            $shelterId = (int)($data["shelter_id"] ?? 0);
             if ($shelterId) {
                 $sql = "SELECT aa.*, u.email, u.first_name, u.last_name
                         FROM adoption_applications aa JOIN users u ON aa.user_id = u.user_id
@@ -353,9 +398,9 @@ function handleQuery($queue, $data, $db) {
 
         case "db.application.approve":
             if (!isset($data["application_id"])) return ["success" => false, "error" => "Missing application_id"];
-            $id          = (int)$data["application_id"];
-            $reviewedBy  = isset($data["reviewed_by"]) ? (int)$data["reviewed_by"] : "NULL";
-            $notes       = $db->real_escape_string($data["reviewer_notes"] ?? '');
+            $id         = (int)$data["application_id"];
+            $reviewedBy = isset($data["reviewed_by"]) ? (int)$data["reviewed_by"] : "NULL";
+            $notes      = $db->real_escape_string($data["reviewer_notes"] ?? '');
             $db->query("UPDATE adoption_applications SET status='approved', reviewed_by={$reviewedBy}, reviewer_notes='{$notes}' WHERE application_id={$id}");
             $row = fetchOneAssoc($db->query("SELECT user_id FROM adoption_applications WHERE application_id={$id}"));
             return ["success" => true, "user_id" => $row['user_id'] ?? null];
@@ -417,12 +462,12 @@ function handleQuery($queue, $data, $db) {
 
         case "db.stories.submit":
             if (!isset($data["user_id"])) return ["success" => false, "error" => "Missing user_id"];
-            $userId    = (int)$data["user_id"];
-            $dogId     = isset($data["dog_id"]) ? (int)$data["dog_id"] : "NULL";
-            $title     = $db->real_escape_string($data["title"] ?? '');
-            $story     = $db->real_escape_string($data["story"] ?? '');
-            $photoUrl  = $db->real_escape_string($data["photo_url"] ?? '');
-            $dogIdVal  = is_int($dogId) ? $dogId : "NULL";
+            $userId   = (int)$data["user_id"];
+            $dogId    = isset($data["dog_id"]) ? (int)$data["dog_id"] : "NULL";
+            $title    = $db->real_escape_string($data["title"] ?? '');
+            $story    = $db->real_escape_string($data["story"] ?? '');
+            $photoUrl = $db->real_escape_string($data["photo_url"] ?? '');
+            $dogIdVal = is_int($dogId) ? $dogId : "NULL";
             $db->query("INSERT INTO success_stories (user_id, dog_id, title, story, photo_url, status, created_at)
                         VALUES ({$userId}, {$dogIdVal}, '{$title}', '{$story}', '{$photoUrl}', 'pending', NOW())");
             return ["success" => true, "story_id" => $db->insert_id];
@@ -444,7 +489,7 @@ function handleQuery($queue, $data, $db) {
             $userId = (int)$data["user_id"];
             if (!empty($data["auto_award"])) {
                 $trigger = $db->real_escape_string($data["auto_award"]);
-                $badge = fetchOneAssoc($db->query("SELECT * FROM badges WHERE trigger_name='{$trigger}' LIMIT 1"));
+                $badge   = fetchOneAssoc($db->query("SELECT * FROM badges WHERE trigger_name='{$trigger}' LIMIT 1"));
                 if ($badge) {
                     $hasIt = fetchOneAssoc($db->query("SELECT 1 FROM user_badges WHERE user_id={$userId} AND badge_id={$badge['badge_id']} LIMIT 1"));
                     if (!$hasIt) {
@@ -588,15 +633,15 @@ function handleQuery($queue, $data, $db) {
                     }
                 }
                 $scoreParts = [];
-                if (!empty($traitScores['energy_level']))                                              { $scoreParts[] = "(energy_level='".$db->real_escape_string($traitScores['energy_level'])."')"; }
-                if (!empty($traitScores['size']))                                                       { $scoreParts[] = "(size='".$db->real_escape_string($traitScores['size'])."')"; }
-                if (isset($traitScores['good_with_kids']) && $traitScores['good_with_kids'] !== '')    { $scoreParts[] = "(good_with_kids=".(int)$traitScores['good_with_kids'].")"; }
-                if (isset($traitScores['apartment_friendly']) && $traitScores['apartment_friendly'] !== '') { $scoreParts[] = "(apartment_friendly=".(int)$traitScores['apartment_friendly'].")"; }
-                if (isset($traitScores['good_with_dogs']) && $traitScores['good_with_dogs'] !== '')    { $scoreParts[] = "(good_with_dogs=".(int)$traitScores['good_with_dogs'].")"; }
-                if (isset($traitScores['good_with_cats']) && $traitScores['good_with_cats'] !== '')    { $scoreParts[] = "(good_with_cats=".(int)$traitScores['good_with_cats'].")"; }
-                if (isset($traitScores['requires_yard']) && $traitScores['requires_yard'] !== '')      { $scoreParts[] = "(requires_yard=".(int)$traitScores['requires_yard'].")"; }
-                if (!empty($traitScores['gender']))                                                     { $scoreParts[] = "(gender='".$db->real_escape_string($traitScores['gender'])."')"; }
-                if (isset($traitScores['is_vaccinated']) && $traitScores['is_vaccinated'] !== '')      { $scoreParts[] = "(is_vaccinated=".(int)$traitScores['is_vaccinated'].")"; }
+                if (!empty($traitScores['energy_level']))                                                    { $scoreParts[] = "(energy_level='".$db->real_escape_string($traitScores['energy_level'])."')"; }
+                if (!empty($traitScores['size']))                                                             { $scoreParts[] = "(size='".$db->real_escape_string($traitScores['size'])."')"; }
+                if (isset($traitScores['good_with_kids']) && $traitScores['good_with_kids'] !== '')          { $scoreParts[] = "(good_with_kids=".(int)$traitScores['good_with_kids'].")"; }
+                if (isset($traitScores['apartment_friendly']) && $traitScores['apartment_friendly'] !== '')  { $scoreParts[] = "(apartment_friendly=".(int)$traitScores['apartment_friendly'].")"; }
+                if (isset($traitScores['good_with_dogs']) && $traitScores['good_with_dogs'] !== '')          { $scoreParts[] = "(good_with_dogs=".(int)$traitScores['good_with_dogs'].")"; }
+                if (isset($traitScores['good_with_cats']) && $traitScores['good_with_cats'] !== '')          { $scoreParts[] = "(good_with_cats=".(int)$traitScores['good_with_cats'].")"; }
+                if (isset($traitScores['requires_yard']) && $traitScores['requires_yard'] !== '')            { $scoreParts[] = "(requires_yard=".(int)$traitScores['requires_yard'].")"; }
+                if (!empty($traitScores['gender']))                                                           { $scoreParts[] = "(gender='".$db->real_escape_string($traitScores['gender'])."')"; }
+                if (isset($traitScores['is_vaccinated']) && $traitScores['is_vaccinated'] !== '')            { $scoreParts[] = "(is_vaccinated=".(int)$traitScores['is_vaccinated'].")"; }
                 $total     = count($scoreParts);
                 $threshold = $total > 0 ? ceil($total * 0.6) : 1;
                 if (!empty($scoreParts)) {
@@ -688,10 +733,8 @@ function handleQuery($queue, $data, $db) {
             $intakeDate  = $db->real_escape_string($data['intake_date'] ?? date('Y-m-d'));
             $status      = $db->real_escape_string($data['status'] ?? 'available');
             $source      = $db->real_escape_string($data['source'] ?? 'api');
-
-            $dogId  = null;
-            $action = 'inserted';
-
+            $dogId       = null;
+            $action      = 'inserted';
             if ($externalId) {
                 $check = $db->query("SELECT dog_id FROM dogs WHERE shelter_id={$shelterId} AND external_id='{$externalId}' LIMIT 1");
                 if ($check && $check->num_rows > 0) {
@@ -699,7 +742,6 @@ function handleQuery($queue, $data, $db) {
                     $action = 'updated';
                 }
             }
-
             if ($dogId) {
                 $sql = "UPDATE dogs SET name='{$name}', breed='{$breed}', age_years={$ageYears},
                         size='{$size}', gender='{$gender}', description='{$description}',
@@ -719,11 +761,9 @@ function handleQuery($queue, $data, $db) {
                         {$goodCats}, {$apartment}, {$yard}, {$vaccinated}, {$spayed},
                         '{$intakeDate}', '{$status}', '{$source}', '{$externalId}', NOW())";
             }
-
             logMsg("Executing SQL: " . $sql);
             if (!$db->query($sql)) return ["success" => false, "error" => $db->error];
             if ($action === 'inserted') $dogId = (int)$db->insert_id;
-
             if (!empty($data['photos']) && is_array($data['photos'])) {
                 $db->query("DELETE FROM dog_photos WHERE dog_id={$dogId}");
                 $hasPrimary = false;
@@ -736,7 +776,6 @@ function handleQuery($queue, $data, $db) {
                     $db->query("INSERT INTO dog_photos (dog_id, photo_url, is_primary, caption) VALUES ({$dogId}, '{$url}', {$isPrimary}, '{$caption}')");
                 }
             }
-
             logMsg("Dog {$action}: dog_id={$dogId} breed={$breed}");
             return ["success" => true, "dog_id" => $dogId, "action" => $action];
 
@@ -746,7 +785,7 @@ function handleQuery($queue, $data, $db) {
     }
 }
 
-$callback = function($msg) use ($channel, &$db, $dbHosts) {
+$callback = function($msg) use ($channel, &$db, &$connection, $dbHosts, $rmqHosts, $port, $user, $pass) {
     $queue         = $msg->delivery_info['routing_key'];
     $body          = $msg->body;
     $msgProps      = $msg->get_properties();
@@ -757,9 +796,8 @@ $callback = function($msg) use ($channel, &$db, $dbHosts) {
     logMsg("Raw body: " . $body);
 
     try {
-        // Auto reconnect if DB connection dropped
         if (!$db->ping()) {
-            logMsg("DB connection lost — reconnecting...");
+            logMsg("[CLUSTER] DB connection lost — reconnecting...");
             $db = reconnectDb(
                 $dbHosts,
                 $_ENV['DB_USER'],
@@ -768,7 +806,7 @@ $callback = function($msg) use ($channel, &$db, $dbHosts) {
                 (int)$_ENV['DB_PORT']
             );
             if (!$db) {
-                logMsg("Could not reconnect to any DB node");
+                logMsg("[CLUSTER] Could not reconnect to any DB node");
                 return;
             }
         }
@@ -791,11 +829,24 @@ $callback = function($msg) use ($channel, &$db, $dbHosts) {
     logMsg("Sending result to " . $resultQueue);
     logMsg("Response: " . json_encode($result));
 
-    $channel->basic_publish(
-        new AMQPMessage(json_encode($result), $props),
-        '',
-        $resultQueue
-    );
+    try {
+        $channel->basic_publish(
+            new AMQPMessage(json_encode($result), $props),
+            '',
+            $resultQueue
+        );
+    } catch (\Throwable $e) {
+        logMsg("[CLUSTER] RabbitMQ publish failed — reconnecting: " . $e->getMessage());
+        $connection = reconnectRmq($rmqHosts, $port, $user, $pass);
+        if ($connection) {
+            $channel = $connection->channel();
+            $channel->basic_publish(
+                new AMQPMessage(json_encode($result), $props),
+                '',
+                $resultQueue
+            );
+        }
+    }
 
     logMsg("Request processed");
 };
@@ -807,5 +858,19 @@ foreach ($queues as $q) {
 logMsg("DATABASE IS RUNNING VERSION 3.0 — 3-Node Cluster Active");
 
 while ($channel->is_consuming()) {
-    $channel->wait();
+    try {
+        $channel->wait();
+    } catch (\Throwable $e) {
+        logMsg("[CLUSTER] RabbitMQ connection lost — reconnecting: " . $e->getMessage());
+        $connection = reconnectRmq($rmqHosts, $port, $user, $pass);
+        if (!$connection) {
+            die("[CLUSTER] All RabbitMQ nodes unreachable — cluster is down" . PHP_EOL);
+        }
+        $channel = $connection->channel();
+        foreach ($queues as $q) {
+            $channel->queue_declare($q, false, true, false, false);
+            $channel->basic_consume($q, '', false, true, false, false, $callback);
+        }
+        logMsg("[CLUSTER] RabbitMQ reconnected and consumers re-registered");
+    }
 }

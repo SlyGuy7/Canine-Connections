@@ -195,7 +195,7 @@ final class RabbitMqClient
                 'connection_timeout' => 10.0,
                 'read_write_timeout' => 30.0,
                 'heartbeat' => 0,
-                'keepalive' => false,
+                'keepalive' => true,
                 'channel_rpc_timeout' => 30.0,
             ]
         );
