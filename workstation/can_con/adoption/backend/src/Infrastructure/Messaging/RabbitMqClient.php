@@ -157,7 +157,8 @@ final class RabbitMqClient
         string $host = '127.0.0.1',
         int $port = 5672,
         string $user = 'guest',
-        string $pass = 'guest'
+        string $pass = 'guest',
+        bool $declareQueues = true
     ) {
         $host2 = $_ENV['RABBITMQ_HOST2'] ?? $host;
         $host3 = $_ENV['RABBITMQ_HOST3'] ?? $host;
@@ -202,8 +203,10 @@ final class RabbitMqClient
 
         $this->channel = $this->connection->channel();
 
-        foreach ($this->queues as $queue) {
-            $this->channel->queue_declare($queue, false, true, false, false);
+        if ($declareQueues) {
+            foreach ($this->queues as $queue) {
+                $this->channel->queue_declare($queue, false, true, false, false);
+            }
         }
     }
 

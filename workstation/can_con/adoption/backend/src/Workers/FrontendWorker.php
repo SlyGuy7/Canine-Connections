@@ -75,12 +75,14 @@ final class FrontendWorker
             $_ENV['RABBITMQ_HOST'],
             (int)$_ENV['RABBITMQ_PORT'],
             $_ENV['RABBITMQ_USER'],
-            $_ENV['RABBITMQ_PASS']
+            $_ENV['RABBITMQ_PASS'],
+            false
         );
     }
 
     private function fork(callable $fn, $msg): void
     {
+        echo "[FrontendWorker][FORK] Attempting fork...\n";
         $pid = pcntl_fork();
         if ($pid === -1) {
             echo "[FrontendWorker][ERROR] Fork failed\n";
@@ -88,19 +90,22 @@ final class FrontendWorker
             return;
         }
         if ($pid === 0) {
-            // In child: close the inherited socket without sending AMQP frames.
-            // This leaves the parent's TCP connection completely intact.
+            echo "[FrontendWorker][FORK] Child process started (PID: " . getmypid() . ")\n";
             $this->mq->afterFork();
             try {
+                echo "[FrontendWorker][FORK] Child connecting to RabbitMQ...\n";
                 $mq = $this->newMq();
+                echo "[FrontendWorker][FORK] Child connected — executing handler\n";
                 $fn($mq);
                 $mq->close();
+                echo "[FrontendWorker][FORK] Child done\n";
             } catch (\Throwable $e) {
-                echo "[FrontendWorker][ERROR] {$e->getMessage()}\n";
+                echo "[FrontendWorker][ERROR] Child exception: " . $e->getMessage() . "\n";
+                echo "[FrontendWorker][ERROR] " . $e->getTraceAsString() . "\n";
             }
             exit(0);
         }
-        // Parent: ack immediately and reap zombie without blocking
+        echo "[FrontendWorker][FORK] Parent acking message, child PID: {$pid}\n";
         $msg->ack();
         pcntl_waitpid(-1, $status, WNOHANG);
     }
