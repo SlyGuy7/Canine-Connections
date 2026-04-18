@@ -71,13 +71,26 @@ final class FrontendWorker
 
     private function newMq(): RabbitMqClient
     {
-        return new RabbitMqClient(
-            $_ENV['RABBITMQ_HOST'],
-            (int)$_ENV['RABBITMQ_PORT'],
-            $_ENV['RABBITMQ_USER'],
-            $_ENV['RABBITMQ_PASS'],
-            false
-        );
+        $hosts = array_filter([
+            $_ENV['RABBITMQ_HOST3'] ?? null,
+            $_ENV['RABBITMQ_HOST2'] ?? null,
+            $_ENV['RABBITMQ_HOST']  ?? null,
+        ]);
+        $lastErr = null;
+        foreach ($hosts as $host) {
+            try {
+                return new RabbitMqClient(
+                    $host,
+                    (int)$_ENV['RABBITMQ_PORT'],
+                    $_ENV['RABBITMQ_USER'],
+                    $_ENV['RABBITMQ_PASS'],
+                    false
+                );
+            } catch (\Throwable $e) {
+                $lastErr = $e;
+            }
+        }
+        throw $lastErr;
     }
 
     private function fork(callable $fn, $msg): void
