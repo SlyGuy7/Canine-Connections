@@ -31,7 +31,7 @@ logMsg("[CLUSTER] RabbitMQ nodes: " . implode(', ', $rmqHosts));
 $connection = null;
 foreach ($rmqHosts as $i => $rmqHost) {
     try {
-        logMsg("[CLUSTER] Trying RabbitMQ node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $rmqHost . " ...");
+        if ($i > 0) logMsg("[CLUSTER] Trying RabbitMQ node " . ($i + 1) . " (SECONDARY): " . $rmqHost . " ...");
         $connection = new AMQPStreamConnection($rmqHost, $port, $user, $pass, "/");
         logMsg("[CLUSTER] RabbitMQ connected — now using node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $rmqHost);
         break;
@@ -59,7 +59,7 @@ logMsg("[CLUSTER] MySQL nodes: " . implode(', ', $dbHosts));
 
 $db = null;
 foreach ($dbHosts as $i => $dbHost) {
-    logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $dbHost . " ...");
+    if ($i > 0) logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . " (SECONDARY): " . $dbHost . " ...");
     $conn = new mysqli($dbHost, $_ENV['DB_USER'], $_ENV['DB_PASS'], $_ENV['DB_NAME'], (int)$_ENV['DB_PORT']);
     if (!$conn->connect_error) {
         $conn->query("SET SESSION wait_timeout=28800");
