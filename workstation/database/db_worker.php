@@ -621,9 +621,9 @@ foreach ($queues as $q) {
     $channel->basic_consume($q, '', false, true, false, false, $callback);
 }
 
-logMsg("DATABASE IS RUNNING VERSION 3.1 — 3-Node Cluster Active");
 logMsg("[CLUSTER] RabbitMQ primary: " . $rmqHosts[0]);
 logMsg("[CLUSTER] MySQL primary: " . $dbHosts[0]);
+logMsg("DATABASE IS RUNNING VERSION 3.1 — 3-Node Cluster Active");
 
 while ($channel->is_consuming()) {
     try {
