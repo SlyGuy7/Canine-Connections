@@ -4,11 +4,14 @@ import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
 import Sidebar from "../components/Sidebar";
 
+const PAGE_SIZE = 25;
+
 export default function BrowseDogs() {
   const [allDogs, setAllDogs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState({ breed: "All", size: "All", age: "All" });
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
   const hasFetched = useRef(false);
 
   const navigate = useNavigate();
@@ -20,12 +23,17 @@ export default function BrowseDogs() {
     loadDogs();
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, filters]);
+
   async function loadDogs() {
     try {
-      const result = await sendMessage("request.dogs.list", {});
+      const result = await sendMessage("request.dogs.list", { limit: 500, offset: 0 });
       if (result?.success && Array.isArray(result.dogs)) {
         const mappedDogs = result.dogs.map((dog) => ({
           ...dog,
+          photoList: dog.photos ? dog.photos.split(",").map(p => p.trim()).filter(Boolean) : [],
           image: dog.photos ? dog.photos.split(",")[0].trim() : null,
         }));
         setAllDogs(mappedDogs);
@@ -76,6 +84,8 @@ export default function BrowseDogs() {
     return matchesSearch && matchesBreed && matchesSize && matchesAge;
   });
 
+  const totalPages = Math.ceil(filteredDogs.length / PAGE_SIZE);
+  const paginatedDogs = filteredDogs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const uniqueBreeds = ["All", ...new Set(allDogs.map((d) => d.breed).filter(Boolean))];
 
   if (loading) {
@@ -108,7 +118,12 @@ export default function BrowseDogs() {
       <div className="page-container">
         <header className="content-header" style={{ marginBottom: "30px" }}>
           <h1>Browse Available Dogs</h1>
-          <p className="dashboard-subtitle">Find your perfect match from our rescue network.</p>
+          <p className="dashboard-subtitle">
+            Find your perfect match from our rescue network.{" "}
+            <span style={{ color: "#6f5848", fontWeight: "500" }}>
+              {filteredDogs.length} dog{filteredDogs.length !== 1 ? "s" : ""} available
+            </span>
+          </p>
         </header>
 
         <section className="filter-container" style={{ marginBottom: "40px", display: "flex", flexDirection: "column", gap: "15px" }}>
@@ -143,13 +158,13 @@ export default function BrowseDogs() {
         </section>
 
         <div className="dog-grid">
-          {filteredDogs.length === 0 ? (
+          {paginatedDogs.length === 0 ? (
             <div style={{ gridColumn: "1 / -1", textAlign: "center", padding: "50px", color: "#6f5848", background: "white", borderRadius: "20px", border: "1px solid #efdfd1" }}>
               <h2>No Dogs Found</h2>
               <p>Try adjusting your search filters.</p>
             </div>
           ) : (
-            filteredDogs.map((dog) => {
+            paginatedDogs.map((dog) => {
               const ageYears = Number(dog.age_years) || 0;
               return (
                 <div key={dog.dog_id} className="dog-card" style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
@@ -160,14 +175,15 @@ export default function BrowseDogs() {
                         alt={dog.name}
                         style={{ width: "100%", height: "100%", objectFit: "cover" }}
                         onError={(e) => {
-                          const photos = dog.photos ? dog.photos.split(",").map(p => p.trim()) : [];
+                          const photos = dog.photoList || [];
                           const currentSrc = e.currentTarget.src;
                           const currentIndex = photos.indexOf(currentSrc);
                           const nextPhoto = photos[currentIndex + 1];
-                          if (nextPhoto) {
+                          if (nextPhoto && nextPhoto !== currentSrc) {
                             e.currentTarget.src = nextPhoto;
                           } else {
                             e.currentTarget.style.display = "none";
+                            e.currentTarget.parentElement.innerHTML = '<span style="font-size:64px">🐕</span>';
                           }
                         }}
                       />
@@ -185,7 +201,7 @@ export default function BrowseDogs() {
                         Details
                       </button>
                       <button className="btn" style={{ flex: 1, background: "white", border: "1px solid #d8c1af", color: "#2f241d" }} onClick={() => handleSaveDog(dog)}>
-                        ❤️ Save
+                        Save
                       </button>
                     </div>
                   </div>
@@ -194,6 +210,30 @@ export default function BrowseDogs() {
             })
           )}
         </div>
+
+        {totalPages > 1 && (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "12px", marginTop: "40px", paddingBottom: "40px" }}>
+            <button
+              className="btn"
+              style={{ background: "white", border: "1px solid #d8c1af", color: "#2f241d", padding: "10px 20px" }}
+              onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }}
+              disabled={page === 1}
+            >
+              Previous
+            </button>
+            <span style={{ color: "#6f5848", fontWeight: "500" }}>
+              Page {page} of {totalPages}
+            </span>
+            <button
+              className="btn btn-primary"
+              style={{ padding: "10px 20px" }}
+              onClick={() => { setPage(p => Math.min(totalPages, p + 1)); window.scrollTo(0, 0); }}
+              disabled={page === totalPages}
+            >
+              Next
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
