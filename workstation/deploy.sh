@@ -1,28 +1,56 @@
 #!/bin/bash
 
-echo "Starting Deployment..."
+# Configuration
+LB_IP="100.99.21.39"
+NODE1_IP="100.89.110.16"
+NODE2_IP="100.80.193.50"
+DEPLOY_DATA="deploy.json"
 
-# Step 1: Get the latest code
-echo "Pulling latest code from GitHub..."
+echo "Starting Automated Zero Downtime Deployment..."
+
+# Build process
 git pull origin main
-
-# Step 2: Build the React project
-echo "Building production assets..."
 npm install
 npm run build
 
-# Step 3: Deploy to Node 1
-echo "Deploying to Node 1..."
-sudo cp -r dist/* /var/www/html/
+# Identify Active Node
+ACTIVE_NODE=$(cat $DEPLOY_DATA | grep -oP '(?<="active_node": ")[^"]*')
+echo "Current Active Node: $ACTIVE_NODE"
 
-# Step 4: Deploy to Node 2
-echo "Sending files to Node 2..."
+if [ "$ACTIVE_NODE" == "node1" ]; then
+    echo "Draining traffic from Node 2..."
+    ssh vmware@$LB_IP "sudo sed -i '/$NODE2_IP/s/^/#/' /etc/nginx/nginx.conf && sudo nginx -s reload"
+    
+    echo "Updating Node 2..."
+    scp -r dist/* vmware@$NODE2_IP:/var/www/html/
+    
+    echo "Switching traffic to Node 2..."
+    ssh vmware@$LB_IP "sudo sed -i '/$NODE2_IP/s/^#//' /etc/nginx/nginx.conf && sudo sed -i '/$NODE1_IP/s/^/#/' /etc/nginx/nginx.conf && sudo nginx -s reload"
+    
+    echo "Updating Node 1..."
+    sudo cp -r dist/* /var/www/html/
+    
+    echo "Enabling both nodes..."
+    ssh vmware@$LB_IP "sudo sed -i '/$NODE1_IP/s/^#//' /etc/nginx/nginx.conf && sudo nginx -s reload"
+    
+    sed -i 's/node1/node2/g' $DEPLOY_DATA
+else
+    echo "Draining traffic from Node 1..."
+    ssh vmware@$LB_IP "sudo sed -i '/$NODE1_IP/s/^/#/' /etc/nginx/nginx.conf && sudo nginx -s reload"
+    
+    echo "Updating Node 1..."
+    sudo cp -r dist/* /var/www/html/
+    
+    echo "Switching traffic to Node 1..."
+    ssh vmware@$LB_IP "sudo sed -i '/$NODE1_IP/s/^#//' /etc/nginx/nginx.conf && sudo sed -i '/$NODE2_IP/s/^/#/' /etc/nginx/nginx.conf && sudo nginx -s reload"
+    
+    echo "Updating Node 2..."
+    scp -r dist/* vmware@$NODE2_IP:/var/www/html/
+    
+    echo "Enabling both nodes..."
+    ssh vmware@$LB_IP "sudo sed -i '/$NODE2_IP/s/^#//' /etc/nginx/nginx.conf && sudo nginx -s reload"
+    
+    sed -i 's/node2/node1/g' $DEPLOY_DATA
+fi
 
-# Removed brackets from IP as scp does not require them for standard IPv4
-scp -r dist/* vmware@100.80.193.50:/var/www/html/
-
-echo "Deployment Complete! Both nodes are running the latest code."
-
-scp -r dist/* vmware@100.80.193.50:/var/www/html/
-
-echo "Deployment Complete!"
+echo "Deployment Complete."
