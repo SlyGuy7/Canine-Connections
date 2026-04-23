@@ -114,6 +114,7 @@ function reconnectDb(array $dbHosts, string $dbUser, string $dbPass, string $dbN
     foreach ($dbHosts as $i => $dbHost) {
         logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $dbHost . " ...");
         $conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName, $dbPort);
+        echo "Database connection succesful!\n";
         if (!$conn->connect_error) {
             $conn->query("SET SESSION wait_timeout=28800");
             $conn->query("SET SESSION interactive_timeout=28800");
@@ -615,6 +616,7 @@ $callback = function($msg) use ($channel, &$db, &$connection, $dbHosts, $rmqHost
     }
 
     logMsg("Request processed");
+    echo "Attempting database connections...\n";
 };
 
 foreach ($queues as $q) {
