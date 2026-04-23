@@ -6,7 +6,7 @@ NODE2_IP="100.80.193.50"
 DEPLOY_DATA="deploy.json"
 
 echo "Starting Automated Zero Downtime Deployment..."
-
+git checkout deploy.json
 git pull origin main
 npm install
 npm run build
