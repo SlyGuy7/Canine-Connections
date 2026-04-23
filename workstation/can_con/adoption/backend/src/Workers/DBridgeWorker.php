@@ -73,13 +73,11 @@ final class DBridgeWorker
             return;
         }
         if ($pid === 0) {
-            // In child: close the inherited socket without sending AMQP frames.
-            // This leaves the parent's TCP connection completely intact.
             $this->mq->afterFork();
             try {
                 $fn();
             } catch (\Throwable $e) {
-                echo "[DBridgeWorker][ERROR] {$e->getMessage()}\n";
+                echo "[DBridgeWorker][ERROR] " . $e->getMessage() . "\n";
             }
             exit(0);
         }
@@ -100,6 +98,35 @@ final class DBridgeWorker
         }
     }
 
+    private function newMq(): RabbitMqClient
+    {
+        $hosts = array_values(array_filter([
+            $_ENV['RABBITMQ_HOST3'] ?? null,
+            $_ENV['RABBITMQ_HOST2'] ?? null,
+            $_ENV['RABBITMQ_HOST']  ?? null,
+        ]));
+        $lastErr = null;
+        foreach ($hosts as $i => $host) {
+            try {
+                $label = $i === 0 ? 'LOCAL' : 'SECONDARY';
+                echo "[DBridgeWorker][RELAY] Connecting to RabbitMQ " . $label . ": " . $host . "\n";
+                $mq = new RabbitMqClient(
+                    $host,
+                    (int)($_ENV['RABBITMQ_PORT'] ?? 5672),
+                    $_ENV['RABBITMQ_USER'] ?? 'admin',
+                    $_ENV['RABBITMQ_PASS'] ?? 'REDACTED',
+                    false
+                );
+                echo "[DBridgeWorker][RELAY] Connected to RabbitMQ " . $label . ": " . $host . "\n";
+                return $mq;
+            } catch (\Throwable $e) {
+                echo "[DBridgeWorker][RELAY] RabbitMQ " . $host . " failed — trying next...\n";
+                $lastErr = $e;
+            }
+        }
+        throw $lastErr ?? new \RuntimeException('All RabbitMQ nodes unreachable');
+    }
+
     private function relay(
         string $bridgeQueue,
         string $dbQueue,
@@ -107,16 +134,15 @@ final class DBridgeWorker
         ?string $corrId,
         ?string $replyTo
     ): void {
-        $mq = new RabbitMqClient(
-            $_ENV['RABBITMQ_HOST'] ?? '100.87.19.28',
-            (int)($_ENV['RABBITMQ_PORT'] ?? 5672),
-            $_ENV['RABBITMQ_USER'] ?? 'admin',
-            $_ENV['RABBITMQ_PASS'] ?? 'REDACTED'
-        );
+        $mq = $this->newMq();
 
         echo "[DBridgeWorker] Relaying {$bridgeQueue} → {$dbQueue} (corr:{$corrId})\n";
 
         $result = $mq->publishAndWait($dbQueue, $data, $corrId);
+
+        if ($result === null) {
+            echo "[DBridgeWorker][WARN] No response from db for {$dbQueue} (corr:{$corrId})\n";
+        }
 
         $targetQueue = $replyTo ?? ('bridge.result.' . substr($dbQueue, 3));
 
