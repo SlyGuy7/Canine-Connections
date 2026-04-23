@@ -31,8 +31,7 @@ if [ "$ACTIVE_NODE" == "node1" ]; then
     sudo cp -r dist/* /var/www/html/
     
     echo "Enabling both nodes..."
-    ssh vmware@$LB_IP "sudo sed -i '/$NODE1_IP/s/^#//' /etc/nginx/nginx.conf && sudo nginx -s reload"
-    
+    ssh -i ~/.ssh/id_ed25519 vmware@$LB_IP "sudo sed -i '/$NODE2_IP/s/^#//' /etc/nginx/nginx.conf && sudo nginx -s reload"    
     sed -i 's/node1/node2/g' $DEPLOY_DATA
 else
     echo "Draining traffic from Node 1..."
