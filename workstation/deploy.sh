@@ -22,7 +22,7 @@ if [ "$ACTIVE_NODE" == "node1" ]; then
     ssh vmware@$LB_IP "sudo sed -i '/$NODE2_IP/s/^/#/' /etc/nginx/nginx.conf && sudo nginx -s reload"
     
     echo "Updating Node 2..."
-    scp -r dist/* vmware@$NODE2_IP:/var/www/html/
+    scp -r dist/* deryk@$NODE2_IP:/var/www/html/
     
     echo "Switching traffic to Node 2..."
     ssh vmware@$LB_IP "sudo sed -i '/$NODE2_IP/s/^#//' /etc/nginx/nginx.conf && sudo sed -i '/$NODE1_IP/s/^/#/' /etc/nginx/nginx.conf && sudo nginx -s reload"
