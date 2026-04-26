@@ -174,7 +174,7 @@ final class FrontendWorker
                     'last_name'  => $data['last_name']  ?? '',
                     'role'       => 'adopter',
                 ], $corrId);
-                Mailer::welcome($data['email'], $data['first_name'] ?? '');
+                // Mailer::welcome($data['email'], $data['first_name'] ?? '');
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleRegister: {$e->getMessage()}\n";
                 $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'Registration failed'], $corrId);
