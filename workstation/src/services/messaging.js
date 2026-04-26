@@ -3,7 +3,7 @@ import { Client } from "@stomp/stompjs";
 const BROKER_URL =
   import.meta.env.VITE_MESSAGING_URL || "ws://100.99.21.39:15674/ws";
 
-const REQUEST_TIMEOUT_MS = 70000;
+const REQUEST_TIMEOUT_MS = 5000;
 
 function makeCorrelationId() {
   return `req_${Date.now()}_${Math.random().toString(16).slice(2)}`;
