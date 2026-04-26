@@ -136,23 +136,11 @@ final class DBridgeWorker
     ): void {
         $mq = $this->newMq();
 
-        echo "[DBridgeWorker] Relaying {$bridgeQueue} → {$dbQueue} (corr:{$corrId})\n";
+        echo "[DBridgeWorker] Relaying {$bridgeQueue} -> {$dbQueue} (corr:{$corrId})\n";
 
-        $result = $mq->publishAndWait($dbQueue, $data, $corrId);
-
-        if ($result === null) {
-            echo "[DBridgeWorker][WARN] No response from db for {$dbQueue} (corr:{$corrId})\n";
-        }
-
-        $targetQueue = $replyTo ?? ('bridge.result.' . substr($dbQueue, 3));
-
-        $mq->publish(
-            $targetQueue,
-            $result ?? ['success' => false, 'error' => 'No response from database'],
-            $corrId
-        );
-
-        echo "[DBridgeWorker] Done {$bridgeQueue} → {$targetQueue} (corr:{$corrId})\n";
+        // Pass the frontend reply queue directly to the database worker
+        // Note: Using publish() instead of publishAndWait()
+        $mq->publish($dbQueue, $data, $corrId, $replyTo);
 
         $mq->close();
     }

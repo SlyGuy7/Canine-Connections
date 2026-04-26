@@ -264,7 +264,7 @@ final class RabbitMqClient
         }
     }
 
-    public function publish(string $queue, array $payload, ?string $correlationId = null): void
+    public function publish(string $queue, array $payload, ?string $correlationId = null, ?string $replyTo = null): void
     {
         $props = [
             'delivery_mode' => AMQPMessage::DELIVERY_MODE_PERSISTENT,
@@ -275,13 +275,40 @@ final class RabbitMqClient
             $props['correlation_id'] = $correlationId;
         }
 
+        if ($replyTo !== null) {
+            $props['reply_to'] = $replyTo;
+        }
+
         $this->channel->basic_publish(
             new AMQPMessage(json_encode($payload), $props),
             '',
             $queue
         );
 
-        echo "[MQ] → {$queue}" . ($correlationId ? " (corr:{$correlationId})" : '') . "\n";
+        echo "[MQ] -> {$queue}" . ($correlationId ? " (corr:{$correlationId})" : '') . "\n";
+    }
+
+    public function publishAndWait(string $queue, array $payload, ?string $correlationId = null, int $timeoutSeconds = 30): ?array
+    {
+        if ($correlationId === null) {
+            $correlationId = uniqid('req_', true);
+        }
+
+        $replyQueue = $queue . '.reply.' . $correlationId;
+
+        // CRITICAL FIX: Declare the temporary reply queue before publishing
+        $this->channel->queue_declare($replyQueue, false, false, false, true);
+
+        // Publish and pass the explicit replyQueue so the worker knows where to respond
+        $this->publish($queue, $payload, $correlationId, $replyQueue);
+
+        // Wait for the response
+        $result = $this->waitForResponse($replyQueue, $correlationId, $timeoutSeconds);
+
+        // Clean up the temporary queue
+        $this->channel->queue_delete($replyQueue);
+
+        return $result;
     }
 
     public function registerConsumer(string $queue, callable $callback): void
