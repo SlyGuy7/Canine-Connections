@@ -30,6 +30,7 @@ import AdminApplications from "./pages/AdminApplications"
 import AdminStories from "./pages/AdminStories"
 import AdminUsers from "./pages/AdminUsers"
 import AdminGuard from "./components/AdminGuard"
+import ProtectedRoute from "./components/ProtectedRoute"
 
 // Layout component to fix sidebar overlap
 const AppLayout = () => {
@@ -60,7 +61,7 @@ export default function App() {
       <Route path="/admin/users"        element={<AdminGuard><AdminUsers /></AdminGuard>} />
 
       {/* User Pages (With Sidebar and Margin Fix) */}
-      <Route element={<AppLayout />}>
+      <Route element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
         <Route path="/dashboard"       element={<Dashboard />} />
         <Route path="/browse-dogs"     element={<BrowseDogs />} />
         <Route path="/dogs/:id"        element={<DogProfile />} />
