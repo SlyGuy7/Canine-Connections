@@ -45,6 +45,7 @@ if (!$connection) {
 }
 
 $channel = $connection->channel();
+$channel->basic_qos(0, 1, false);
 logMsg("[CLUSTER] RabbitMQ channel ready");
 
 logMsg("Connecting to MySQL...");
@@ -57,14 +58,20 @@ $dbHosts = array_values(array_filter([
 
 logMsg("[CLUSTER] MySQL nodes: " . implode(', ', $dbHosts));
 
+function connectDb(string $host, string $user, string $pass, string $name, int $port): ?mysqli {
+    $conn = new mysqli($host, $user, $pass, $name, $port);
+    if ($conn->connect_error) return null;
+    $conn->set_charset('utf8mb4');
+    $conn->query("SET SESSION wait_timeout=28800");
+    $conn->query("SET SESSION interactive_timeout=28800");
+    return $conn;
+}
+
 $db = null;
 foreach ($dbHosts as $i => $dbHost) {
     if ($i > 0) logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . " (SECONDARY): " . $dbHost . " ...");
-    $conn = new mysqli($dbHost, $_ENV['DB_USER'], $_ENV['DB_PASS'], $_ENV['DB_NAME'], (int)$_ENV['DB_PORT']);
-    if (!$conn->connect_error) {
-        $conn->query("SET SESSION wait_timeout=28800");
-        $conn->query("SET SESSION interactive_timeout=28800");
-        $db = $conn;
+    $db = connectDb($dbHost, $_ENV['DB_USER'], $_ENV['DB_PASS'], $_ENV['DB_NAME'], (int)$_ENV['DB_PORT']);
+    if ($db) {
         logMsg("[CLUSTER] MySQL connected — now using node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $dbHost);
         break;
     }
@@ -113,10 +120,8 @@ function fetchOneAssoc($result) {
 function reconnectDb(array $dbHosts, string $dbUser, string $dbPass, string $dbName, int $dbPort): ?mysqli {
     foreach ($dbHosts as $i => $dbHost) {
         logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $dbHost . " ...");
-        $conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName, $dbPort);
-        if (!$conn->connect_error) {
-            $conn->query("SET SESSION wait_timeout=28800");
-            $conn->query("SET SESSION interactive_timeout=28800");
+        $conn = connectDb($dbHost, $dbUser, $dbPass, $dbName, $dbPort);
+        if ($conn) {
             logMsg("[CLUSTER] MySQL reconnected — now using node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $dbHost);
             return $conn;
         }
@@ -182,6 +187,13 @@ function handleQuery($queue, $data, $db) {
             $address=$db->real_escape_string($data["address"]??'');
             $sql="UPDATE users SET first_name='{$firstName}',last_name='{$lastName}',phone='{$phone}',address='{$address}' WHERE user_id={$userId}";
             logMsg("Executing SQL: ".$sql); $db->query($sql);
+            if ($db->affected_rows===0) return ["success"=>false,"error"=>"User not found"];
+            return ["success"=>true];
+
+        case "db.account.delete":
+            if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
+            $userId=(int)$data["user_id"];
+            $db->query("DELETE FROM users WHERE user_id={$userId}");
             if ($db->affected_rows===0) return ["success"=>false,"error"=>"User not found"];
             return ["success"=>true];
 
@@ -555,7 +567,7 @@ function handleQuery($queue, $data, $db) {
             $spayed=!empty($data['is_spayed_neutered'])?1:0; $intakeDate=$db->real_escape_string($data['intake_date']??date('Y-m-d'));
             $status=$db->real_escape_string($data['status']??'available'); $source=$db->real_escape_string($data['source']??'api');
             $dogId=null; $action='inserted';
-            if ($externalId) { $check=$db->query("SELECT dog_id FROM dogs WHERE shelter_id={$shelterId} AND external_id='{$externalId}' LIMIT 1"); if($check&&$check->num_rows>0){$dogId=(int)$check->fetch_assoc()['dog_id'];$action='updated';} }
+            if ($externalId) { $check=$db->query("SELECT dog_id FROM dogs WHERE external_id='{$externalId}' LIMIT 1"); if($check&&$check->num_rows>0){$dogId=(int)$check->fetch_assoc()['dog_id'];$action='updated';} }
             if ($dogId) {
                 $sql="UPDATE dogs SET name='{$name}',breed='{$breed}',age_years={$ageYears},size='{$size}',gender='{$gender}',description='{$description}',energy_level='{$energy}',training_level='{$training}',ideal_owner_activity='{$activity}',good_with_kids={$goodKids},good_with_dogs={$goodDogs},good_with_cats={$goodCats},apartment_friendly={$apartment},requires_yard={$yard},is_vaccinated={$vaccinated},is_spayed_neutered={$spayed},status='{$status}',source='{$source}',last_synced_at=NOW() WHERE dog_id={$dogId}";
             } else {
@@ -569,13 +581,6 @@ function handleQuery($queue, $data, $db) {
             }
             logMsg("Dog {$action}: dog_id={$dogId} breed={$breed}");
             return ["success"=>true,"dog_id"=>$dogId,"action"=>$action];
-
-        case "db.account.delete":
-            if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
-            $userId=(int)$data["user_id"];
-            $db->query("DELETE FROM users WHERE user_id={$userId}");
-            if ($db->affected_rows===0) return ["success"=>false,"error"=>"User not found"];
-            return ["success"=>true];
 
         default:
             logMsg("No SQL handler defined for ".$queue);
@@ -664,6 +669,7 @@ while ($channel->is_consuming()) {
         $connection = reconnectRmq($rmqHosts, $port, $user, $pass);
         if (!$connection) { die("[CLUSTER] All RabbitMQ nodes unreachable — cluster is down" . PHP_EOL); }
         $channel = $connection->channel();
+        $channel->basic_qos(0, 1, false);
         foreach ($queues as $q) {
             $channel->queue_declare($q, false, true, false, false);
             $channel->basic_consume($q, '', false, true, false, false, $callback);
