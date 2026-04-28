@@ -1,5 +1,5 @@
 import React from "react"
-import { Routes, Route, Outlet } from "react-router-dom"
+import { Routes, Route, Outlet, Navigate } from "react-router-dom"
 
 // Navigation
 import Sidebar from "./components/Sidebar" // Ensure this path matches your folder structure
@@ -49,6 +49,7 @@ export default function App() {
     <Routes>
       {/* Public Pages (No Sidebar) */}
       <Route path="/"                element={<Landing />} />
+      <Route path="/login"           element={<Navigate to="/" replace />} />
       <Route path="/register"        element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       
