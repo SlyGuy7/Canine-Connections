@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
 import Sidebar from "../components/Sidebar";
@@ -13,6 +13,8 @@ export default function BrowseDogs() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const hasFetched = useRef(false);
+  const [searchParams] = useSearchParams();
+  const shelterIdParam = searchParams.get("shelter_id");
 
   const navigate = useNavigate();
   const { addToast } = useToast();
@@ -29,7 +31,7 @@ export default function BrowseDogs() {
 
   async function loadDogs() {
     try {
-      const result = await sendMessage("request.dogs.list", { limit: 500, offset: 0 });
+      const result = await sendMessage("request.dogs.list", { limit: 500, offset: 0, shelter_id: shelterIdParam ? parseInt(shelterIdParam) : null });
       if (result?.success && Array.isArray(result.dogs)) {
         const mappedDogs = result.dogs.map((dog) => ({
           ...dog,

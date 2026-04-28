@@ -1,17 +1,192 @@
-import React from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import React, { useState, useEffect } from "react"
+import { useParams, useNavigate } from "react-router-dom"
+import Sidebar from "../components/Sidebar"
+import { sendMessage } from "../services/messaging"
 
 export default function ShelterDetails() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [shelter, setShelter] = useState(null)
+  const [dogs, setDogs] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    loadShelter()
+    loadDogs()
+  }, [id])
+
+  async function loadShelter() {
+    try {
+      const result = await sendMessage("request.shelters.get", { shelter_id: parseInt(id) })
+      if (result?.success) {
+        setShelter(result.shelter)
+      } else {
+        setError("Shelter not found.")
+      }
+    } catch {
+      setError("Could not load shelter details.")
+    }
+  }
+
+  async function loadDogs() {
+    try {
+      const result = await sendMessage("request.dogs.list", {
+        shelter_id: parseInt(id),
+        status: "available",
+        limit: 50,
+      })
+      setDogs(result?.dogs || [])
+    } catch {
+      setDogs([])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="dashboard-wrapper">
+        <Sidebar />
+        <div className="page-container">
+          <div style={{ padding: "60px", textAlign: "center", color: "#6f5848" }}>Loading shelter...</div>
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !shelter) {
+    return (
+      <div className="dashboard-wrapper">
+        <Sidebar />
+        <div className="page-container">
+          <button className="btn btn-secondary" onClick={() => navigate("/shelters")} style={{ marginBottom: "20px" }}>
+            Back to Shelters
+          </button>
+          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "20px", color: "#dc2626" }}>
+            {error || "Shelter not found."}
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
-    <div className="dashboard-content">
-      <button className="btn btn-secondary" onClick={() => navigate("/shelters")}>
-        ← Back to Shelters
-      </button>
-      <h1>Shelter Details for ID: {id}</h1>
-      <p>This page is under construction.</p>
+    <div className="dashboard-wrapper">
+      <Sidebar />
+      <div className="page-container">
+
+        <button className="btn btn-secondary" onClick={() => navigate("/shelters")} style={{ marginBottom: "24px" }}>
+          Back to Shelters
+        </button>
+
+        <div style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "32px", marginBottom: "32px" }}>
+          <div style={{ display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div style={{ width: "100px", height: "100px", background: "linear-gradient(135deg, #e8f3f1, #fdf6ef)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              {shelter.logo_url ? (
+                <img src={shelter.logo_url} alt={shelter.name} style={{ maxWidth: "90px", maxHeight: "90px", objectFit: "contain", borderRadius: "12px" }} />
+              ) : (
+                <span style={{ fontSize: "48px" }}>🏡</span>
+              )}
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <h1 style={{ margin: "0 0 8px 0", color: "#2f241d", fontSize: "26px" }}>{shelter.name}</h1>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginBottom: "16px" }}>
+                {(shelter.city || shelter.state) && (
+                  <span style={{ color: "#6f5848", fontSize: "15px" }}>
+                    📍 {[shelter.city, shelter.state, shelter.zip].filter(Boolean).join(", ")}
+                  </span>
+                )}
+                {shelter.phone && (
+                  <span style={{ color: "#6f5848", fontSize: "15px" }}>📞 {shelter.phone}</span>
+                )}
+                {shelter.email && (
+                  <span style={{ color: "#6f5848", fontSize: "15px" }}>✉️ {shelter.email}</span>
+                )}
+              </div>
+
+              {shelter.website && (
+                <a
+                  href={shelter.website.startsWith("http") ? shelter.website : `https://${shelter.website}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "#b45309", fontSize: "14px", textDecoration: "none", display: "inline-block", marginBottom: "12px" }}
+                >
+                  🌐 Visit Website
+                </a>
+              )}
+
+              {shelter.description && (
+                <p style={{ margin: "12px 0 0 0", color: "#6f5848", fontSize: "15px", lineHeight: "1.6" }}>
+                  {shelter.description}
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+          <h2 style={{ margin: 0, color: "#2f241d", fontSize: "20px" }}>
+            Available Dogs {dogs.length > 0 && `(${dogs.length})`}
+          </h2>
+          <button
+            className="btn btn-secondary"
+            style={{ fontSize: "14px" }}
+            onClick={() => navigate(`/browse-dogs?shelter_id=${id}`)}
+          >
+            Browse All Dogs
+          </button>
+        </div>
+
+        {dogs.length === 0 ? (
+          <div style={{ background: "white", borderRadius: "16px", border: "1px solid #efdfd1", padding: "40px", textAlign: "center", color: "#6f5848" }}>
+            No available dogs from this shelter at this time.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
+            {dogs.slice(0, 12).map((dog) => {
+              const photoUrl = dog.photos ? dog.photos.split(",")[0] : null
+              return (
+                <div
+                  key={dog.dog_id}
+                  style={{ background: "white", borderRadius: "16px", border: "1px solid #efdfd1", overflow: "hidden", cursor: "pointer", transition: "transform 0.15s" }}
+                  onClick={() => navigate(`/dogs/${dog.dog_id}`)}
+                  onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
+                  onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  <div style={{ height: "160px", background: "#f5ede4", overflow: "hidden" }}>
+                    {photoUrl ? (
+                      <img src={photoUrl} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.target.style.display = "none" }} />
+                    ) : (
+                      <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>🐾</div>
+                    )}
+                  </div>
+                  <div style={{ padding: "14px" }}>
+                    <h4 style={{ margin: "0 0 4px 0", color: "#2f241d", fontSize: "15px" }}>{dog.name}</h4>
+                    <p style={{ margin: "0 0 4px 0", color: "#6f5848", fontSize: "13px" }}>{dog.breed}</p>
+                    <p style={{ margin: 0, color: "#9c7a6a", fontSize: "12px" }}>
+                      {dog.age_years} yr · {dog.size} · {dog.gender}
+                    </p>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+
+        {dogs.length > 12 && (
+          <div style={{ textAlign: "center", marginTop: "24px" }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => navigate(`/browse-dogs?shelter_id=${id}`)}
+            >
+              View All {dogs.length} Dogs from This Shelter
+            </button>
+          </div>
+        )}
+      </div>
     </div>
-  );
+  )
 }
