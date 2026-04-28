@@ -77,7 +77,7 @@ if (!$db) {
 
 $queues = [
     'db.auth.register','db.auth.login','db.auth.resetPassword','db.profile.update',
-    'db.shelters.list','db.shelters.get',
+    'db.shelters.list','db.shelters.get','db.shelters.upsert',
     'db.api.key.get','db.api.key.regenerate','db.api.key.validate','db.api.logs','db.api.log','db.api.dog.upsert',
     'db.dogs.list','db.dogs.get',
     'db.application.submit','db.application.status','db.application.list','db.application.approve','db.application.reject',
@@ -114,7 +114,6 @@ function reconnectDb(array $dbHosts, string $dbUser, string $dbPass, string $dbN
     foreach ($dbHosts as $i => $dbHost) {
         logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $dbHost . " ...");
         $conn = new mysqli($dbHost, $dbUser, $dbPass, $dbName, $dbPort);
-        echo "Database connection succesful!\n";
         if (!$conn->connect_error) {
             $conn->query("SET SESSION wait_timeout=28800");
             $conn->query("SET SESSION interactive_timeout=28800");
@@ -213,6 +212,24 @@ function handleQuery($queue, $data, $db) {
             $result=$db->query("SELECT * FROM shelters");
             if (!$result) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"shelters"=>fetchAllAssoc($result)];
+
+        case "db.shelters.upsert":
+            if (!isset($data["name"])) return ["success"=>false,"error"=>"Missing name"];
+            $name    = $db->real_escape_string(substr($data["name"] ?? '', 0, 255));
+            $city    = $db->real_escape_string($data["city"]    ?? '');
+            $state   = $db->real_escape_string($data["state"]   ?? '');
+            $phone   = $db->real_escape_string($data["phone"]   ?? '');
+            $email   = $db->real_escape_string($data["email"]   ?? '');
+            $website = $db->real_escape_string($data["website"] ?? '');
+            $check   = $db->query("SELECT shelter_id FROM shelters WHERE name='{$name}' LIMIT 1");
+            if ($check && $check->num_rows > 0) {
+                $row = $check->fetch_assoc();
+                return ["success"=>true,"shelter_id"=>$row["shelter_id"],"action"=>"existing"];
+            }
+            $db->query("INSERT INTO shelters (name,city,state,phone,email,website) VALUES ('{$name}','{$city}','{$state}','{$phone}','{$email}','{$website}')");
+            if ($db->error) return ["success"=>false,"error"=>$db->error];
+            logMsg("New shelter inserted: {$name} ({$city}, {$state}) shelter_id=" . $db->insert_id);
+            return ["success"=>true,"shelter_id"=>$db->insert_id,"action"=>"inserted"];
 
         case "db.shelters.get":
             if (!isset($data["shelter_id"])) return ["success"=>false,"error"=>"Missing shelter_id"];
@@ -616,7 +633,6 @@ $callback = function($msg) use ($channel, &$db, &$connection, $dbHosts, $rmqHost
     }
 
     logMsg("Request processed");
-    echo "Attempting database connections...\n";
 };
 
 foreach ($queues as $q) {
