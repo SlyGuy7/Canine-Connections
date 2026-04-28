@@ -23,6 +23,7 @@ final class FrontendWorker
         $this->mq->registerConsumer('request.auth.login',          [$this, 'handleLogin']);
         $this->mq->registerConsumer('request.auth.resetPassword',  [$this, 'handleResetPassword']);
         $this->mq->registerConsumer('request.profile.update',      [$this, 'handleProfileUpdate']);
+        $this->mq->registerConsumer('request.account.delete',      [$this, 'handleAccountDelete']);
         $this->mq->registerConsumer('request.shelters.list',       [$this, 'handleSheltersList']);
         $this->mq->registerConsumer('request.shelters.get',        [$this, 'handleSheltersGet']);
         $this->mq->registerConsumer('request.api.key.get',         [$this, 'handleApiKeyGet']);
@@ -141,6 +142,25 @@ final class FrontendWorker
                 : $replyTo;
         }
         $mq->publish($queue, $payload, $corrId);
+    }
+
+    public function handleAccountDelete(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            echo "[FrontendWorker] handleAccountDelete: user_id=" . ($data['user_id'] ?? 'none') . "\n";
+            try {
+                if (empty($data['user_id'])) {
+                    $this->respond($mq, 'response.account.delete', $replyTo, ['success' => false, 'error' => 'user_id is required'], $corrId);
+                    return;
+                }
+                $result = $mq->publishAndWait('bridge.account.delete', ['user_id' => $data['user_id']], $corrId);
+                $this->respond($mq, 'response.account.delete', $replyTo, $result ?? ['success' => false, 'error' => 'Could not delete account'], $corrId);
+            } catch (\Throwable $e) {
+                echo "[FrontendWorker][ERROR] handleAccountDelete: {$e->getMessage()}\n";
+                $this->respond($mq, 'response.account.delete', $replyTo, ['success' => false, 'error' => 'Could not delete account'], $corrId);
+            }
+        }, $msg);
     }
 
     public function handleRegister(array $data, $msg, ?string $corrId): void

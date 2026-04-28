@@ -1,6 +1,9 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { sendMessage } from '../services/messaging'
 
 export default function Settings() {
+  const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState('account')
 
   const displayName = localStorage.getItem('userFullName') || localStorage.getItem('userFirstName') || 'Unknown'
@@ -77,17 +80,26 @@ export default function Settings() {
   }
 
   const handleDeleteAccount = async () => {
-    try {
-      await fetch('/api/delete-account', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' }
-      })
-      console.log("Account deletion requested")
-    } catch (error) {
-      console.error("Network error:", error)
+    const userId = localStorage.getItem('userId')
+    if (!userId) {
+      setShowDeleteConfirm(false)
+      setStatus({ message: 'Could not identify account. Please log in again.', type: 'error' })
+      return
     }
+
     setShowDeleteConfirm(false)
-    setStatus({ message: 'Account deleted. You will be logged out shortly.', type: 'success' })
+    setStatus({ message: 'Deleting account...', type: '' })
+
+    const result = await sendMessage('request.account.delete', { user_id: parseInt(userId) })
+
+    if (result?.success) {
+      localStorage.clear()
+      sessionStorage.clear()
+      setStatus({ message: 'Account deleted. Redirecting...', type: 'success' })
+      setTimeout(() => navigate('/'), 2000)
+    } else {
+      setStatus({ message: result?.error || 'Failed to delete account. Please try again.', type: 'error' })
+    }
   }
 
   const handleSavePrivacy = async () => {

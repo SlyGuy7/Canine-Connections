@@ -76,7 +76,7 @@ if (!$db) {
 }
 
 $queues = [
-    'db.auth.register','db.auth.login','db.auth.resetPassword','db.profile.update',
+    'db.auth.register','db.auth.login','db.auth.resetPassword','db.profile.update','db.account.delete',
     'db.shelters.list','db.shelters.get','db.shelters.upsert',
     'db.api.key.get','db.api.key.regenerate','db.api.key.validate','db.api.logs','db.api.log','db.api.dog.upsert',
     'db.dogs.list','db.dogs.get',
@@ -564,6 +564,13 @@ function handleQuery($queue, $data, $db) {
             }
             logMsg("Dog {$action}: dog_id={$dogId} breed={$breed}");
             return ["success"=>true,"dog_id"=>$dogId,"action"=>$action];
+
+        case "db.account.delete":
+            if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
+            $userId=(int)$data["user_id"];
+            $db->query("DELETE FROM users WHERE user_id={$userId}");
+            if ($db->affected_rows===0) return ["success"=>false,"error"=>"User not found"];
+            return ["success"=>true];
 
         default:
             logMsg("No SQL handler defined for ".$queue);

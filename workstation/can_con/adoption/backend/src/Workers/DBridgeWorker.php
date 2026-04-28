@@ -18,6 +18,7 @@ final class DBridgeWorker
         $this->mq->registerConsumer('bridge.auth.login',          [$this, 'handleAuthLogin']);
         $this->mq->registerConsumer('bridge.auth.resetPassword',  [$this, 'handleResetPassword']);
         $this->mq->registerConsumer('bridge.profile.update',      [$this, 'handleProfileUpdate']);
+        $this->mq->registerConsumer('bridge.account.delete',      [$this, 'handleAccountDelete']);
         $this->mq->registerConsumer('bridge.shelters.list',       [$this, 'handleSheltersList']);
         $this->mq->registerConsumer('bridge.shelters.get',        [$this, 'handleSheltersGet']);
         $this->mq->registerConsumer('bridge.api.key.get',         [$this, 'handleApiKeyGet']);
@@ -143,6 +144,12 @@ final class DBridgeWorker
         $mq->publish($dbQueue, $data, $corrId, $replyTo);
 
         $mq->close();
+    }
+
+    public function handleAccountDelete(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->getReplyTo($msg);
+        $this->fork(fn() => $this->relay('bridge.account.delete', 'db.account.delete', $data, $corrId, $replyTo), $msg);
     }
 
     public function handleAuthRegister(array $data, $msg, ?string $corrId): void
