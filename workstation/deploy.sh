@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 LB_IP="100.99.21.39"
 NODE1_IP="100.89.110.16"
@@ -7,7 +8,7 @@ DEPLOY_DATA="deploy.json"
 
 echo "Starting Automated Zero Downtime Deployment..."
 
-# Fix Git state if deploy.json changed locally
+# Discard any local change to deploy.json before pulling
 git checkout $DEPLOY_DATA
 git pull origin main
 npm install
@@ -33,6 +34,7 @@ if [ "$ACTIVE_NODE" == "node1" ]; then
     ssh -i ~/.ssh/id_ed25519 deryk@$LB_IP "sudo sed -i '/$NODE2_IP/s/^#//' /etc/nginx/nginx.conf && sudo nginx -s reload"
     
     sed -i 's/node1/node2/g' $DEPLOY_DATA
+    git add $DEPLOY_DATA && git commit -m "deploy: switch active_node to node2" && git push origin main
 else
     echo "Draining traffic from Node 1..."
     ssh -i ~/.ssh/id_ed25519 deryk@$LB_IP "sudo sed -i '/$NODE1_IP/s/^/#/' /etc/nginx/nginx.conf && sudo nginx -s reload"
@@ -50,6 +52,7 @@ else
     ssh -i ~/.ssh/id_ed25519 deryk@$LB_IP "sudo sed -i '/$NODE2_IP/s/^#//' /etc/nginx/nginx.conf && sudo nginx -s reload"
     
     sed -i 's/node2/node1/g' $DEPLOY_DATA
+    git add $DEPLOY_DATA && git commit -m "deploy: switch active_node to node1" && git push origin main
 fi
 
 echo "Deployment Complete."
