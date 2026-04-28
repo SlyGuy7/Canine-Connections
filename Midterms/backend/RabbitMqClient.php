@@ -318,14 +318,17 @@ final class RabbitMqClient
         $this->channel->basic_consume(
             $queue, '', false, false, false, false,
             function ($msg) use ($callback, $queue) {
-                $data       = json_decode($msg->body, true) ?? [];
-                $msgProps   = $msg->get_properties();
-                $corrId     = $msgProps['correlation_id']
-                           ?? ($msgProps['headers']['correlation_id']
-                           ?? ($msgProps['headers']['correlation-id']
-                           ?? null));
+                $data     = json_decode($msg->body, true) ?? [];
+                $msgProps = $msg->get_properties();
+                $corrId   = $msgProps['correlation_id']
+                         ?? ($msgProps['headers']['correlation_id']
+                         ?? ($msgProps['headers']['correlation-id']
+                         ?? null));
+                $replyTo  = $msgProps['reply_to']
+                         ?? ($msgProps['headers']['reply-to']
+                         ?? null);
                 echo "[MQ] ← {$queue}" . ($corrId ? " (corr:{$corrId})" : '') . "\n";
-                $callback($data, $msg, $corrId);
+                $callback($data, $msg, $corrId, $replyTo);
             }
         );
     }

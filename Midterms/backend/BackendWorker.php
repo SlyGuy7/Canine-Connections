@@ -99,7 +99,7 @@ final class BackendWorker
 
     // AUTH
 
-    public function handleRegister(array $data, $msg, ?string $corrId): void
+    public function handleRegister(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleRegister: {$data['email']}\n";
         try {
@@ -107,7 +107,7 @@ final class BackendWorker
                 $this->respond('response.auth.register', [
                     'success' => false,
                     'error'   => 'email and password are required',
-                ], $corrId);
+                ], $corrId, $replyTo);
                 $msg->ack();
                 return;
             }
@@ -125,7 +125,7 @@ final class BackendWorker
                 $this->respond('response.auth.register', [
                     'success' => false,
                     'error'   => $result['message'] ?? $result['error'] ?? 'Registration failed',
-                ], $corrId);
+                ], $corrId, $replyTo);
                 $msg->ack();
                 return;
             }
@@ -136,21 +136,21 @@ final class BackendWorker
                 'first_name' => $data['first_name'] ?? '',
                 'last_name'  => $data['last_name']  ?? '',
                 'role'       => 'adopter',
-            ], $corrId);
+            ], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
             echo "[Backend][ERROR] handleRegister: {$e->getMessage()}\n";
-            $this->fail('response.auth.register', 'Registration failed', $corrId);
+            $this->fail('response.auth.register', 'Registration failed', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleLogin(array $data, $msg, ?string $corrId): void
+    public function handleLogin(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleLogin: {$data['email']}\n";
         try {
             if (empty($data['email']) || empty($data['password'])) {
-                $this->fail('response.auth.login', 'email and password are required', $corrId);
+                $this->fail('response.auth.login', 'email and password are required', $corrId, $replyTo);
                 $msg->ack();
                 return;
             }
@@ -191,14 +191,14 @@ final class BackendWorker
 
         } catch (\Throwable $e) {
             echo "[Backend][ERROR] handleLogin: {$e->getMessage()}\n";
-            $this->fail('response.auth.login', 'Login failed', $corrId);
+            $this->fail('response.auth.login', 'Login failed', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // SHELTERS
 
-    public function handleSheltersList(array $data, $msg, ?string $corrId): void
+    public function handleSheltersList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleSheltersList\n";
         try {
@@ -208,45 +208,45 @@ final class BackendWorker
                 'offset' => $data['offset'] ?? 0,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.shelters.list', $corrId);
-            $this->respond('response.shelters.list', $result ?? ['success' => false, 'error' => 'Could not load shelters'], $corrId);
+            $this->respond('response.shelters.list', $result ?? ['success' => false, 'error' => 'Could not load shelters'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.shelters.list', 'Could not load shelters', $corrId);
+            $this->fail('response.shelters.list', 'Could not load shelters', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleSheltersGet(array $data, $msg, ?string $corrId): void
+    public function handleSheltersGet(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleSheltersGet: shelter_id={$data['shelter_id']}\n";
         try {
             $this->mq->publish('db.shelters.get', ['shelter_id' => $data['shelter_id']], $corrId);
             $result = $this->mq->waitForResponse('db.result.shelters.get', $corrId);
-            $this->respond('response.shelters.get', $result ?? ['success' => false, 'error' => 'Shelter not found'], $corrId);
+            $this->respond('response.shelters.get', $result ?? ['success' => false, 'error' => 'Shelter not found'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.shelters.get', 'Could not load shelter', $corrId);
+            $this->fail('response.shelters.get', 'Could not load shelter', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // API KEYS 
 
-    public function handleApiKeyGet(array $data, $msg, ?string $corrId): void
+    public function handleApiKeyGet(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleApiKeyGet: shelter_id={$data['shelter_id']}\n";
         try {
             $this->mq->publish('db.api.key.get', ['shelter_id' => $data['shelter_id']], $corrId);
             $result = $this->mq->waitForResponse('db.result.api.key.get', $corrId);
-            $this->respond('response.api.key.get', $result ?? ['success' => false, 'error' => 'Could not load API key'], $corrId);
+            $this->respond('response.api.key.get', $result ?? ['success' => false, 'error' => 'Could not load API key'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.api.key.get', 'Could not load API key', $corrId);
+            $this->fail('response.api.key.get', 'Could not load API key', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleApiKeyRegenerate(array $data, $msg, ?string $corrId): void
+    public function handleApiKeyRegenerate(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleApiKeyRegenerate: shelter_id={$data['shelter_id']}\n";
         try {
@@ -259,15 +259,15 @@ final class BackendWorker
             if (!empty($result['success'])) {
                 $result['api_key'] = $newKey;
             }
-            $this->respond('response.api.key.regenerate', $result ?? ['success' => false, 'error' => 'Could not regenerate key'], $corrId);
+            $this->respond('response.api.key.regenerate', $result ?? ['success' => false, 'error' => 'Could not regenerate key'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.api.key.regenerate', 'Could not regenerate key', $corrId);
+            $this->fail('response.api.key.regenerate', 'Could not regenerate key', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleApiLogs(array $data, $msg, ?string $corrId): void
+    public function handleApiLogs(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleApiLogs: shelter_id={$data['shelter_id']}\n";
         try {
@@ -277,17 +277,17 @@ final class BackendWorker
                 'offset'     => $data['offset'] ?? 0,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.api.logs', $corrId);
-            $this->respond('response.api.logs', $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId);
+            $this->respond('response.api.logs', $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.api.logs', 'Could not load logs', $corrId);
+            $this->fail('response.api.logs', 'Could not load logs', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // DOGS
 
-    public function handleDogsList(array $data, $msg, ?string $corrId): void
+    public function handleDogsList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleDogsList\n";
         try {
@@ -301,31 +301,31 @@ final class BackendWorker
                 'offset'       => $data['offset']       ?? 0,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.dogs.list', $corrId);
-            $this->respond('response.dogs.list', $result ?? ['success' => false, 'error' => 'Could not load dogs'], $corrId);
+            $this->respond('response.dogs.list', $result ?? ['success' => false, 'error' => 'Could not load dogs'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.dogs.list', 'Could not load dogs', $corrId);
+            $this->fail('response.dogs.list', 'Could not load dogs', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleDogsGet(array $data, $msg, ?string $corrId): void
+    public function handleDogsGet(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleDogsGet: dog_id={$data['dog_id']}\n";
         try {
             $this->mq->publish('db.dogs.get', ['dog_id' => $data['dog_id']], $corrId);
             $result = $this->mq->waitForResponse('db.result.dogs.get', $corrId);
-            $this->respond('response.dogs.get', $result ?? ['success' => false, 'error' => 'Dog not found'], $corrId);
+            $this->respond('response.dogs.get', $result ?? ['success' => false, 'error' => 'Dog not found'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.dogs.get', 'Could not load dog', $corrId);
+            $this->fail('response.dogs.get', 'Could not load dog', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // APPLICATIONS
 
-    public function handleApplicationSubmit(array $data, $msg, ?string $corrId): void
+    public function handleApplicationSubmit(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleApplicationSubmit: user_id={$data['user_id']}\n";
         try {
@@ -346,18 +346,18 @@ final class BackendWorker
                 'vet_reference'          => $data['vet_reference']          ?? null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.application.submit', $corrId);
-            $this->respond('response.application.submit', $result ?? ['success' => false, 'error' => 'Could not submit application'], $corrId);
+            $this->respond('response.application.submit', $result ?? ['success' => false, 'error' => 'Could not submit application'], $corrId, $replyTo);
             if (!empty($result['success'])) {
                 $this->notify($data['user_id'], 'application_received', 'Your adoption application has been received and is pending review.');
             }
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.application.submit', 'Could not submit application', $corrId);
+            $this->fail('response.application.submit', 'Could not submit application', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleApplicationStatus(array $data, $msg, ?string $corrId): void
+    public function handleApplicationStatus(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleApplicationStatus\n";
         try {
@@ -369,15 +369,15 @@ final class BackendWorker
             if (!empty($result['application']['full_name'])) {
                 $result['application']['full_name'] = $this->dec($result['application']['full_name']);
             }
-            $this->respond('response.application.status', $result ?? ['success' => false, 'error' => 'Could not fetch status'], $corrId);
+            $this->respond('response.application.status', $result ?? ['success' => false, 'error' => 'Could not fetch status'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.application.status', 'Could not fetch status', $corrId);
+            $this->fail('response.application.status', 'Could not fetch status', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleApplicationList(array $data, $msg, ?string $corrId): void
+    public function handleApplicationList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleApplicationList\n";
         try {
@@ -394,15 +394,15 @@ final class BackendWorker
                     $app['last_name']  = $this->dec($app['last_name']  ?? '');
                 }
             }
-            $this->respond('response.application.list', $result ?? ['success' => false, 'error' => 'Could not fetch applications'], $corrId);
+            $this->respond('response.application.list', $result ?? ['success' => false, 'error' => 'Could not fetch applications'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.application.list', 'Could not fetch applications', $corrId);
+            $this->fail('response.application.list', 'Could not fetch applications', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleApplicationApprove(array $data, $msg, ?string $corrId): void
+    public function handleApplicationApprove(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleApplicationApprove\n";
         try {
@@ -412,18 +412,18 @@ final class BackendWorker
                 'reviewer_notes' => $data['reviewer_notes'] ?? null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.application.approve', $corrId);
-            $this->respond('response.application.decision', $result ?? ['success' => false, 'error' => 'Could not approve'], $corrId);
+            $this->respond('response.application.decision', $result ?? ['success' => false, 'error' => 'Could not approve'], $corrId, $replyTo);
             if (!empty($result['success']) && !empty($result['user_id'])) {
                 $this->notify($result['user_id'], 'application_approved', 'Congratulations! Your adoption application has been approved.');
             }
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.application.decision', 'Could not approve', $corrId);
+            $this->fail('response.application.decision', 'Could not approve', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleApplicationReject(array $data, $msg, ?string $corrId): void
+    public function handleApplicationReject(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleApplicationReject\n";
         try {
@@ -433,34 +433,34 @@ final class BackendWorker
                 'reviewer_notes' => $data['reviewer_notes'] ?? null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.application.reject', $corrId);
-            $this->respond('response.application.decision', $result ?? ['success' => false, 'error' => 'Could not reject'], $corrId);
+            $this->respond('response.application.decision', $result ?? ['success' => false, 'error' => 'Could not reject'], $corrId, $replyTo);
             if (!empty($result['success']) && !empty($result['user_id'])) {
                 $this->notify($result['user_id'], 'application_rejected', 'Your adoption application was not successful this time.');
             }
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.application.decision', 'Could not reject', $corrId);
+            $this->fail('response.application.decision', 'Could not reject', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // ADOPTIONS [the finalized records]
 
-    public function handleAdoptionsList(array $data, $msg, ?string $corrId): void
+    public function handleAdoptionsList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleAdoptionsList: user_id={$data['user_id']}\n";
         try {
             $this->mq->publish('db.adoptions.list', ['user_id' => $data['user_id']], $corrId);
             $result = $this->mq->waitForResponse('db.result.adoptions.list', $corrId);
-            $this->respond('response.adoptions.list', $result ?? ['success' => false, 'error' => 'Could not load adoptions'], $corrId);
+            $this->respond('response.adoptions.list', $result ?? ['success' => false, 'error' => 'Could not load adoptions'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.adoptions.list', 'Could not load adoptions', $corrId);
+            $this->fail('response.adoptions.list', 'Could not load adoptions', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleAdoptionsGet(array $data, $msg, ?string $corrId): void
+    public function handleAdoptionsGet(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleAdoptionsGet: adoption_id={$data['adoption_id']}\n";
         try {
@@ -469,15 +469,15 @@ final class BackendWorker
                 'user_id'     => $data['user_id'],
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.adoptions.get', $corrId);
-            $this->respond('response.adoptions.get', $result ?? ['success' => false, 'error' => 'Not found'], $corrId);
+            $this->respond('response.adoptions.get', $result ?? ['success' => false, 'error' => 'Not found'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.adoptions.get', 'Could not load adoption', $corrId);
+            $this->fail('response.adoptions.get', 'Could not load adoption', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleAdoptionsFinalize(array $data, $msg, ?string $corrId): void
+    public function handleAdoptionsFinalize(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleAdoptionsFinalize: application_id={$data['application_id']}\n";
         try {
@@ -487,7 +487,7 @@ final class BackendWorker
                 'notes'          => $data['notes']        ?? null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.adoptions.finalize', $corrId);
-            $this->respond('response.adoptions.finalize', $result ?? ['success' => false, 'error' => 'Could not finalize adoption'], $corrId);
+            $this->respond('response.adoptions.finalize', $result ?? ['success' => false, 'error' => 'Could not finalize adoption'], $corrId, $replyTo);
             if (!empty($result['success']) && !empty($result['user_id'])) {
                 $this->notify($result['user_id'], 'adoption_finalized', 'Your adoption is now complete! Welcome to the family.');
                 $this->mq->publish('db.badges.mine', [
@@ -497,28 +497,28 @@ final class BackendWorker
             }
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.adoptions.finalize', 'Could not finalize adoption', $corrId);
+            $this->fail('response.adoptions.finalize', 'Could not finalize adoption', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // QUIZ
 
-    public function handleQuizQuestions(array $data, $msg, ?string $corrId): void
+    public function handleQuizQuestions(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleQuizQuestions\n";
         try {
             $this->mq->publish('db.quiz.questions', [], $corrId);
             $result = $this->mq->waitForResponse('db.result.quiz.questions', $corrId);
-            $this->respond('response.quiz.questions', $result ?? ['success' => false, 'error' => 'Could not load quiz'], $corrId);
+            $this->respond('response.quiz.questions', $result ?? ['success' => false, 'error' => 'Could not load quiz'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.quiz.questions', 'Could not load quiz', $corrId);
+            $this->fail('response.quiz.questions', 'Could not load quiz', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleQuiz(array $data, $msg, ?string $corrId): void
+    public function handleQuiz(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleQuiz: user_id={$data['user_id']}\n";
         try {
@@ -527,7 +527,7 @@ final class BackendWorker
                 'answers' => $data['answers'] ?? [],
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.quiz.submit', $corrId);
-            $this->respond('response.quiz.result', $result ?? ['success' => false, 'error' => 'Quiz failed'], $corrId);
+            $this->respond('response.quiz.result', $result ?? ['success' => false, 'error' => 'Quiz failed'], $corrId, $replyTo);
             if (!empty($result['success'])) {
                 $this->mq->publish('db.badges.mine', [
                     'user_id'    => $data['user_id'],
@@ -536,28 +536,28 @@ final class BackendWorker
             }
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.quiz.result', 'Quiz failed', $corrId);
+            $this->fail('response.quiz.result', 'Quiz failed', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleQuizResults(array $data, $msg, ?string $corrId): void
+    public function handleQuizResults(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleQuizResults: user_id={$data['user_id']}\n";
         try {
             $this->mq->publish('db.quiz.results', ['user_id' => $data['user_id']], $corrId);
             $result = $this->mq->waitForResponse('db.result.quiz.results', $corrId);
-            $this->respond('response.quiz.results', $result ?? ['success' => false, 'error' => 'Could not load results'], $corrId);
+            $this->respond('response.quiz.results', $result ?? ['success' => false, 'error' => 'Could not load results'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.quiz.results', 'Could not load results', $corrId);
+            $this->fail('response.quiz.results', 'Could not load results', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // POST ADOPTION LOGS
 
-    public function handleAdoptionLogCreate(array $data, $msg, ?string $corrId): void
+    public function handleAdoptionLogCreate(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleAdoptionLogCreate\n";
         try {
@@ -570,15 +570,15 @@ final class BackendWorker
                 'log_date' => $data['log_date'] ?? date('Y-m-d'),
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.adoption.log.create', $corrId);
-            $this->respond('response.adoption.log.create', $result ?? ['success' => false, 'error' => 'Could not save log'], $corrId);
+            $this->respond('response.adoption.log.create', $result ?? ['success' => false, 'error' => 'Could not save log'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.adoption.log.create', 'Could not save log', $corrId);
+            $this->fail('response.adoption.log.create', 'Could not save log', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleAdoptionLogList(array $data, $msg, ?string $corrId): void
+    public function handleAdoptionLogList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleAdoptionLogList\n";
         try {
@@ -588,17 +588,17 @@ final class BackendWorker
                 'log_type' => $data['log_type'] ?? null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.adoption.log.list', $corrId);
-            $this->respond('response.adoption.log.list', $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId);
+            $this->respond('response.adoption.log.list', $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.adoption.log.list', 'Could not load logs', $corrId);
+            $this->fail('response.adoption.log.list', 'Could not load logs', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // VIRTUAL FOSTER
 
-    public function handleFosterApply(array $data, $msg, ?string $corrId): void
+    public function handleFosterApply(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleFosterApply\n";
         try {
@@ -609,32 +609,32 @@ final class BackendWorker
                 'start_date'         => $data['start_date'] ?? date('Y-m-d'),
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.foster.apply', $corrId);
-            $this->respond('response.foster.apply', $result ?? ['success' => false, 'error' => 'Foster failed'], $corrId);
+            $this->respond('response.foster.apply', $result ?? ['success' => false, 'error' => 'Foster failed'], $corrId, $replyTo);
             if (!empty($result['success'])) {
                 $this->notify($data['user_id'], 'foster_active', 'Your virtual foster sponsorship is now active!');
             }
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.foster.apply', 'Foster failed', $corrId);
+            $this->fail('response.foster.apply', 'Foster failed', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleFosterList(array $data, $msg, ?string $corrId): void
+    public function handleFosterList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleFosterList\n";
         try {
             $this->mq->publish('db.foster.list', ['user_id' => $data['user_id']], $corrId);
             $result = $this->mq->waitForResponse('db.result.foster.list', $corrId);
-            $this->respond('response.foster.list', $result ?? ['success' => false, 'error' => 'Could not load sponsorships'], $corrId);
+            $this->respond('response.foster.list', $result ?? ['success' => false, 'error' => 'Could not load sponsorships'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.foster.list', 'Could not load sponsorships', $corrId);
+            $this->fail('response.foster.list', 'Could not load sponsorships', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleFosterCancel(array $data, $msg, ?string $corrId): void
+    public function handleFosterCancel(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleFosterCancel\n";
         try {
@@ -643,17 +643,17 @@ final class BackendWorker
                 'user_id'   => $data['user_id'],
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.foster.cancel', $corrId);
-            $this->respond('response.foster.cancel', $result ?? ['success' => false, 'error' => 'Could not cancel'], $corrId);
+            $this->respond('response.foster.cancel', $result ?? ['success' => false, 'error' => 'Could not cancel'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.foster.cancel', 'Could not cancel sponsorship', $corrId);
+            $this->fail('response.foster.cancel', 'Could not cancel sponsorship', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // PET PARKS
 
-    public function handleParksList(array $data, $msg, ?string $corrId): void
+    public function handleParksList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleParksList\n";
         try {
@@ -664,17 +664,17 @@ final class BackendWorker
                 'radius_km'  => $data['radius_km']  ?? 10,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.parks.list', $corrId);
-            $this->respond('response.parks.list', $result ?? ['success' => false, 'error' => 'Could not load parks'], $corrId);
+            $this->respond('response.parks.list', $result ?? ['success' => false, 'error' => 'Could not load parks'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.parks.list', 'Could not load parks', $corrId);
+            $this->fail('response.parks.list', 'Could not load parks', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // RESOURCES
 
-    public function handleResourcesList(array $data, $msg, ?string $corrId): void
+    public function handleResourcesList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleResourcesList\n";
         try {
@@ -686,31 +686,31 @@ final class BackendWorker
                 'offset' => $data['offset'] ?? 0,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.resources.list', $corrId);
-            $this->respond('response.resources.list', $result ?? ['success' => false, 'error' => 'Could not load resources'], $corrId);
+            $this->respond('response.resources.list', $result ?? ['success' => false, 'error' => 'Could not load resources'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.resources.list', 'Could not load resources', $corrId);
+            $this->fail('response.resources.list', 'Could not load resources', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleResourcesGet(array $data, $msg, ?string $corrId): void
+    public function handleResourcesGet(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleResourcesGet\n";
         try {
             $this->mq->publish('db.resources.get', ['resource_id' => $data['resource_id']], $corrId);
             $result = $this->mq->waitForResponse('db.result.resources.get', $corrId);
-            $this->respond('response.resources.get', $result ?? ['success' => false, 'error' => 'Not found'], $corrId);
+            $this->respond('response.resources.get', $result ?? ['success' => false, 'error' => 'Not found'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.resources.get', 'Could not load resource', $corrId);
+            $this->fail('response.resources.get', 'Could not load resource', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // SUCCESS STORIES
 
-    public function handleStoriesList(array $data, $msg, ?string $corrId): void
+    public function handleStoriesList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleStoriesList\n";
         try {
@@ -719,15 +719,15 @@ final class BackendWorker
                 'offset' => $data['offset'] ?? 0,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.stories.list', $corrId);
-            $this->respond('response.stories.list', $result ?? ['success' => false, 'error' => 'Could not load stories'], $corrId);
+            $this->respond('response.stories.list', $result ?? ['success' => false, 'error' => 'Could not load stories'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.stories.list', 'Could not load stories', $corrId);
+            $this->fail('response.stories.list', 'Could not load stories', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleStoriesSubmit(array $data, $msg, ?string $corrId): void
+    public function handleStoriesSubmit(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleStoriesSubmit\n";
         try {
@@ -739,15 +739,15 @@ final class BackendWorker
                 'photo_url' => $data['photo_url'] ?? null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.stories.submit', $corrId);
-            $this->respond('response.stories.submit', $result ?? ['success' => false, 'error' => 'Could not submit story'], $corrId);
+            $this->respond('response.stories.submit', $result ?? ['success' => false, 'error' => 'Could not submit story'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.stories.submit', 'Could not submit story', $corrId);
+            $this->fail('response.stories.submit', 'Could not submit story', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleStoriesApprove(array $data, $msg, ?string $corrId): void
+    public function handleStoriesApprove(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleStoriesApprove\n";
         try {
@@ -756,31 +756,31 @@ final class BackendWorker
                 'approved_by' => $data['approved_by'] ?? null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.stories.approve', $corrId);
-            $this->respond('response.stories.approve', $result ?? ['success' => false, 'error' => 'Could not approve story'], $corrId);
+            $this->respond('response.stories.approve', $result ?? ['success' => false, 'error' => 'Could not approve story'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.stories.approve', 'Could not approve story', $corrId);
+            $this->fail('response.stories.approve', 'Could not approve story', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // BADGES
 
-    public function handleBadgesList(array $data, $msg, ?string $corrId): void
+    public function handleBadgesList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleBadgesList\n";
         try {
             $this->mq->publish('db.badges.list', [], $corrId);
             $result = $this->mq->waitForResponse('db.result.badges.list', $corrId);
-            $this->respond('response.badges.list', $result ?? ['success' => false, 'error' => 'Could not load badges'], $corrId);
+            $this->respond('response.badges.list', $result ?? ['success' => false, 'error' => 'Could not load badges'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.badges.list', 'Could not load badges', $corrId);
+            $this->fail('response.badges.list', 'Could not load badges', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleBadgesMine(array $data, $msg, ?string $corrId): void
+    public function handleBadgesMine(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleBadgesMine\n";
         try {
@@ -789,17 +789,17 @@ final class BackendWorker
                 'auto_award' => null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.badges.mine', $corrId);
-            $this->respond('response.badges.mine', $result ?? ['success' => false, 'error' => 'Could not load badges'], $corrId);
+            $this->respond('response.badges.mine', $result ?? ['success' => false, 'error' => 'Could not load badges'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.badges.mine', 'Could not load badges', $corrId);
+            $this->fail('response.badges.mine', 'Could not load badges', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // CHAT 
 
-    public function handleEnquiry(array $data, $msg, ?string $corrId): void
+    public function handleEnquiry(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleEnquiry\n";
         try {
@@ -810,15 +810,15 @@ final class BackendWorker
                 'message'    => $data['message'] ?? '',
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.enquiry.send', $corrId);
-            $this->respond('response.enquiry.reply', $result ?? ['success' => false, 'error' => 'Could not send message'], $corrId);
+            $this->respond('response.enquiry.reply', $result ?? ['success' => false, 'error' => 'Could not send message'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.enquiry.reply', 'Could not send message', $corrId);
+            $this->fail('response.enquiry.reply', 'Could not send message', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleChatStart(array $data, $msg, ?string $corrId): void
+    public function handleChatStart(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleChatStart\n";
         try {
@@ -828,15 +828,15 @@ final class BackendWorker
                 'shelter_id' => $data['shelter_id'],
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.chat.start', $corrId);
-            $this->respond('response.chat.start', $result ?? ['success' => false, 'error' => 'Could not start chat'], $corrId);
+            $this->respond('response.chat.start', $result ?? ['success' => false, 'error' => 'Could not start chat'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.chat.start', 'Could not start chat', $corrId);
+            $this->fail('response.chat.start', 'Could not start chat', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleChatMessage(array $data, $msg, ?string $corrId): void
+    public function handleChatMessage(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleChatMessage\n";
         try {
@@ -846,15 +846,15 @@ final class BackendWorker
                 'message'    => $data['message'] ?? '',
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.chat.message', $corrId);
-            $this->respond('response.chat.message', $result ?? ['success' => false, 'error' => 'Could not send message'], $corrId);
+            $this->respond('response.chat.message', $result ?? ['success' => false, 'error' => 'Could not send message'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.chat.message', 'Could not send message', $corrId);
+            $this->fail('response.chat.message', 'Could not send message', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleChatHistory(array $data, $msg, ?string $corrId): void
+    public function handleChatHistory(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleChatHistory\n";
         try {
@@ -863,17 +863,17 @@ final class BackendWorker
                 'user_id'    => $data['user_id'],
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.chat.history', $corrId);
-            $this->respond('response.chat.history', $result ?? ['success' => false, 'error' => 'Could not load chat'], $corrId);
+            $this->respond('response.chat.history', $result ?? ['success' => false, 'error' => 'Could not load chat'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.chat.history', 'Could not load chat', $corrId);
+            $this->fail('response.chat.history', 'Could not load chat', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // MEET & GREET
 
-    public function handleMeetGreetSchedule(array $data, $msg, ?string $corrId): void
+    public function handleMeetGreetSchedule(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleMeetGreetSchedule\n";
         try {
@@ -886,32 +886,32 @@ final class BackendWorker
                 'video_link'     => $data['video_link'] ?? null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.meetgreet.schedule', $corrId);
-            $this->respond('response.meetgreet.schedule', $result ?? ['success' => false, 'error' => 'Could not schedule meeting'], $corrId);
+            $this->respond('response.meetgreet.schedule', $result ?? ['success' => false, 'error' => 'Could not schedule meeting'], $corrId, $replyTo);
             if (!empty($result['success'])) {
                 $this->notify($data['user_id'], 'meetgreet_scheduled', "Your meet & greet is confirmed for {$data['scheduled_date']} at {$data['scheduled_time']}.");
             }
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.meetgreet.schedule', 'Could not schedule meeting', $corrId);
+            $this->fail('response.meetgreet.schedule', 'Could not schedule meeting', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleMeetGreetList(array $data, $msg, ?string $corrId): void
+    public function handleMeetGreetList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleMeetGreetList\n";
         try {
             $this->mq->publish('db.meetgreet.list', ['user_id' => $data['user_id']], $corrId);
             $result = $this->mq->waitForResponse('db.result.meetgreet.list', $corrId);
-            $this->respond('response.meetgreet.list', $result ?? ['success' => false, 'error' => 'Could not load meetings'], $corrId);
+            $this->respond('response.meetgreet.list', $result ?? ['success' => false, 'error' => 'Could not load meetings'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.meetgreet.list', 'Could not load meetings', $corrId);
+            $this->fail('response.meetgreet.list', 'Could not load meetings', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleMeetGreetCancel(array $data, $msg, ?string $corrId): void
+    public function handleMeetGreetCancel(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleMeetGreetCancel\n";
         try {
@@ -920,17 +920,17 @@ final class BackendWorker
                 'user_id'    => $data['user_id'],
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.meetgreet.cancel', $corrId);
-            $this->respond('response.meetgreet.cancel', $result ?? ['success' => false, 'error' => 'Could not cancel meeting'], $corrId);
+            $this->respond('response.meetgreet.cancel', $result ?? ['success' => false, 'error' => 'Could not cancel meeting'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.meetgreet.cancel', 'Could not cancel meeting', $corrId);
+            $this->fail('response.meetgreet.cancel', 'Could not cancel meeting', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // NOTIFICATIONS
 
-    public function handleNotificationsList(array $data, $msg, ?string $corrId): void
+    public function handleNotificationsList(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleNotificationsList\n";
         try {
@@ -939,15 +939,15 @@ final class BackendWorker
                 'unread'  => $data['unread'] ?? false,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.notifications.list', $corrId);
-            $this->respond('response.notifications.list', $result ?? ['success' => false, 'error' => 'Could not load notifications'], $corrId);
+            $this->respond('response.notifications.list', $result ?? ['success' => false, 'error' => 'Could not load notifications'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.notifications.list', 'Could not load notifications', $corrId);
+            $this->fail('response.notifications.list', 'Could not load notifications', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
-    public function handleNotificationsRead(array $data, $msg, ?string $corrId): void
+    public function handleNotificationsRead(array $data, $msg, ?string $corrId, ?string $replyTo = null): void
     {
         echo "[Backend] handleNotificationsRead\n";
         try {
@@ -956,24 +956,24 @@ final class BackendWorker
                 'notification_id' => $data['notification_id'] ?? null,
             ], $corrId);
             $result = $this->mq->waitForResponse('db.result.notifications.read', $corrId);
-            $this->respond('response.notifications.read', $result ?? ['success' => false, 'error' => 'Could not mark as read'], $corrId);
+            $this->respond('response.notifications.read', $result ?? ['success' => false, 'error' => 'Could not mark as read'], $corrId, $replyTo);
             $msg->ack();
         } catch (\Throwable $e) {
-            $this->fail('response.notifications.read', 'Could not mark as read', $corrId);
+            $this->fail('response.notifications.read', 'Could not mark as read', $corrId, $replyTo);
             $msg->nack(false, true);
         }
     }
 
     // Helpers
 
-    private function respond(string $queue, array $payload, ?string $corrId): void
+    private function respond(string $fallbackQueue, array $payload, ?string $corrId, ?string $replyTo = null): void
     {
-        $this->mq->publish($queue, $payload, $corrId);
+        $this->mq->publish($replyTo ?? $fallbackQueue, $payload, $corrId);
     }
 
-    private function fail(string $queue, string $error, ?string $corrId): void
+    private function fail(string $fallbackQueue, string $error, ?string $corrId, ?string $replyTo = null): void
     {
-        $this->mq->publish($queue, ['success' => false, 'error' => $error], $corrId);
+        $this->mq->publish($replyTo ?? $fallbackQueue, ['success' => false, 'error' => $error], $corrId);
     }
 
     private function notify(int $userId, string $event, string $message): void
