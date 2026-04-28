@@ -215,21 +215,26 @@ function handleQuery($queue, $data, $db) {
 
         case "db.shelters.upsert":
             if (!isset($data["name"])) return ["success"=>false,"error"=>"Missing name"];
-            $name    = $db->real_escape_string(substr($data["name"] ?? '', 0, 255));
-            $city    = $db->real_escape_string($data["city"]    ?? '');
-            $state   = $db->real_escape_string($data["state"]   ?? '');
-            $phone   = $db->real_escape_string($data["phone"]   ?? '');
-            $email   = $db->real_escape_string($data["email"]   ?? '');
-            $website = $db->real_escape_string($data["website"] ?? '');
-            $check   = $db->query("SELECT shelter_id FROM shelters WHERE name='{$name}' LIMIT 1");
-            if ($check && $check->num_rows > 0) {
-                $row = $check->fetch_assoc();
-                return ["success"=>true,"shelter_id"=>$row["shelter_id"],"action"=>"existing"];
-            }
-            $db->query("INSERT INTO shelters (name,city,state,phone,email,website) VALUES ('{$name}','{$city}','{$state}','{$phone}','{$email}','{$website}')");
-            if ($db->error) return ["success"=>false,"error"=>$db->error];
-            logMsg("New shelter inserted: {$name} ({$city}, {$state}) shelter_id=" . $db->insert_id);
-            return ["success"=>true,"shelter_id"=>$db->insert_id,"action"=>"inserted"];
+            $name        = $db->real_escape_string(substr($data["name"] ?? '', 0, 255));
+            $address     = $db->real_escape_string($data["address"]     ?? '');
+            $city        = $db->real_escape_string($data["city"]        ?? '');
+            $state       = $db->real_escape_string($data["state"]       ?? '');
+            $zip         = $db->real_escape_string($data["zip"]         ?? '');
+            $latitude    = isset($data["latitude"])  && $data["latitude"]  !== '' ? (float)$data["latitude"]  : 'NULL';
+            $longitude   = isset($data["longitude"]) && $data["longitude"] !== '' ? (float)$data["longitude"] : 'NULL';
+            $phone       = $db->real_escape_string($data["phone"]       ?? '');
+            $email       = $db->real_escape_string($data["email"]       ?? '');
+            $website     = $db->real_escape_string($data["website"]     ?? '');
+            $externalId  = $db->real_escape_string($data["external_id"] ?? '');
+            $description = $db->real_escape_string($data["description"] ?? '');
+            $logoUrl     = $db->real_escape_string($data["logo_url"]    ?? '');
+            $isActive    = isset($data["is_active"]) ? (int)$data["is_active"] : 1;
+            $sql = "INSERT INTO shelters (name,address,city,state,zip,latitude,longitude,phone,email,website,external_id,description,logo_url,is_active) VALUES ('{$name}','{$address}','{$city}','{$state}','{$zip}',{$latitude},{$longitude},'{$phone}','{$email}','{$website}','{$externalId}','{$description}','{$logoUrl}',{$isActive}) ON DUPLICATE KEY UPDATE name=VALUES(name),address=VALUES(address),city=VALUES(city),state=VALUES(state),zip=VALUES(zip),latitude=VALUES(latitude),longitude=VALUES(longitude),phone=VALUES(phone),email=VALUES(email),website=VALUES(website),description=VALUES(description),logo_url=VALUES(logo_url),is_active=VALUES(is_active)";
+            logMsg("Executing SQL: " . $sql);
+            if (!$db->query($sql)) return ["success"=>false,"error"=>$db->error];
+            $shelterIdResult = $db->query("SELECT shelter_id FROM shelters WHERE external_id='{$externalId}' LIMIT 1");
+            $shelterRow = $shelterIdResult ? $shelterIdResult->fetch_assoc() : null;
+            return ["success"=>true,"shelter_id"=>$shelterRow["shelter_id"]??$db->insert_id,"action"=>$db->affected_rows===1?"inserted":"updated"];
 
         case "db.shelters.get":
             if (!isset($data["shelter_id"])) return ["success"=>false,"error"=>"Missing shelter_id"];
