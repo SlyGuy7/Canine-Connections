@@ -197,6 +197,15 @@ export default function Landing() {
   const [dogs, setDogs] = useState([])
   const [dogsLoading, setDogsLoading] = useState(true)
 
+  const isLoggedIn = !!localStorage.getItem("userId")
+  const displayName = localStorage.getItem("userFullName") || localStorage.getItem("userFirstName") || "User"
+  const initials = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
+
+  function handleCTA() {
+    if (isLoggedIn) navigate("/browse-dogs")
+    else setModalMode("register")
+  }
+
   useEffect(() => {
     sendMessage("request.dogs.list", { limit: 8 })
       .then((result) => {
@@ -242,9 +251,30 @@ export default function Landing() {
         <div style={{ color: "white", fontSize: "20px", fontWeight: "800", letterSpacing: "-0.3px", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
           🐾 Canine Connections
         </div>
-        <div style={{ display: "flex", gap: "12px" }}>
-          <button className="login-btn-top" onClick={() => setModalMode("login")}>Login</button>
-          <button className="register-btn-top" onClick={() => setModalMode("register")}>Register</button>
+        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+          {isLoggedIn ? (
+            <>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)", borderRadius: "40px", padding: "6px 16px 6px 8px", border: "1px solid rgba(255,255,255,0.2)" }}>
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "800", color: "white", flexShrink: 0 }}>
+                  {initials}
+                </div>
+                <span style={{ color: "white", fontWeight: "600", fontSize: "14px", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {displayName}
+                </span>
+              </div>
+              <button
+                onClick={() => navigate("/dashboard")}
+                style={{ padding: "9px 20px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer", whiteSpace: "nowrap" }}
+              >
+                Go to Dashboard
+              </button>
+            </>
+          ) : (
+            <>
+              <button className="login-btn-top" onClick={() => setModalMode("login")}>Login</button>
+              <button className="register-btn-top" onClick={() => setModalMode("register")}>Register</button>
+            </>
+          )}
         </div>
       </nav>
 
@@ -255,12 +285,12 @@ export default function Landing() {
           Connect with local shelters and give a rescue dog the forever home they deserve.
         </p>
         <button
-          onClick={() => setModalMode("register")}
+          onClick={handleCTA}
           style={{ padding: "16px 40px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "800", fontSize: "17px", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.2)", transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
           onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
         >
-          Get Started — It's Free
+          {isLoggedIn ? "Browse Dogs" : "Get Started — It's Free"}
         </button>
       </header>
 
@@ -379,15 +409,19 @@ export default function Landing() {
 
       {/* ── CTA Banner ── */}
       <section style={{ background: "#d97706", padding: "72px 20px", textAlign: "center" }}>
-        <h2 style={{ fontSize: "38px", fontWeight: "800", color: "white", margin: "0 0 12px 0" }}>Ready to Meet Your Match?</h2>
-        <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "17px", margin: "0 0 36px 0" }}>Create a free account and start browsing hundreds of dogs looking for their forever home.</p>
+        <h2 style={{ fontSize: "38px", fontWeight: "800", color: "white", margin: "0 0 12px 0" }}>
+          {isLoggedIn ? `Welcome back, ${displayName.split(" ")[0]}!` : "Ready to Meet Your Match?"}
+        </h2>
+        <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "17px", margin: "0 0 36px 0" }}>
+          {isLoggedIn ? "Pick up where you left off — your perfect match is waiting." : "Create a free account and start browsing hundreds of dogs looking for their forever home."}
+        </p>
         <button
-          onClick={() => setModalMode("register")}
+          onClick={handleCTA}
           style={{ padding: "18px 48px", borderRadius: "12px", border: "none", background: "white", color: "#d97706", fontWeight: "800", fontSize: "18px", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
           onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
         >
-          Get Started — It's Free
+          {isLoggedIn ? "Browse Dogs" : "Get Started — It's Free"}
         </button>
       </section>
 
@@ -440,7 +474,7 @@ export default function Landing() {
 
             {/* See More Card */}
             <div
-              onClick={() => setModalMode("register")}
+              onClick={handleCTA}
               style={{ background: "#2f241d", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", cursor: "pointer", textAlign: "center", minHeight: "280px", transition: "transform 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
               onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
@@ -449,7 +483,7 @@ export default function Landing() {
               <h3 style={{ color: "white", fontWeight: "700", fontSize: "18px", margin: "0 0 8px 0" }}>See All Dogs</h3>
               <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px", margin: "0 0 20px 0" }}>Browse our full network of available dogs</p>
               <div style={{ background: "#d97706", color: "white", padding: "10px 24px", borderRadius: "10px", fontWeight: "700", fontSize: "14px" }}>
-                Get Started →
+                {isLoggedIn ? "Browse Now →" : "Get Started →"}
               </div>
             </div>
           </div>
@@ -481,7 +515,7 @@ export default function Landing() {
                           onClick={() => {
                             if (link === "Login") setModalMode("login")
                             else if (link === "Register") setModalMode("register")
-                            else if (link === "Browse Dogs") setModalMode("register")
+                            else if (link === "Browse Dogs") handleCTA()
                             else if (link === "Shelters") navigate("/shelters")
                             else if (link === "How It Works") document.getElementById("how-it-works").scrollIntoView({ behavior: "smooth" })
                             else if (link === "Forgot Password") setModalMode("forgot-password")
