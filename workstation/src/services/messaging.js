@@ -132,6 +132,7 @@ export async function sendMessage(type, payload) {
           },
           {
             receipt: subscribeReceiptId,
+            "x-expires": "60000",
           }
         );
 
