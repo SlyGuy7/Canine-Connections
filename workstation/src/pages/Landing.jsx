@@ -110,7 +110,7 @@ const IconSmallDog = () => (
   <svg width="44" height="44" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
     <ellipse cx="26" cy="38" rx="16" ry="13" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
     <circle cx="26" cy="20" r="10" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
-    <ellipse cx="16" cy="14" rx="5" ry="7" rx="4" ry="6" fill="#fde6cf" stroke="#d97706" strokeWidth="2" transform="rotate(-20 16 14)"/>
+    <ellipse cx="16" cy="14" rx="5" ry="7" fill="#fde6cf" stroke="#d97706" strokeWidth="2" transform="..." />
     <ellipse cx="36" cy="14" rx="4" ry="6" fill="#fde6cf" stroke="#d97706" strokeWidth="2" transform="rotate(20 36 14)"/>
     <circle cx="23" cy="20" r="1.5" fill="#d97706"/>
     <circle cx="29" cy="20" r="1.5" fill="#d97706"/>
