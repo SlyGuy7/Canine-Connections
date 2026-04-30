@@ -14,21 +14,26 @@ navigate("/landing");
 };
 
 const navLinks = [
-{ path: "/dashboard", label: "Dashboard", icon: "🏠" },
-{ path: "/browse-dogs", label: "Browse Dogs", icon: "🔍" },
-{ path: "/shelters", label: "Shelters", icon: "🏢" },
-{ path: "/my-dogs", label: "My Dogs", icon: "🐾" },
-{ path: "/applications", label: "Applications", icon: "📄" },
-{ path: "/messages", label: "Messages", icon: "💬" },
-{ path: "/quiz", label: "Quiz", icon: "🧩" },
-{ path: "/journal", label: "Journal", icon: "📖" },
-{ path: "/settings", label: "Settings", icon: "⚙️" },
+{ path: "/profile",    label: "My Profile",  icon: "👤" },
+{ path: "/dashboard",  label: "Dashboard",   icon: "🏠" },
+{ path: "/browse-dogs",label: "Browse Dogs", icon: "🔍" },
+{ path: "/shelters",   label: "Shelters",    icon: "🏢" },
+{ path: "/my-dogs",    label: "My Dogs",     icon: "🐾" },
+{ path: "/applications",label: "Applications",icon: "📄" },
+{ path: "/messages",   label: "Messages",    icon: "💬" },
+{ path: "/quiz",       label: "Quiz",        icon: "🧩" },
+{ path: "/journal",    label: "Journal",     icon: "📖" },
+{ path: "/settings",   label: "Settings",    icon: "⚙️" },
 ];
 
 return (
 <aside className="sidebar" style={{ fontFamily: "'Inter', sans-serif", width: '260px', height: '100vh', position: 'fixed', left: 0, top: 0, backgroundColor: 'white', borderRight: '1px solid #efdfd1', display: 'flex', flexDirection: 'column', padding: '32px 20px' }}>
 
-  <div className="sidebar-title" style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '20px', fontWeight: '800', color: '#2f241d', marginBottom: '40px', paddingLeft: '8px' }}>
+  <div
+    className="sidebar-title"
+    onClick={() => navigate('/')}
+    style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '20px', fontWeight: '800', color: '#2f241d', marginBottom: '40px', paddingLeft: '8px', cursor: 'pointer' }}
+  >
     <span style={{ fontSize: '24px' }}>🐕</span>
     Canine Connections
   </div>

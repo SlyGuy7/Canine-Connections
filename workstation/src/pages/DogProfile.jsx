@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
-import Sidebar from "../components/Sidebar";
+
 
 export default function DogProfile() {
   const { id } = useParams();
@@ -68,9 +68,7 @@ export default function DogProfile() {
 
   if (loading) {
     return (
-      <div className="dashboard-wrapper">
-        <Sidebar />
-        <div className="page-container">
+      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
           <p>Loading dog profile...</p>
         </div>
       </div>
@@ -79,9 +77,7 @@ export default function DogProfile() {
 
   if (!dog) {
     return (
-      <div className="dashboard-wrapper">
-        <Sidebar />
-        <div className="page-container">
+      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
           <button className="btn btn-secondary" onClick={() => navigate(-1)} style={{ marginBottom: "20px" }}>
             ← Back to Browse
           </button>
@@ -230,5 +226,5 @@ export default function DogProfile() {
         </div>
       </div>
     </div>
-  );
+  )
 }

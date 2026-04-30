@@ -11,15 +11,16 @@ import BrowseDogs from "./pages/BrowseDogs"
 import DogProfile from "./pages/DogProfile"
 import Shelters from "./pages/Shelters"
 import ShelterDetails from "./pages/ShelterDetails"
-import SavedDogs from "./pages/SavedDogs"
+import SavedDogs from "./pages/MyDogs"
 import Settings from "./pages/Settings"
 import ForgotPassword from "./pages/ForgotPassword"
 import Quiz from "./pages/Quiz"
-import QuizResults from "./pages/QuizResults"
+import QuizResults from "./pages/Quizresults"
 import ApplicationForm from "./pages/ApplicationForm"
 import Applications from "./pages/Applications"
 import Register from "./pages/Register"
 import Journal from "./pages/Journal"
+import Profile from "./pages/Profile"
 import NotFound from "./pages/NotFound"
 
 // Admin
@@ -37,7 +38,7 @@ const AppLayout = () => {
   return (
     <div style={{ display: 'flex' }}>
       <Sidebar />
-      <main style={{ marginLeft: '260px', width: '100%', minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      <main style={{ marginLeft: '260px', width: '100%', minHeight: '100vh', backgroundColor: '#f9fafb', padding: '40px' }}>
         <Outlet />
       </main>
     </div>
@@ -69,12 +70,13 @@ export default function App() {
         <Route path="/shelters"        element={<Shelters />} />
         <Route path="/shelter-details" element={<ShelterDetails />} />
         <Route path="/my-dogs"         element={<SavedDogs />} />
+        <Route path="/profile"         element={<Profile />} />
         <Route path="/settings"        element={<Settings />} />
         <Route path="/apply"           element={<ApplicationForm />} />
         <Route path="/applications"    element={<Applications />} />
         <Route path="/quiz"            element={<Quiz />} />
         <Route path="/quiz-results"    element={<QuizResults />} />
-        <Route path="/journal"         element={<div style={{padding: '100px', fontSize: '50px'}}>JOURNAL TEST IS WORKING</div>} />
+        <Route path="/journal"         element={<Journal />} />
       </Route>
 
       {/* 404 Catch All */}

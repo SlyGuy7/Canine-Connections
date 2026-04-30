@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import { useToast } from "../context/ToastContext"
-import Sidebar from "../components/Sidebar"
+
 
 const TRAIT_LABELS = {
   "1":  { label: "Very active lifestyle",          icon: "🏃" },
@@ -85,23 +85,22 @@ export default function QuizResults() {
     addToast(`${dog.name} saved!`, "success")
   }
 
+  const WRAPPER = { maxWidth: "900px", margin: "0 auto", padding: "0 0 60px 0" }
+
   if (loading) {
     return (
-      <div className="dashboard-wrapper">
-        <Sidebar />
-        <div className="page-container">
-          <header className="content-header"><h1>Your Matches</h1></header>
-          <div className="dog-grid">
-            {[1, 2, 3].map((i) => (
-              <div key={i} style={{ background: "white", padding: "20px", borderRadius: "15px" }}>
-                <div style={{ height: "200px", background: "#e0e0e0", borderRadius: "10px" }} />
-                <div style={{ marginTop: "20px" }}>
-                  <div style={{ height: "20px", width: "60%", background: "#e0e0e0", marginBottom: "10px" }} />
-                  <div style={{ height: "16px", width: "40%", background: "#e0e0e0" }} />
-                </div>
+      <div style={WRAPPER}>
+        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Your Matches</h1>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "20px", marginTop: "28px" }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
+              <div style={{ height: "220px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+              <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ height: "18px", width: "55%", borderRadius: "8px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+                <div style={{ height: "14px", width: "75%", borderRadius: "8px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
               </div>
-            ))}
-          </div>
+            </div>
+          ))}
         </div>
       </div>
     )
@@ -109,28 +108,24 @@ export default function QuizResults() {
 
   if (error) {
     return (
-      <div className="dashboard-wrapper">
-        <Sidebar />
-        <div className="page-container">
-          <div className="empty-state">
-            <h2>{error}</h2>
-            <button className="btn btn-primary" onClick={() => navigate("/quiz")}>Take the Quiz</button>
-          </div>
-        </div>
+      <div style={{ ...WRAPPER, textAlign: "center", paddingTop: "80px" }}>
+        <div style={{ fontSize: "64px", marginBottom: "16px" }}>🐾</div>
+        <h2 style={{ margin: "0 0 8px 0", color: "#2f241d" }}>{error}</h2>
+        <button onClick={() => navigate("/quiz")} style={{ marginTop: "20px", padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}>
+          Take the Quiz
+        </button>
       </div>
     )
   }
 
   return (
-    <div className="dashboard-wrapper">
-      <Sidebar />
-      <div className="page-container">
-        <header className="content-header" style={{ marginBottom: "30px" }}>
-          <h1>Your Matches</h1>
-          <p className="dashboard-subtitle">
-            Based on your quiz answers, here are the dogs that best fit your lifestyle.
-          </p>
-        </header>
+    <div style={WRAPPER}>
+      <div style={{ marginBottom: "28px" }}>
+        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Your Matches</h1>
+        <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>
+          Based on your quiz answers, here are the dogs that best fit your lifestyle.
+        </p>
+      </div>
 
         {matchedIds.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
@@ -180,35 +175,31 @@ export default function QuizResults() {
           </div>
         ) : (
           <>
-            <div className="dog-grid">
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "20px" }}>
               {dogs.map((dog) => {
                 const photos = Array.isArray(dog.photos)
                   ? dog.photos.map((p) => p.photo_url).filter(Boolean)
                   : dog.photos ? dog.photos.split(",").map((p) => p.trim()) : []
                 const primaryPhoto = photos[0] || null
-
                 return (
-                  <div key={dog.dog_id} className="dog-card" style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
-                    <div style={{ height: "200px", overflow: "hidden", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      {primaryPhoto ? (
-                        <img src={primaryPhoto} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                          onError={(e) => { e.currentTarget.style.display = "none" }} />
-                      ) : (
-                        <span style={{ fontSize: "64px" }}>🐕</span>
-                      )}
+                  <div key={dog.dog_id} style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1", display: "flex", flexDirection: "column", transition: "transform 0.2s, box-shadow 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.10)" }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none" }}>
+                    <div style={{ height: "220px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      {primaryPhoto
+                        ? <img src={primaryPhoto} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none" }} />
+                        : <span style={{ fontSize: "64px" }}>🐕</span>}
                     </div>
-                    <div className="dog-card-content" style={{ padding: "20px" }}>
-                      <h3 style={{ margin: "0 0 10px 0", color: "#2f241d" }}>{dog.name}</h3>
-                      <p style={{ margin: "5px 0", color: "#6f5848" }}><strong>Breed:</strong> {dog.breed}</p>
-                      <p style={{ margin: "5px 0", color: "#6f5848" }}><strong>Size:</strong> {dog.size}</p>
-                      <p style={{ margin: "5px 0", color: "#6f5848" }}><strong>Age:</strong> {dog.age_years} {dog.age_years == 1 ? "year" : "years"}</p>
-                      <p style={{ margin: "5px 0", color: "#6f5848" }}><strong>Energy:</strong> {dog.energy_level}</p>
-                      <div style={{ display: "flex", gap: "10px", marginTop: "20px" }}>
-                        <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => navigate(`/dogs/${dog.dog_id}`)}>
-                          Details
+                    <div style={{ padding: "18px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
+                      <h3 style={{ margin: "0 0 4px 0", fontSize: "18px", fontWeight: "700", color: "#2f241d" }}>{dog.name}</h3>
+                      <p style={{ margin: "0 0 2px 0", fontSize: "14px", color: "#78716c" }}>{dog.breed}</p>
+                      <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "#a8a29e" }}>{dog.age_years} yr · {dog.size} · {dog.energy_level}</p>
+                      <div style={{ display: "flex", gap: "8px", marginTop: "auto" }}>
+                        <button onClick={() => navigate(`/dogs/${dog.dog_id}`)} style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}>
+                          View Profile
                         </button>
-                        <button className="btn" style={{ flex: 1, background: "white", border: "1px solid #d8c1af", color: "#2f241d" }} onClick={() => handleSaveDog(dog)}>
-                          Save
+                        <button onClick={() => handleSaveDog(dog)} style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
+                          ♡
                         </button>
                       </div>
                     </div>
@@ -216,14 +207,13 @@ export default function QuizResults() {
                 )
               })}
             </div>
-            <div style={{ marginTop: "40px", textAlign: "center" }}>
-              <button className="btn" style={{ background: "transparent", border: "1px solid #d8c1af", color: "#6f5848" }} onClick={() => navigate("/quiz")}>
+            <div style={{ marginTop: "32px", textAlign: "center" }}>
+              <button onClick={() => navigate("/quiz")} style={{ padding: "12px 28px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
                 Retake Quiz
               </button>
             </div>
           </>
         )}
-      </div>
     </div>
   )
 }

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
-import Sidebar from "../components/Sidebar"
+
 import { sendMessage } from "../services/messaging"
 
 export default function ShelterDetails() {
@@ -46,39 +46,31 @@ export default function ShelterDetails() {
 
   if (loading) {
     return (
-      <div className="dashboard-wrapper">
-        <Sidebar />
-        <div className="page-container">
-          <div style={{ padding: "60px", textAlign: "center", color: "#6f5848" }}>Loading shelter...</div>
-        </div>
+      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "60px 0", textAlign: "center", color: "#6f5848" }}>
+        Loading shelter…
       </div>
     )
   }
 
   if (error || !shelter) {
     return (
-      <div className="dashboard-wrapper">
-        <Sidebar />
-        <div className="page-container">
-          <button className="btn btn-secondary" onClick={() => navigate("/shelters")} style={{ marginBottom: "20px" }}>
-            Back to Shelters
-          </button>
-          <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "20px", color: "#dc2626" }}>
-            {error || "Shelter not found."}
-          </div>
+      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
+        <button onClick={() => navigate("/shelters")} style={{ marginBottom: "20px", padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
+          ← Back to Shelters
+        </button>
+        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "20px", color: "#dc2626" }}>
+          {error || "Shelter not found."}
         </div>
       </div>
     )
   }
 
   return (
-    <div className="dashboard-wrapper">
-      <Sidebar />
-      <div className="page-container">
+    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
 
-        <button className="btn btn-secondary" onClick={() => navigate("/shelters")} style={{ marginBottom: "24px" }}>
-          Back to Shelters
-        </button>
+      <button onClick={() => navigate("/shelters")} style={{ marginBottom: "24px", padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
+        ← Back to Shelters
+      </button>
 
         <div style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "32px", marginBottom: "32px" }}>
           <div style={{ display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
@@ -186,7 +178,6 @@ export default function ShelterDetails() {
             </button>
           </div>
         )}
-      </div>
     </div>
   )
 }

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
-import Sidebar from "../components/Sidebar";
+
 
 export default function ApplicationForm() {
   const navigate = useNavigate();
@@ -129,9 +129,7 @@ export default function ApplicationForm() {
     : [];
 
   return (
-    <div className="dashboard-wrapper">
-      <Sidebar />
-      <div className="page-container" style={{ paddingBottom: "100px" }}>
+    <div style={{ maxWidth: "860px", margin: "0 auto", padding: "0 0 100px 0" }}>
         <header style={{ marginBottom: "32px" }}>
           <button onClick={() => navigate(-1)} style={{ border: "none", background: "none", cursor: "pointer", color: "#6f5848", fontWeight: "bold" }}>
             ← Back
@@ -272,7 +270,6 @@ export default function ApplicationForm() {
             </div>
           </div>
         )}
-      </div>
     </div>
-  );
+  )
 }

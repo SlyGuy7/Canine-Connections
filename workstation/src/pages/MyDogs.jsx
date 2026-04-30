@@ -2,91 +2,176 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "../context/ToastContext";
 
+const SIZE_LABELS = { small: "Small", medium: "Medium", large: "Large", extra_large: "XL" };
+const SIZE_COLORS = {
+  small:       { bg: "#eff6ff", color: "#1d4ed8" },
+  medium:      { bg: "#f0fdf4", color: "#15803d" },
+  large:       { bg: "#fefce8", color: "#a16207" },
+  extra_large: { bg: "#fdf4ff", color: "#7e22ce" },
+};
+
+function getAgeLabel(ageYears) {
+  const age = Number(ageYears) || 0;
+  if (age <= 1) return "Puppy";
+  if (age <= 3) return "Young";
+  if (age <= 7) return "Adult";
+  return "Senior";
+}
+
 export default function MyDogs() {
   const [savedDogs, setSavedDogs] = useState([]);
+  const [removingId, setRemovingId] = useState(null);
   const navigate = useNavigate();
   const { addToast } = useToast();
 
   useEffect(() => {
-    const dogs = JSON.parse(localStorage.getItem("savedDogs")) || [];
-    setSavedDogs(dogs);
+    setSavedDogs(JSON.parse(localStorage.getItem("savedDogs") || "[]"));
   }, []);
 
-  function handleRemoveDog(dogId) {
-    const updated = savedDogs.filter((dog) => dog.dog_id !== dogId);
-    localStorage.setItem("savedDogs", JSON.stringify(updated));
-    setSavedDogs(updated);
-    addToast("Removed from Vault", "success");
-  }
-
-  function formatAge(ageVal) {
-    if (!ageVal && ageVal !== 0) return "N/A";
-    const num = Math.round(Number(ageVal));
-    if (isNaN(num)) return "N/A";
-    return `${num} ${num === 1 ? "year" : "years"}`;
+  function handleRemoveDog(dog) {
+    setRemovingId(dog.dog_id);
+    setTimeout(() => {
+      const updated = savedDogs.filter(d => d.dog_id !== dog.dog_id);
+      localStorage.setItem("savedDogs", JSON.stringify(updated));
+      setSavedDogs(updated);
+      setRemovingId(null);
+      addToast(`${dog.name} removed from your Vault`, "success");
+    }, 250);
   }
 
   return (
-    <div className="page-container">
-      <header className="content-header">
-        <div>
-          <h1>Your Vault</h1>
-          <p className="page-subtitle">Review the companions you have saved for adoption.</p>
-        </div>
-      </header>
+    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 60px 0" }}>
+
+      {/* Header */}
+      <div style={{ marginBottom: "28px" }}>
+        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Your Vault</h1>
+        <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>
+          {savedDogs.length === 0
+            ? "Dogs you save while browsing will appear here."
+            : `${savedDogs.length} dog${savedDogs.length !== 1 ? "s" : ""} saved for adoption`}
+        </p>
+      </div>
 
       {savedDogs.length === 0 ? (
-        <div className="empty-state-container">
-          <span style={{ fontSize: '48px', display: 'block', marginBottom: '16px' }}>🐾</span>
-          <h2 className="form-label" style={{ fontSize: '24px' }}>Your pack is empty.</h2>
-          <p className="page-subtitle" style={{ marginBottom: '24px' }}>
-            Find your new best friend by browsing our available dogs.
+        /* Empty state */
+        <div style={{ textAlign: "center", padding: "100px 40px", background: "white", borderRadius: "24px", border: "1px solid #efdfd1" }}>
+          <div style={{ fontSize: "72px", marginBottom: "20px" }}>🐾</div>
+          <h2 style={{ margin: "0 0 10px 0", fontSize: "24px", fontWeight: "800", color: "#2f241d" }}>Your pack is empty</h2>
+          <p style={{ margin: "0 0 32px 0", color: "#78716c", fontSize: "16px", maxWidth: "360px", display: "inline-block" }}>
+            Find your new best friend by browsing our available dogs and tap the heart to save them.
           </p>
-          <button className="btn btn-primary" onClick={() => navigate("/browse-dogs")}>
+          <br />
+          <button
+            onClick={() => navigate("/browse-dogs")}
+            style={{ padding: "14px 36px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "16px", cursor: "pointer", boxShadow: "0 4px 16px rgba(217,119,6,0.3)" }}
+          >
             Browse Dogs
           </button>
         </div>
       ) : (
-        <div className="dog-grid">
-          {savedDogs.map((dog) => (
-            <article key={dog.dog_id} className="dog-card">
-              <div className="dog-card-image">
-                {dog.image ? (
-                  <img src={dog.image} alt={dog.name} />
-                ) : (
-                  <span style={{ fontSize: '48px' }}>🐕</span>
-                )}
-              </div>
-
-              <div className="dog-card-body">
-                <h3 className="dog-card-name">{dog.name || "Unknown"}</h3>
-                
-                <div className="dog-card-stats">
-                  <div className="dog-card-stat"><strong>Breed:</strong> {dog.breed || "Mixed"}</div>
-                  <div className="dog-card-stat"><strong>Age:</strong> {formatAge(dog.age_years)}</div>
-                  <div className="dog-card-stat"><strong>Size:</strong> {dog.size || "Unknown"}</div>
+        <>
+          {/* Stats strip */}
+          <div style={{ display: "flex", gap: "12px", marginBottom: "28px", flexWrap: "wrap" }}>
+            {["Puppy", "Young", "Adult", "Senior"].map(label => {
+              const count = savedDogs.filter(d => getAgeLabel(d.age_years) === label).length;
+              return count > 0 ? (
+                <div key={label} style={{ padding: "10px 20px", borderRadius: "12px", background: "white", border: "1px solid #efdfd1", fontSize: "14px", color: "#78716c", fontWeight: "500" }}>
+                  <span style={{ fontWeight: "700", color: "#2f241d" }}>{count}</span> {label}{count !== 1 ? (label === "Puppy" ? "ies" : "s") : ""}
                 </div>
+              ) : null;
+            })}
+          </div>
 
-                <div style={{ display: 'flex', gap: '8px', marginTop: 'auto' }}>
-                  <button 
-                    className="btn btn-primary" 
-                    style={{ flex: 2 }}
-                    onClick={() => navigate(`/dogs/${dog.dog_id}`)}
-                  >
-                    Profile
-                  </button>
-                  <button
-                    className="btn"
-                    style={{ flex: 1, background: '#fff1f2', color: '#e11d48' }}
-                    onClick={() => handleRemoveDog(dog.dog_id)}
-                  >
-                    Remove
-                  </button>
+          {/* Dog grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "20px" }}>
+            {savedDogs.map(dog => {
+              const sizeKey = (dog.size || "").toLowerCase().replace(" ", "_");
+              const sizeStyle = SIZE_COLORS[sizeKey] || { bg: "#f3f4f6", color: "#374151" };
+              const sizeLabel = SIZE_LABELS[sizeKey] || dog.size || "—";
+              const ageLabel = getAgeLabel(dog.age_years);
+              const isRemoving = removingId === dog.dog_id;
+
+              return (
+                <div
+                  key={dog.dog_id}
+                  style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1", display: "flex", flexDirection: "column", transition: "transform 0.2s ease, box-shadow 0.2s ease, opacity 0.25s ease", opacity: isRemoving ? 0 : 1, transform: isRemoving ? "scale(0.96)" : undefined }}
+                  onMouseEnter={e => { if (!isRemoving) { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.10)"; } }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
+                >
+                  {/* Photo */}
+                  <div style={{ height: "220px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                    {dog.image ? (
+                      <img
+                        src={dog.image}
+                        alt={dog.name}
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                        onError={e => { e.currentTarget.style.display = "none"; e.currentTarget.parentElement.innerHTML = '<span style="font-size:64px">🐕</span>'; }}
+                      />
+                    ) : (
+                      <span style={{ fontSize: "64px" }}>🐕</span>
+                    )}
+                    <div style={{ position: "absolute", top: "12px", left: "12px", display: "flex", gap: "6px" }}>
+                      <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: "rgba(0,0,0,0.45)", color: "white", backdropFilter: "blur(4px)" }}>
+                        {ageLabel}
+                      </span>
+                      <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: sizeStyle.bg, color: sizeStyle.color }}>
+                        {sizeLabel}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => handleRemoveDog(dog)}
+                      title="Remove from Vault"
+                      style={{ position: "absolute", top: "10px", right: "10px", width: "36px", height: "36px", borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.9)", color: "#ef4444", fontSize: "16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", transition: "all 0.2s ease" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "#ef4444"; e.currentTarget.style.color = "white"; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "rgba(255,255,255,0.9)"; e.currentTarget.style.color = "#ef4444"; }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+
+                  {/* Info */}
+                  <div style={{ padding: "18px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
+                    <h3 style={{ margin: "0 0 4px 0", fontSize: "18px", fontWeight: "700", color: "#2f241d" }}>{dog.name || "Unknown"}</h3>
+                    <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "#78716c" }}>{dog.breed || "Mixed breed"}</p>
+                    <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "#a8a29e" }}>
+                      {Number(dog.age_years) || 0} {Number(dog.age_years) === 1 ? "yr" : "yrs"} old
+                      {dog.shelter_name ? ` · ${dog.shelter_name}` : ""}
+                    </p>
+
+                    <div style={{ display: "flex", gap: "8px", marginTop: "auto" }}>
+                      <button
+                        onClick={() => navigate(`/dogs/${dog.dog_id}`)}
+                        style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer", transition: "background 0.15s ease" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "#b45309"}
+                        onMouseLeave={e => e.currentTarget.style.background = "#d97706"}
+                      >
+                        View Profile
+                      </button>
+                      <button
+                        onClick={() => navigate(`/apply?dog_id=${dog.dog_id}`)}
+                        style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer", transition: "background 0.15s ease" }}
+                        onMouseEnter={e => e.currentTarget.style.background = "#fdf6ef"}
+                        onMouseLeave={e => e.currentTarget.style.background = "white"}
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </article>
-          ))}
-        </div>
+              );
+            })}
+          </div>
+
+          {/* Browse more CTA */}
+          <div style={{ marginTop: "40px", textAlign: "center" }}>
+            <button
+              onClick={() => navigate("/browse-dogs")}
+              style={{ padding: "12px 28px", borderRadius: "12px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "15px", cursor: "pointer" }}
+            >
+              Browse More Dogs
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
