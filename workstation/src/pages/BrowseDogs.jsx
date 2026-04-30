@@ -119,10 +119,9 @@ export default function BrowseDogs() {
   const { addToast } = useToast();
 
   useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
+    hasFetched.current = false;
     loadDogs();
-  }, []);
+  }, [shelterIdParam]);
 
   useEffect(() => { setPage(1); }, [searchTerm, filters]);
 

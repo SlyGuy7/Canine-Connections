@@ -292,6 +292,7 @@ final class RabbitMqClient
 
     public function registerConsumer(string $queue, callable $callback): void
     {
+        $this->channel->queue_declare($queue, false, true, false, false);
         $this->channel->basic_qos(null, 1, null);
 
         $this->channel->basic_consume(

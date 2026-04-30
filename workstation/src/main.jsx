@@ -28,6 +28,7 @@ import AdminApplications from "./pages/AdminApplications.jsx"
 import AdminStories from "./pages/AdminStories.jsx"
 import AdminDogs from "./pages/AdminDogs.jsx"
 import Profile from "./pages/Profile.jsx"
+import VerifyEmail from "./pages/VerifyEmail.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ToastProvider>
@@ -61,6 +62,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/admin/stories" element={<AdminStories />} />
         <Route path="/admin/dogs" element={<AdminDogs />} />
 
+        <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>
     </BrowserRouter>

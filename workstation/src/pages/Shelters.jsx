@@ -193,7 +193,7 @@ function ShelterCard({ shelter, navigate }) {
 
         <div style={{ marginTop: "auto", display: "flex", gap: "10px" }}>
           <button
-            onClick={() => navigate(`/shelter-details?id=${shelter.shelter_id}`)}
+            onClick={() => navigate(`/shelters/${shelter.shelter_id}`)}
             style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer", transition: "background 0.15s ease" }}
             onMouseEnter={e => e.currentTarget.style.background = "#b45309"}
             onMouseLeave={e => e.currentTarget.style.background = "#d97706"}
