@@ -36,6 +36,10 @@ export default function QuizResults() {
   const [dogs, setDogs] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
+  const [savedIds, setSavedIds] = useState(() => {
+    const stored = JSON.parse(localStorage.getItem("savedDogs") || "[]")
+    return new Set(stored.map(d => d.dog_id))
+  })
   const hasFetched = useRef(false)
   const navigate = useNavigate()
   const { addToast } = useToast()
@@ -74,15 +78,19 @@ export default function QuizResults() {
     }
   }
 
-  const handleSaveDog = (dog) => {
+  const handleToggleSave = (dog) => {
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]")
-    if (savedDogs.some((d) => d.dog_id === dog.dog_id)) {
-      addToast(`${dog.name} is already saved.`, "error")
-      return
+    const isSaved = savedIds.has(dog.dog_id)
+    let updated
+    if (isSaved) {
+      updated = savedDogs.filter(d => d.dog_id !== dog.dog_id)
+      addToast(`${dog.name} removed from saved dogs.`, "success")
+    } else {
+      updated = [...savedDogs, dog]
+      addToast(`${dog.name} saved!`, "success")
     }
-    savedDogs.push(dog)
-    localStorage.setItem("savedDogs", JSON.stringify(savedDogs))
-    addToast(`${dog.name} saved!`, "success")
+    localStorage.setItem("savedDogs", JSON.stringify(updated))
+    setSavedIds(new Set(updated.map(d => d.dog_id)))
   }
 
   const WRAPPER = { maxWidth: "900px", margin: "0 auto", padding: "0 0 60px 0" }
@@ -198,8 +206,12 @@ export default function QuizResults() {
                         <button onClick={() => navigate(`/dogs/${dog.dog_id}`)} style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}>
                           View Profile
                         </button>
-                        <button onClick={() => handleSaveDog(dog)} style={{ flex: 1, padding: "11px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
-                          ♡
+                        <button
+                          onClick={() => handleToggleSave(dog)}
+                          title={savedIds.has(dog.dog_id) ? "Remove from saved" : "Save dog"}
+                          style={{ flex: 1, padding: "11px", borderRadius: "10px", border: savedIds.has(dog.dog_id) ? "1px solid #fca5a5" : "1px solid #e2d9d0", background: savedIds.has(dog.dog_id) ? "#fff1f2" : "white", color: savedIds.has(dog.dog_id) ? "#e11d48" : "#a8a29e", fontSize: "18px", cursor: "pointer", transition: "all 0.15s ease" }}
+                        >
+                          {savedIds.has(dog.dog_id) ? "♥" : "♡"}
                         </button>
                       </div>
                     </div>

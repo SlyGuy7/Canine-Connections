@@ -474,7 +474,7 @@ final class FrontendWorker
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
             try {
-                $result = $mq->publishAndWait('bridge.application.list', ['status' => $data['status'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null], $corrId);
+                $result = $mq->publishAndWait('bridge.application.list', ['user_id' => $data['user_id'] ?? null, 'status' => $data['status'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null], $corrId);
                 if (isset($result['applications']) && is_array($result['applications'])) {
                     foreach ($result['applications'] as &$app) {
                         $app['full_name']  = isset($app['full_name'])  && $app['full_name']  !== '' ? $this->dec($app['full_name'])  : '';

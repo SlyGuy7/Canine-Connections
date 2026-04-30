@@ -30,10 +30,9 @@ function DogCardSkeleton() {
   );
 }
 
-function DogCard({ dog, onSave, onNavigate }) {
+function DogCard({ dog, isSaved, onSave, onNavigate }) {
   const [imgError, setImgError] = useState(false);
   const [imgIndex, setImgIndex] = useState(0);
-  const [saved, setSaved] = useState(false);
 
   const ageLabel = getAgeCategory(dog.age_years);
   const sizeKey = (dog.size || "").toLowerCase().replace(" ", "_");
@@ -42,7 +41,6 @@ function DogCard({ dog, onSave, onNavigate }) {
 
   const handleSave = (e) => {
     e.stopPropagation();
-    setSaved(true);
     onSave(dog);
   };
 
@@ -81,9 +79,9 @@ function DogCard({ dog, onSave, onNavigate }) {
         <button
           onClick={handleSave}
           title="Save dog"
-          style={{ position: "absolute", top: "10px", right: "10px", width: "36px", height: "36px", borderRadius: "50%", border: "none", background: saved ? "#ef4444" : "rgba(255,255,255,0.9)", color: saved ? "white" : "#6f5848", fontSize: "16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", transition: "all 0.2s ease" }}
+          style={{ position: "absolute", top: "10px", right: "10px", width: "36px", height: "36px", borderRadius: "50%", border: "none", background: isSaved ? "#ef4444" : "rgba(255,255,255,0.9)", color: isSaved ? "white" : "#6f5848", fontSize: "16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", transition: "all 0.2s ease" }}
         >
-          {saved ? "♥" : "♡"}
+          {isSaved ? "♥" : "♡"}
         </button>
       </div>
       <div style={{ padding: "18px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
@@ -112,6 +110,7 @@ export default function BrowseDogs() {
   const [filters, setFilters] = useState({ breed: "All", size: "All", age: "All" });
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [savedIds, setSavedIds] = useState(() => new Set(JSON.parse(localStorage.getItem("savedDogs") || "[]").map(d => d.dog_id)));
   const hasFetched = useRef(false);
   const [searchParams] = useSearchParams();
   const shelterIdParam = searchParams.get("shelter_id");
@@ -149,13 +148,17 @@ export default function BrowseDogs() {
 
   const handleSaveDog = (dog) => {
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
-    if (savedDogs.some(d => d.dog_id === dog.dog_id)) {
-      addToast(`${dog.name} is already saved!`, "error");
-      return;
+    const isSaved = savedIds.has(dog.dog_id);
+    let updated;
+    if (isSaved) {
+      updated = savedDogs.filter(d => d.dog_id !== dog.dog_id);
+      addToast(`${dog.name} removed from saved dogs.`, "success");
+    } else {
+      updated = [...savedDogs, dog];
+      addToast(`${dog.name} saved!`, "success");
     }
-    savedDogs.push(dog);
-    localStorage.setItem("savedDogs", JSON.stringify(savedDogs));
-    addToast(`${dog.name} saved to My Dogs!`, "success");
+    localStorage.setItem("savedDogs", JSON.stringify(updated));
+    setSavedIds(new Set(updated.map(d => d.dog_id)));
   };
 
   const filteredDogs = allDogs.filter(dog => {
@@ -246,7 +249,7 @@ export default function BrowseDogs() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "20px" }}>
           {paginatedDogs.map(dog => (
-            <DogCard key={dog.dog_id} dog={dog} onSave={handleSaveDog} onNavigate={id => navigate(`/dogs/${id}`)} />
+            <DogCard key={dog.dog_id} dog={dog} isSaved={savedIds.has(dog.dog_id)} onSave={handleSaveDog} onNavigate={id => navigate(`/dogs/${id}`)} />
           ))}
         </div>
       )}

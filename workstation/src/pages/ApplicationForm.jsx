@@ -3,40 +3,100 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
 
+function profileToFormDefaults() {
+  const prefs = JSON.parse(localStorage.getItem("userProfile") || "{}").prefs || {};
+
+  let residenceType = "Single Family Home";
+  let yardType      = "No yard";
+  if (prefs.homeType === "Apartment")          { residenceType = "Apartment";           yardType = "No yard"; }
+  else if (prefs.homeType === "House with yard") { residenceType = "Single Family Home"; yardType = "Fenced yard"; }
+  else if (prefs.homeType === "Farm / Rural")    { residenceType = "Single Family Home"; yardType = "Fenced yard"; }
+  else if (prefs.homeType === "House without yard") { residenceType = "Single Family Home"; yardType = "No yard"; }
+
+  const hoursMap = {
+    "Less than 4 hours":     "Less than 4 hours per day",
+    "4–8 hours":             "4–8 hours per day",
+    "8–12 hours":            "8–12 hours per day",
+    "Mostly home all day":   "Rarely alone — home most of the day",
+  };
+
+  const currentAnimals = prefs.otherPets === "None" ? "None" : "";
+  const hoursAlone     = hoursMap[prefs.hoursHome] || "";
+  const allergies      = (prefs.allergies === "Yes — hypoallergenic only" || prefs.allergies === "Mild — prefer low-shedding") ? "Yes" : "No";
+
+  return { residenceType, yardType, currentAnimals, hoursAlone, allergies };
+}
+
+const INPUT = {
+  width: "100%", padding: "12px 14px", borderRadius: "10px",
+  border: "1px solid #e5ddd6", fontSize: "15px", fontFamily: "'Inter', sans-serif",
+  color: "#2f241d", outline: "none", boxSizing: "border-box", background: "white",
+};
+const SELECT = { ...INPUT, cursor: "pointer" };
+const TEXTAREA = { ...INPUT, resize: "vertical" };
+
+function Field({ label, required, children }) {
+  return (
+    <div>
+      <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", fontSize: "14px", color: "#2f241d" }}>
+        {label}{required && <span style={{ color: "#ef4444", marginLeft: "4px" }}>*</span>}
+      </label>
+      {children}
+    </div>
+  );
+}
+
+function SectionCard({ number, title, children }) {
+  return (
+    <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", overflow: "hidden" }}>
+      <div style={{ padding: "18px 24px", borderBottom: "1px solid #f5ede4", display: "flex", alignItems: "center", gap: "12px" }}>
+        <span style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#d97706", color: "white", fontSize: "13px", fontWeight: "800", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{number}</span>
+        <span style={{ fontSize: "16px", fontWeight: "700", color: "#2f241d" }}>{title}</span>
+      </div>
+      <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 export default function ApplicationForm() {
-  const navigate = useNavigate();
-  const location = useLocation();
+  const navigate    = useNavigate();
+  const location    = useLocation();
   const { addToast } = useToast();
 
-  const [targetDog, setTargetDog] = useState(null);
+  const [targetDog, setTargetDog]   = useState(null);
   const [showReview, setShowReview] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [focusedField, setFocusedField] = useState(null);
   const hasLoaded = useRef(false);
 
+  const defaults = profileToFormDefaults();
+
   const [formData, setFormData] = useState({
-    firstName: localStorage.getItem("userFirstName") || "",
-    lastName: localStorage.getItem("userLastName") || "",
-    email: localStorage.getItem("userEmail") || "",
-    phone: "",
-    address: "",
-    householdMembers: "",
-    currentAnimals: "",
-    residenceType: "Single Family Home",
-    yardType: "Fenced yard",
-    hoursAlone: "",
+    firstName:          localStorage.getItem("userFirstName") || "",
+    lastName:           localStorage.getItem("userLastName")  || "",
+    email:              localStorage.getItem("userEmail")     || "",
+    phone:              localStorage.getItem("userPhone")   || "",
+    address:            localStorage.getItem("userAddress") || "",
+    householdSize:      "",
+    hasChildren:        "No",
+    currentAnimals:     defaults.currentAnimals,
+    residenceType:      defaults.residenceType,
+    yardType:           defaults.yardType,
+    hoursAlone:         defaults.hoursAlone,
     handlingDestruction: "",
-    adjustmentPeriod: "",
-    allergies: "No",
-    agreeToHomeVisit: false,
-    agreeToFee: false,
+    adjustmentPeriod:   "",
+    allergies:          defaults.allergies,
+    agreeToHomeVisit:   false,
+    agreeToFee:         false,
   });
 
   useEffect(() => {
     if (hasLoaded.current) return;
     hasLoaded.current = true;
 
-    const dogId = location.state?.dogId || localStorage.getItem("pendingApplicationDogId");
+    const dogId   = location.state?.dogId   || localStorage.getItem("pendingApplicationDogId");
     const dogName = location.state?.dogName || localStorage.getItem("pendingApplicationDogName");
 
     if (!dogId) {
@@ -46,22 +106,19 @@ export default function ApplicationForm() {
     }
 
     setTargetDog({ dog_id: dogId, name: dogName || "Selected Dog" });
-
     sendMessage("request.dogs.get", { dog_id: dogId })
-      .then((result) => {
-        if (result?.success && result.dog) {
-          setTargetDog(result.dog);
-        }
-      })
+      .then(result => { if (result?.success && result.dog) setTargetDog(result.dog); })
       .catch(() => {});
   }, []);
 
-  const handleChange = (e) => {
+  const handleChange = e => {
     const { name, value, type, checked } = e.target;
-    setFormData({ ...formData, [name]: type === "checkbox" ? checked : value });
+    setFormData(prev => ({ ...prev, [name]: type === "checkbox" ? checked : value }));
   };
 
-  const handleOpenReview = (e) => {
+  const focusStyle = name => name === focusedField ? { border: "1.5px solid #d97706" } : {};
+
+  const handleOpenReview = e => {
     e.preventDefault();
     if (!formData.agreeToHomeVisit || !formData.agreeToFee) {
       addToast("Please agree to all terms before reviewing.", "error");
@@ -72,30 +129,26 @@ export default function ApplicationForm() {
 
   const handleFinalSubmit = async () => {
     const userId = localStorage.getItem("userId");
-    if (!userId) {
-      addToast("You must be logged in to submit an application.", "error");
-      return;
-    }
+    if (!userId) { addToast("You must be logged in to submit an application.", "error"); return; }
 
     setSubmitting(true);
     try {
       const result = await sendMessage("request.application.submit", {
-        user_id: userId,
-        dog_id: targetDog.dog_id,
-        full_name: `${formData.firstName} ${formData.lastName}`,
-        phone: formData.phone,
-        address: formData.address,
-        housing_type: formData.residenceType,
-        has_yard: formData.yardType !== "No yard",
-        has_other_pets: formData.currentAnimals.trim() !== "",
+        user_id:                userId,
+        dog_id:                 targetDog.dog_id,
+        full_name:              `${formData.firstName} ${formData.lastName}`,
+        phone:                  formData.phone,
+        address:                formData.address,
+        housing_type:           ({ "Single Family Home": "house", "Apartment": "apartment", "Condo / Townhouse": "condo" }[formData.residenceType] || "other"),
+        has_yard:               formData.yardType !== "No yard",
+        has_other_pets:         formData.currentAnimals.trim().toLowerCase() !== "none" && formData.currentAnimals.trim() !== "",
         other_pets_description: formData.currentAnimals,
-        has_children: formData.householdMembers.toLowerCase().includes("child") ||
-                      formData.householdMembers.toLowerCase().includes("kid"),
-        prior_pet_experience: formData.currentAnimals,
-        reason_for_adopting: formData.adjustmentPeriod,
-        email: formData.email,
-        first_name: formData.firstName,
-        dog_name: targetDog.name,
+        has_children:           formData.hasChildren !== "No",
+        prior_pet_experience:   formData.currentAnimals,
+        reason_for_adopting:    formData.adjustmentPeriod,
+        email:                  formData.email,
+        first_name:             formData.firstName,
+        dog_name:               targetDog.name,
       });
 
       if (result?.success) {
@@ -106,7 +159,7 @@ export default function ApplicationForm() {
       } else {
         addToast(result?.error || "Submission failed. Please try again.", "error");
       }
-    } catch (err) {
+    } catch {
       addToast("Network error. Could not submit application.", "error");
     } finally {
       setSubmitting(false);
@@ -114,162 +167,243 @@ export default function ApplicationForm() {
     }
   };
 
-  const RequiredLabel = ({ text }) => (
-    <label style={{ display: "block", marginBottom: "12px", fontWeight: "700", fontSize: "18px", color: "#2f241d" }}>
-      {text} <span style={{ color: "#ef4444" }}>*</span>
-    </label>
-  );
-
   if (!targetDog) return null;
 
   const photos = targetDog.photos
     ? (Array.isArray(targetDog.photos)
-        ? targetDog.photos.map((p) => p.photo_url).filter(Boolean)
-        : targetDog.photos.split(",").map((p) => p.trim()).filter(Boolean))
+        ? targetDog.photos.map(p => p.photo_url).filter(Boolean)
+        : targetDog.photos.split(",").map(p => p.trim()).filter(Boolean))
     : [];
 
+  const profileFilled = Object.values(profileToFormDefaults()).some(v => v && v !== "No" && v !== "Single Family Home" && v !== "No yard");
+
   return (
-    <div style={{ maxWidth: "860px", margin: "0 auto", padding: "0 0 100px 0" }}>
-        <header style={{ marginBottom: "32px" }}>
-          <button onClick={() => navigate(-1)} style={{ border: "none", background: "none", cursor: "pointer", color: "#6f5848", fontWeight: "bold" }}>
-            ← Back
-          </button>
-          <h1 style={{ fontSize: "36px", marginTop: "16px", color: "#2f241d" }}>Adoption Application</h1>
-        </header>
+    <div style={{ maxWidth: "900px", margin: "0 auto", padding: "0 0 100px 0", fontFamily: "'Inter', sans-serif" }}>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 300px", gap: "32px", alignItems: "start" }}>
-          <div className="panel" style={{ padding: "40px", borderRadius: "24px", background: "white" }}>
-            <p style={{ color: "#ef4444", fontSize: "14px", fontWeight: "700", marginBottom: "40px" }}>* Required</p>
+      {/* Header */}
+      <div style={{ marginBottom: "28px" }}>
+        <button onClick={() => navigate(-1)} style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "16px", padding: "9px 18px", borderRadius: "10px", border: "1px solid #efdfd1", background: "white", color: "#6f5848", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
+          ← Back
+        </button>
+        <h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Adoption Application</h1>
+        <p style={{ margin: 0, color: "#9c7e6a", fontSize: "15px" }}>Complete all required fields to apply for adoption.</p>
+      </div>
 
-            <form onSubmit={handleOpenReview} style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
+      {/* Profile pre-fill notice */}
+      {profileFilled && (
+        <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "14px", padding: "12px 18px", marginBottom: "24px", display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "18px" }}>👤</span>
+          <span style={{ fontSize: "13px", color: "#92400e" }}>
+            Some fields have been pre-filled from your profile. Review and adjust as needed.
+          </span>
+        </div>
+      )}
 
-              <section>
-                <h2 style={{ fontSize: "22px", color: "#d97706", borderBottom: "2px solid #fcedda", paddingBottom: "10px", marginBottom: "24px" }}>1. Contact Information</h2>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
-                  <div>
-                    <RequiredLabel text="First Name" />
-                    <input required name="firstName" value={formData.firstName} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7" }} />
-                  </div>
-                  <div>
-                    <RequiredLabel text="Last Name" />
-                    <input required name="lastName" value={formData.lastName} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7" }} />
-                  </div>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "20px" }}>
-                  <div>
-                    <RequiredLabel text="Email" />
-                    <input required type="email" name="email" value={formData.email} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7" }} />
-                  </div>
-                  <div>
-                    <RequiredLabel text="Phone" />
-                    <input required name="phone" value={formData.phone} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7" }} />
-                  </div>
-                </div>
-                <RequiredLabel text="Address" />
-                <input required name="address" value={formData.address} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7" }} />
-              </section>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "28px", alignItems: "start" }}>
 
-              <section>
-                <h2 style={{ fontSize: "22px", color: "#d97706", borderBottom: "2px solid #fcedda", paddingBottom: "10px", marginBottom: "24px" }}>2. Household</h2>
-                <RequiredLabel text="Household Members (Names and Ages)" />
-                <textarea required name="householdMembers" value={formData.householdMembers} onChange={handleChange} rows="3" style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7", marginBottom: "20px" }} />
-                <RequiredLabel text="Current Pets (Species, Breed, Age — or None)" />
-                <textarea required name="currentAnimals" value={formData.currentAnimals} onChange={handleChange} rows="3" style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7", marginBottom: "20px" }} />
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
-                  <div>
-                    <RequiredLabel text="Residence Type" />
-                    <select name="residenceType" value={formData.residenceType} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7", background: "white" }}>
-                      <option>Single Family Home</option>
-                      <option>Apartment</option>
-                      <option>Condo/Townhouse</option>
-                    </select>
-                  </div>
-                  <div>
-                    <RequiredLabel text="Yard Type" />
-                    <select name="yardType" value={formData.yardType} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7", background: "white" }}>
-                      <option>Fenced yard</option>
-                      <option>Open yard</option>
-                      <option>No yard</option>
-                    </select>
-                  </div>
-                </div>
-              </section>
+        {/* ── Form ── */}
+        <form onSubmit={handleOpenReview} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-              <section>
-                <h2 style={{ fontSize: "22px", color: "#d97706", borderBottom: "2px solid #fcedda", paddingBottom: "10px", marginBottom: "24px" }}>3. Care & Behavior</h2>
-                <RequiredLabel text="Hours alone daily?" />
-                <input required name="hoursAlone" value={formData.hoursAlone} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7", marginBottom: "20px" }} />
-                <RequiredLabel text="How would you handle destructive behavior?" />
-                <textarea required name="handlingDestruction" value={formData.handlingDestruction} onChange={handleChange} rows="3" style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7", marginBottom: "20px" }} />
-                <RequiredLabel text="Are you prepared for an adjustment period?" />
-                <input required name="adjustmentPeriod" value={formData.adjustmentPeriod} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7", marginBottom: "20px" }} />
-                <RequiredLabel text="Any pet allergies in the home?" />
-                <select name="allergies" value={formData.allergies} onChange={handleChange} style={{ width: "100%", padding: "12px", borderRadius: "10px", border: "1px solid #dcc8b7", background: "white" }}>
-                  <option value="No">No</option>
-                  <option value="Yes">Yes</option>
+          <SectionCard number="1" title="Contact Information">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="First Name" required>
+                <input required name="firstName" value={formData.firstName} onChange={handleChange}
+                  onFocus={() => setFocusedField("firstName")} onBlur={() => setFocusedField(null)}
+                  style={{ ...INPUT, ...focusStyle("firstName") }} />
+              </Field>
+              <Field label="Last Name" required>
+                <input required name="lastName" value={formData.lastName} onChange={handleChange}
+                  onFocus={() => setFocusedField("lastName")} onBlur={() => setFocusedField(null)}
+                  style={{ ...INPUT, ...focusStyle("lastName") }} />
+              </Field>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Email" required>
+                <input required type="email" name="email" value={formData.email} onChange={handleChange}
+                  onFocus={() => setFocusedField("email")} onBlur={() => setFocusedField(null)}
+                  style={{ ...INPUT, ...focusStyle("email") }} />
+              </Field>
+              <Field label="Phone" required>
+                <input required name="phone" value={formData.phone} onChange={handleChange}
+                  onFocus={() => setFocusedField("phone")} onBlur={() => setFocusedField(null)}
+                  maxLength={20} placeholder="e.g. (555) 123-4567"
+                  style={{ ...INPUT, ...focusStyle("phone") }} />
+              </Field>
+            </div>
+            <Field label="Home Address" required>
+              <input required name="address" value={formData.address} onChange={handleChange}
+                onFocus={() => setFocusedField("address")} onBlur={() => setFocusedField(null)}
+                style={{ ...INPUT, ...focusStyle("address") }} />
+            </Field>
+          </SectionCard>
+
+          <SectionCard number="2" title="Your Household">
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Number of people in the household" required>
+                <select required name="householdSize" value={formData.householdSize} onChange={handleChange} style={SELECT}>
+                  <option value="">Select…</option>
+                  <option>1 — just me</option>
+                  <option>2</option>
+                  <option>3</option>
+                  <option>4</option>
+                  <option>5 or more</option>
                 </select>
-              </section>
+              </Field>
+              <Field label="Are there children in the household?" required>
+                <select name="hasChildren" value={formData.hasChildren} onChange={handleChange} style={SELECT}>
+                  <option value="No">No</option>
+                  <option value="Yes — under 5">Yes — under 5</option>
+                  <option value="Yes — ages 5 to 12">Yes — ages 5 to 12</option>
+                  <option value="Yes — teenagers">Yes — teenagers (13+)</option>
+                </select>
+              </Field>
+            </div>
+            <Field label="Current pets — species, breed, age (or None)" required>
+              <textarea required name="currentAnimals" value={formData.currentAnimals} onChange={handleChange} rows="3"
+                onFocus={() => setFocusedField("currentAnimals")} onBlur={() => setFocusedField(null)}
+                placeholder="e.g. Golden Retriever, 3 yrs — or None"
+                style={{ ...TEXTAREA, ...focusStyle("currentAnimals") }} />
+            </Field>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="Residence type" required>
+                <select name="residenceType" value={formData.residenceType} onChange={handleChange} style={SELECT}>
+                  <option>Single Family Home</option>
+                  <option>Apartment</option>
+                  <option>Condo / Townhouse</option>
+                </select>
+              </Field>
+              <Field label="Outdoor space" required>
+                <select name="yardType" value={formData.yardType} onChange={handleChange} style={SELECT}>
+                  <option>Fenced yard</option>
+                  <option>Open yard</option>
+                  <option>No yard</option>
+                </select>
+              </Field>
+            </div>
+          </SectionCard>
 
-              <section>
-                <h2 style={{ fontSize: "22px", color: "#d97706", borderBottom: "2px solid #fcedda", paddingBottom: "10px", marginBottom: "24px" }}>4. Agreements</h2>
-                <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-                  <label style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }}>
-                    <input type="checkbox" name="agreeToHomeVisit" checked={formData.agreeToHomeVisit} onChange={handleChange} style={{ width: "20px", height: "20px" }} />
-                    <span>I agree to a home visit if requested <span style={{ color: "#ef4444" }}>*</span></span>
-                  </label>
-                  <label style={{ display: "flex", alignItems: "center", gap: "12px", cursor: "pointer" }}>
-                    <input type="checkbox" name="agreeToFee" checked={formData.agreeToFee} onChange={handleChange} style={{ width: "20px", height: "20px" }} />
-                    <span>I understand an adoption fee applies <span style={{ color: "#ef4444" }}>*</span></span>
-                  </label>
-                </div>
-              </section>
+          <SectionCard number="3" title="Care & Lifestyle">
+            <Field label="How many hours per day would the dog be alone?" required>
+              <input required name="hoursAlone" value={formData.hoursAlone} onChange={handleChange}
+                onFocus={() => setFocusedField("hoursAlone")} onBlur={() => setFocusedField(null)}
+                placeholder="e.g. 4–6 hours on weekdays"
+                style={{ ...INPUT, ...focusStyle("hoursAlone") }} />
+            </Field>
+            <Field label="How would you handle destructive behavior?" required>
+              <textarea required name="handlingDestruction" value={formData.handlingDestruction} onChange={handleChange} rows="3"
+                onFocus={() => setFocusedField("handlingDestruction")} onBlur={() => setFocusedField(null)}
+                placeholder="Describe your approach to training and correction..."
+                style={{ ...TEXTAREA, ...focusStyle("handlingDestruction") }} />
+            </Field>
+            <Field label="Are you prepared for an adjustment period? What does that look like for you?" required>
+              <textarea required name="adjustmentPeriod" value={formData.adjustmentPeriod} onChange={handleChange} rows="3"
+                onFocus={() => setFocusedField("adjustmentPeriod")} onBlur={() => setFocusedField(null)}
+                placeholder="Describe how you would help the dog settle in..."
+                style={{ ...TEXTAREA, ...focusStyle("adjustmentPeriod") }} />
+            </Field>
+            <Field label="Any pet allergies in the household?" required>
+              <select name="allergies" value={formData.allergies} onChange={handleChange} style={SELECT}>
+                <option value="No">No</option>
+                <option value="Yes">Yes</option>
+              </select>
+            </Field>
+          </SectionCard>
 
-              <button type="submit" className="btn btn-primary" style={{ width: "100%", padding: "18px", fontSize: "18px", borderRadius: "12px" }}>
-                Review Application
-              </button>
-            </form>
+          <SectionCard number="4" title="Agreements">
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {[
+                { name: "agreeToHomeVisit", text: "I agree to a home visit if requested by the shelter" },
+                { name: "agreeToFee",       text: "I understand that an adoption fee may apply" },
+              ].map(({ name, text }) => (
+                <label key={name} style={{ display: "flex", alignItems: "center", gap: "14px", cursor: "pointer", padding: "14px 18px", borderRadius: "12px", border: `1px solid ${formData[name] ? "#d97706" : "#e5ddd6"}`, background: formData[name] ? "#fff7ed" : "white", transition: "all 0.15s" }}>
+                  <input type="checkbox" name={name} checked={formData[name]} onChange={handleChange} style={{ width: "18px", height: "18px", accentColor: "#d97706", flexShrink: 0 }} />
+                  <span style={{ fontSize: "14px", fontWeight: "500", color: formData[name] ? "#92400e" : "#2f241d" }}>{text} <span style={{ color: "#ef4444" }}>*</span></span>
+                </label>
+              ))}
+            </div>
+          </SectionCard>
+
+          <button
+            type="submit"
+            style={{ width: "100%", padding: "16px", borderRadius: "14px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "16px", cursor: "pointer", boxShadow: "0 4px 16px rgba(217,119,6,0.28)" }}
+          >
+            Review Application →
+          </button>
+        </form>
+
+        {/* ── Dog sidebar ── */}
+        <div style={{ position: "sticky", top: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
+            {photos[0]
+              ? <img src={photos[0]} alt={targetDog.name} style={{ width: "100%", height: "180px", objectFit: "cover" }} />
+              : <div style={{ width: "100%", height: "140px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "52px" }}>🐕</div>
+            }
+            <div style={{ padding: "18px 20px" }}>
+              <p style={{ margin: "0 0 2px 0", fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>Applying for</p>
+              <h3 style={{ margin: "0 0 4px 0", fontSize: "20px", fontWeight: "800", color: "#2f241d" }}>{targetDog.name}</h3>
+              <p style={{ margin: 0, fontSize: "13px", color: "#d97706", fontWeight: "600" }}>{targetDog.breed}</p>
+            </div>
           </div>
 
-          <div style={{ position: "sticky", top: "24px" }}>
-            <div style={{ background: "white", borderRadius: "20px", padding: "24px", border: "1px solid #efdfd1", textAlign: "center" }}>
-              {photos[0] ? (
-                <img src={photos[0]} alt={targetDog.name} style={{ width: "100%", height: "160px", objectFit: "cover", borderRadius: "12px", marginBottom: "16px" }} />
-              ) : (
-                <div style={{ width: "100%", height: "120px", background: "#fcedda", borderRadius: "12px", margin: "0 auto 16px", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>🐕</div>
-              )}
-              <h3 style={{ margin: "0 0 6px 0", fontSize: "20px" }}>{targetDog.name}</h3>
-              <p style={{ color: "#d97706", fontWeight: "700", fontSize: "14px", margin: 0 }}>{targetDog.breed}</p>
+          <div style={{ background: "#fffaf5", border: "1px solid #efdfd1", borderRadius: "16px", padding: "16px 18px" }}>
+            <p style={{ margin: "0 0 8px 0", fontSize: "12px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>What happens next</p>
+            <ol style={{ margin: 0, paddingLeft: "18px", color: "#6f5848", fontSize: "13px", lineHeight: "2" }}>
+              <li>Review your answers</li>
+              <li>Submit the application</li>
+              <li>Shelter reviews within 3–5 days</li>
+              <li>Schedule a meet &amp; greet</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Review modal ── */}
+      {showReview && (
+        <div
+          onClick={e => { if (e.target === e.currentTarget) setShowReview(false); }}
+          style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}
+        >
+          <div style={{ background: "white", borderRadius: "24px", maxWidth: "580px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" }}>
+
+            {/* Modal header */}
+            <div style={{ padding: "28px 32px 20px", borderBottom: "1px solid #f5ede4" }}>
+              <h2 style={{ margin: "0 0 4px 0", fontSize: "22px", fontWeight: "800", color: "#2f241d" }}>Confirm Your Application</h2>
+              <p style={{ margin: 0, color: "#9c7e6a", fontSize: "14px" }}>Applying for <strong style={{ color: "#2f241d" }}>{targetDog.name}</strong> — review before submitting</p>
+            </div>
+
+            {/* Summary */}
+            <div style={{ padding: "24px 32px", display: "flex", flexDirection: "column", gap: "12px" }}>
+              {[
+                { label: "Full name",     value: `${formData.firstName} ${formData.lastName}` },
+                { label: "Email",         value: formData.email },
+                { label: "Phone",         value: formData.phone },
+                { label: "Address",       value: formData.address },
+                { label: "Household size", value: formData.householdSize },
+                { label: "Children",      value: formData.hasChildren },
+                { label: "Current pets",  value: formData.currentAnimals },
+                { label: "Residence",     value: `${formData.residenceType} — ${formData.yardType}` },
+                { label: "Hours alone",   value: formData.hoursAlone },
+                { label: "Allergies",     value: formData.allergies },
+              ].map(({ label, value }) => (
+                <div key={label} style={{ display: "flex", gap: "12px", padding: "10px 14px", borderRadius: "10px", background: "#fffaf5", border: "1px solid #f5ede4" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: "#9c7e6a", width: "110px", flexShrink: 0 }}>{label}</span>
+                  <span style={{ fontSize: "13px", color: "#2f241d", wordBreak: "break-word" }}>{value || <em style={{ color: "#a8a29e" }}>—</em>}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Actions */}
+            <div style={{ padding: "20px 32px 28px", display: "flex", gap: "12px" }}>
+              <button onClick={() => setShowReview(false)} style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "1px solid #e5ddd6", background: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer", color: "#2f241d" }}>
+                ← Edit
+              </button>
+              <button onClick={handleFinalSubmit} disabled={submitting} style={{ flex: 2, padding: "14px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer", boxShadow: "0 4px 12px rgba(217,119,6,0.3)", opacity: submitting ? 0.7 : 1 }}>
+                {submitting ? "Submitting…" : "Submit Application"}
+              </button>
             </div>
           </div>
         </div>
-
-        {showReview && (
-          <div style={{ position: "fixed", top: 0, left: 0, width: "100%", height: "100%", backgroundColor: "rgba(47,36,29,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}>
-            <div style={{ background: "white", padding: "40px", borderRadius: "24px", maxWidth: "600px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 40px rgba(0,0,0,0.3)" }}>
-              <h2 style={{ marginBottom: "8px", color: "#2f241d" }}>Confirm Submission</h2>
-              <p style={{ color: "#6f5848", marginBottom: "24px" }}>Applying for <strong>{targetDog.name}</strong></p>
-              <div style={{ background: "#fffaf5", padding: "24px", borderRadius: "16px", marginBottom: "24px", fontSize: "15px", lineHeight: "1.8", border: "1px solid #efdfd1" }}>
-                <p><strong>Name:</strong> {formData.firstName} {formData.lastName}</p>
-                <p><strong>Email:</strong> {formData.email}</p>
-                <p><strong>Phone:</strong> {formData.phone}</p>
-                <p><strong>Address:</strong> {formData.address}</p>
-                <p><strong>Household:</strong> {formData.householdMembers}</p>
-                <p><strong>Current Pets:</strong> {formData.currentAnimals}</p>
-                <p><strong>Residence:</strong> {formData.residenceType} — {formData.yardType}</p>
-                <p><strong>Hours alone:</strong> {formData.hoursAlone}</p>
-                <p><strong>Allergies:</strong> {formData.allergies}</p>
-              </div>
-              <div style={{ display: "flex", gap: "16px" }}>
-                <button onClick={() => setShowReview(false)} style={{ flex: 1, padding: "16px", borderRadius: "12px", border: "1px solid #dcc8b7", background: "white", cursor: "pointer", fontWeight: "bold" }}>
-                  Edit
-                </button>
-                <button onClick={handleFinalSubmit} disabled={submitting} style={{ flex: 1, padding: "16px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "bold", cursor: "pointer" }}>
-                  {submitting ? "Submitting..." : "Submit Application"}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      )}
     </div>
-  )
+  );
 }

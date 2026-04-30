@@ -27,6 +27,7 @@ import AdminUsers from "./pages/AdminUsers.jsx"
 import AdminApplications from "./pages/AdminApplications.jsx"
 import AdminStories from "./pages/AdminStories.jsx"
 import AdminDogs from "./pages/AdminDogs.jsx"
+import Profile from "./pages/Profile.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ToastProvider>
@@ -43,6 +44,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/messages" element={<ProtectedRoute><Layout><Messages /></Layout></ProtectedRoute>} />
         <Route path="/applications" element={<ProtectedRoute><Layout><Applications /></Layout></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><Layout><Settings /></Layout></ProtectedRoute>} />
+        <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
         <Route path="/apply" element={<ProtectedRoute><Layout><ApplicationForm /></Layout></ProtectedRoute>} />
         <Route path="/quiz" element={<ProtectedRoute><Layout><Quiz /></Layout></ProtectedRoute>} />
         <Route path="/quiz-results" element={<ProtectedRoute><Layout><QuizResults /></Layout></ProtectedRoute>} />

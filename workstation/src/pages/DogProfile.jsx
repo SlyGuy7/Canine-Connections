@@ -3,64 +3,52 @@ import { useParams, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
 
-
 export default function DogProfile() {
-  const { id } = useParams();
-  const navigate = useNavigate();
+  const { id }     = useParams();
+  const navigate   = useNavigate();
   const { addToast } = useToast();
 
-  const [dog, setDog] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [isSaved, setIsSaved] = useState(false);
+  const [dog, setDog]             = useState(null);
+  const [loading, setLoading]     = useState(true);
+  const [isSaved, setIsSaved]     = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
   const hasFetched = useRef(false);
 
-  useEffect(() => {
-    hasFetched.current = false;
-  }, [id]);
+  useEffect(() => { hasFetched.current = false; }, [id]);
 
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-    loadDogDetails();
+    load();
   }, [id]);
 
-  async function loadDogDetails() {
+  async function load() {
     setLoading(true);
     try {
-      const numericId = parseInt(id, 10);
-      const result = await sendMessage("request.dogs.get", { dog_id: numericId });
-      
-      console.log("Backend Response:", result); 
-      
+      const result = await sendMessage("request.dogs.get", { dog_id: parseInt(id, 10) });
       if (result?.success && result.dog) {
         setDog(result.dog);
-        checkIfSaved(result.dog.dog_id);
+        const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
+        setIsSaved(saved.some(d => d.dog_id === result.dog.dog_id));
       } else {
         addToast("Could not load dog details.", "error");
       }
-    } catch (err) {
-      addToast("Failed to connect to the database.", "error");
+    } catch {
+      addToast("Failed to connect to the server.", "error");
     } finally {
       setLoading(false);
     }
   }
 
-  function checkIfSaved(dogId) {
-    const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
-    setIsSaved(saved.some((d) => d.dog_id === dogId));
-  }
-
   const handleSave = () => {
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
     if (isSaved) {
-      const updated = savedDogs.filter((d) => d.dog_id !== dog.dog_id);
+      const updated = savedDogs.filter(d => d.dog_id !== dog.dog_id);
       localStorage.setItem("savedDogs", JSON.stringify(updated));
       setIsSaved(false);
-      addToast(`${dog.name} removed from saved dogs.`, "info");
+      addToast(`${dog.name} removed from saved dogs.`, "success");
     } else {
-      savedDogs.push(dog);
-      localStorage.setItem("savedDogs", JSON.stringify(savedDogs));
+      localStorage.setItem("savedDogs", JSON.stringify([...savedDogs, dog]));
       setIsSaved(true);
       addToast(`${dog.name} saved!`, "success");
     }
@@ -68,10 +56,14 @@ export default function DogProfile() {
 
   if (loading) {
     return (
-      <div className="dashboard-wrapper">
-        <Sidebar />
-        <div className="page-container">
-          <p>Loading dog profile...</p>
+      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
+        <div style={{ display: "flex", gap: "40px" }}>
+          <div style={{ flex: 1, height: "420px", borderRadius: "20px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+          <div style={{ flex: 1.5, display: "flex", flexDirection: "column", gap: "16px", paddingTop: "8px" }}>
+            {[60, 40, 80, 50, 70].map((w, i) => (
+              <div key={i} style={{ height: i === 0 ? "40px" : "18px", width: `${w}%`, borderRadius: "8px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -79,156 +71,146 @@ export default function DogProfile() {
 
   if (!dog) {
     return (
-      <div className="dashboard-wrapper">
-        <Sidebar />
-        <div className="page-container">
-          <button className="btn btn-secondary" onClick={() => navigate(-1)} style={{ marginBottom: "20px" }}>
-            ← Back to Browse
-          </button>
-          <p>Dog not found.</p>
-        </div>
+      <div style={{ maxWidth: "1000px", margin: "0 auto", textAlign: "center", paddingTop: "80px" }}>
+        <div style={{ fontSize: "64px", marginBottom: "16px" }}>🐾</div>
+        <h2 style={{ color: "#2f241d", marginBottom: "12px" }}>Dog not found</h2>
+        <button onClick={() => navigate(-1)} style={{ padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}>
+          ← Go Back
+        </button>
       </div>
     );
   }
 
   const photos = Array.isArray(dog.photos)
-    ? dog.photos.map((p) => p.photo_url).filter(Boolean)
-    : dog.photos
-    ? dog.photos.split(",").map((p) => p.trim()).filter(Boolean)
-    : [];
+    ? dog.photos.map(p => p.photo_url).filter(Boolean)
+    : dog.photos ? dog.photos.split(",").map(p => p.trim()).filter(Boolean) : [];
   const currentPhoto = photos[activePhoto] || null;
 
+  const traits = [
+    dog.good_with_kids     !== null && { label: "Good with kids",     ok: dog.good_with_kids == "1" },
+    dog.good_with_dogs     !== null && { label: "Good with dogs",     ok: dog.good_with_dogs == "1" },
+    dog.good_with_cats     !== null && { label: "Good with cats",     ok: dog.good_with_cats == "1" },
+    dog.apartment_friendly !== null && { label: "Apartment friendly", ok: dog.apartment_friendly == "1" },
+  ].filter(Boolean);
+
   return (
-    <div className="dashboard-wrapper">
-      <Sidebar />
-      <div className="page-container">
-        <button className="btn btn-secondary" onClick={() => navigate(-1)} style={{ marginBottom: "20px" }}>
-          ← Back to Browse
-        </button>
+    <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0", fontFamily: "'Inter', sans-serif" }}>
 
-        <div className="panel" style={{ display: "flex", gap: "40px", padding: "40px", borderRadius: "30px" }}>
-          <div style={{ flex: "1" }}>
-            <div style={{ width: "100%", height: "400px", background: "#fcedda", borderRadius: "20px", overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "120px" }}>
-              {currentPhoto ? (
-                <img
-                  src={currentPhoto}
-                  alt={dog.name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
-                  onError={(e) => {
-                    const next = photos[activePhoto + 1];
-                    if (next) {
-                      setActivePhoto(activePhoto + 1);
-                    } else {
-                      e.currentTarget.style.display = "none";
-                    }
-                  }}
-                />
-              ) : "🐕"}
-            </div>
+      {/* Back */}
+      <button
+        onClick={() => navigate(-1)}
+        style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "24px", padding: "9px 18px", borderRadius: "10px", border: "1px solid #efdfd1", background: "white", color: "#6f5848", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
+      >
+        ← Back
+      </button>
 
-            {photos.length > 1 && (
-              <div style={{ display: "flex", gap: "10px", marginTop: "15px", overflowX: "auto" }}>
-                {photos.map((photo, i) => (
-                  <img
-                    key={i}
-                    src={photo}
-                    alt={`${dog.name} ${i + 1}`}
-                    onClick={() => setActivePhoto(i)}
-                    style={{
-                      width: "80px", height: "80px", objectFit: "cover", borderRadius: "10px",
-                      cursor: "pointer", flexShrink: 0,
-                      border: i === activePhoto ? "3px solid #d97706" : "3px solid transparent",
-                      opacity: i === activePhoto ? 1 : 0.7,
-                    }}
-                  />
-                ))}
-              </div>
-            )}
+      <div style={{ display: "flex", gap: "36px", alignItems: "flex-start" }}>
 
-            {dog.energy_level && (
-              <div className="trait-card" style={{ marginTop: "20px" }}>
-                <span className="trait-label">Energy</span>
-                <span className="trait-value">{dog.energy_level}</span>
-              </div>
-            )}
+        {/* ── Left: photos ── */}
+        <div style={{ width: "400px", flexShrink: 0 }}>
+          <div style={{ width: "100%", height: "400px", borderRadius: "20px", overflow: "hidden", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", border: "1px solid #efdfd1" }}>
+            {currentPhoto
+              ? <img src={currentPhoto} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none"; }} />
+              : "🐕"}
           </div>
 
-          <div style={{ flex: "1.5" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div>
-                <h1 style={{ fontSize: "48px", margin: "0 0 10px 0" }}>{dog.name}</h1>
-                <p style={{ fontSize: "20px", color: "#d97706", fontWeight: "bold" }}>{dog.breed}</p>
-              </div>
-              <button
-                onClick={handleSave}
-                style={{ background: "none", border: "1px solid #efdfd1", padding: "10px 20px", borderRadius: "12px", cursor: "pointer", fontSize: "18px" }}
-              >
-                {isSaved ? "❤️ Saved" : "🤍 Save"}
-              </button>
+          {photos.length > 1 && (
+            <div style={{ display: "flex", gap: "8px", marginTop: "12px", overflowX: "auto", paddingBottom: "4px" }}>
+              {photos.map((photo, i) => (
+                <img
+                  key={i}
+                  src={photo}
+                  alt={`${dog.name} ${i + 1}`}
+                  onClick={() => setActivePhoto(i)}
+                  style={{ width: "72px", height: "72px", objectFit: "cover", borderRadius: "10px", cursor: "pointer", flexShrink: 0, border: i === activePhoto ? "3px solid #d97706" : "3px solid transparent", opacity: i === activePhoto ? 1 : 0.65, transition: "all 0.15s" }}
+                />
+              ))}
             </div>
+          )}
 
-            <hr style={{ margin: "30px 0", border: "none", borderTop: "1px solid #efdfd1" }} />
-
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "30px" }}>
+          {/* Energy level badge */}
+          {dog.energy_level && (
+            <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "10px", background: "white", border: "1px solid #efdfd1", borderRadius: "14px", padding: "14px 18px" }}>
+              <span style={{ fontSize: "20px" }}>⚡</span>
               <div>
-                <p style={{ color: "#6f5848", marginBottom: "5px" }}>Age</p>
-                <p style={{ fontWeight: "bold", fontSize: "18px" }}>{dog.age_years} {dog.age_years == 1 ? "year" : "years"}</p>
+                <div style={{ fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>Energy level</div>
+                <div style={{ fontSize: "15px", fontWeight: "700", color: "#2f241d", textTransform: "capitalize" }}>{dog.energy_level}</div>
               </div>
-              <div>
-                <p style={{ color: "#6f5848", marginBottom: "5px" }}>Size</p>
-                <p style={{ fontWeight: "bold", fontSize: "18px" }}>{dog.size}</p>
-              </div>
-              <div>
-                <p style={{ color: "#6f5848", marginBottom: "5px" }}>Gender</p>
-                <p style={{ fontWeight: "bold", fontSize: "18px" }}>{dog.gender}</p>
-              </div>
-              <div>
-                <p style={{ color: "#6f5848", marginBottom: "5px" }}>Status</p>
-                <p style={{ fontWeight: "bold", fontSize: "18px", color: "#16a34a" }}>{dog.status}</p>
-              </div>
-              {dog.good_with_kids !== null && (
-                <div>
-                  <p style={{ color: "#6f5848", marginBottom: "5px" }}>Good with Kids</p>
-                  <p style={{ fontWeight: "bold", fontSize: "18px" }}>{dog.good_with_kids == "1" ? "Yes" : "No"}</p>
-                </div>
-              )}
-              {dog.good_with_dogs !== null && (
-                <div>
-                  <p style={{ color: "#6f5848", marginBottom: "5px" }}>Good with Dogs</p>
-                  <p style={{ fontWeight: "bold", fontSize: "18px" }}>{dog.good_with_dogs == "1" ? "Yes" : "No"}</p>
-                </div>
-              )}
-              {dog.good_with_cats !== null && (
-                <div>
-                  <p style={{ color: "#6f5848", marginBottom: "5px" }}>Good with Cats</p>
-                  <p style={{ fontWeight: "bold", fontSize: "18px" }}>{dog.good_with_cats == "1" ? "Yes" : "No"}</p>
-                </div>
-              )}
-              {dog.apartment_friendly !== null && (
-                <div>
-                  <p style={{ color: "#6f5848", marginBottom: "5px" }}>Apartment Friendly</p>
-                  <p style={{ fontWeight: "bold", fontSize: "18px" }}>{dog.apartment_friendly == "1" ? "Yes" : "No"}</p>
-                </div>
-              )}
             </div>
+          )}
+        </div>
 
-            <div style={{ marginBottom: "40px" }}>
-              <h3 style={{ marginBottom: "15px" }}>About {dog.name}</h3>
-              <p style={{ lineHeight: "1.6", color: "#2f241d", fontSize: "17px" }}>
-                {dog.description || "No description provided. Contact the shelter for more details."}
-              </p>
-            </div>
+        {/* ── Right: details ── */}
+        <div style={{ flex: 1, minWidth: 0 }}>
 
+          {/* Name + save */}
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "6px" }}>
+            <h1 style={{ margin: 0, fontSize: "36px", fontWeight: "800", color: "#2f241d", lineHeight: 1.1 }}>{dog.name}</h1>
             <button
-              className="btn btn-primary"
-              style={{ width: "100%", padding: "20px", fontSize: "18px" }}
-              onClick={() => navigate("/apply", { state: { dogId: dog.dog_id, dogName: dog.name } })}
+              onClick={handleSave}
+              style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "12px", border: isSaved ? "1px solid #fca5a5" : "1px solid #efdfd1", background: isSaved ? "#fff1f2" : "white", color: isSaved ? "#e11d48" : "#6f5848", fontWeight: "700", fontSize: "15px", cursor: "pointer", transition: "all 0.15s" }}
             >
-              Start Adoption Application
+              <span style={{ fontSize: "18px" }}>{isSaved ? "♥" : "♡"}</span>
+              {isSaved ? "Saved" : "Save"}
             </button>
           </div>
+
+          <p style={{ margin: "0 0 6px 0", fontSize: "18px", color: "#d97706", fontWeight: "700" }}>{dog.breed}</p>
+
+          {/* Status pill */}
+          <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: "20px", background: dog.status === "available" ? "#dcfce7" : "#f3f4f6", color: dog.status === "available" ? "#16a34a" : "#6b7280", fontSize: "13px", fontWeight: "700", marginBottom: "24px", textTransform: "capitalize" }}>
+            {dog.status || "Available"}
+          </span>
+
+          {/* Stats grid */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px", marginBottom: "24px" }}>
+            <StatBox label="Age" value={`${dog.age_years} ${dog.age_years == 1 ? "yr" : "yrs"}`} />
+            <StatBox label="Size" value={dog.size} />
+            <StatBox label="Gender" value={dog.gender} />
+          </div>
+
+          {/* Compatibility tags */}
+          {traits.length > 0 && (
+            <div style={{ marginBottom: "24px" }}>
+              <p style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>Compatibility</p>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {traits.map(t => (
+                  <span key={t.label} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "7px 14px", borderRadius: "10px", fontSize: "13px", fontWeight: "600", background: t.ok ? "#f0fdf4" : "#fef2f2", color: t.ok ? "#16a34a" : "#dc2626", border: `1px solid ${t.ok ? "#bbf7d0" : "#fecaca"}` }}>
+                    {t.ok ? "✓" : "✗"} {t.label}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Description */}
+          <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "16px", padding: "20px 24px", marginBottom: "24px" }}>
+            <p style={{ margin: "0 0 8px 0", fontSize: "13px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>About {dog.name}</p>
+            <p style={{ margin: 0, lineHeight: "1.7", color: "#2f241d", fontSize: "15px" }}>
+              {dog.description || "No description provided. Contact the shelter for more details."}
+            </p>
+          </div>
+
+          {/* CTA */}
+          <button
+            onClick={() => navigate("/apply", { state: { dogId: dog.dog_id, dogName: dog.name } })}
+            style={{ width: "100%", padding: "16px", borderRadius: "14px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "17px", cursor: "pointer", boxShadow: "0 4px 16px rgba(217,119,6,0.3)", transition: "opacity 0.15s" }}
+            onMouseEnter={e => (e.target.style.opacity = "0.88")}
+            onMouseLeave={e => (e.target.style.opacity = "1")}
+          >
+            Start Adoption Application
+          </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatBox({ label, value }) {
+  return (
+    <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "14px", padding: "14px 16px" }}>
+      <div style={{ fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>{label}</div>
+      <div style={{ fontSize: "16px", fontWeight: "700", color: "#2f241d", textTransform: "capitalize" }}>{value}</div>
     </div>
   );
 }
