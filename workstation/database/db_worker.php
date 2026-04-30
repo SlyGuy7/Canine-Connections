@@ -83,7 +83,7 @@ if (!$db) {
 }
 
 $queues = [
-    'db.auth.register','db.auth.login','db.auth.resetPassword','db.profile.update','db.account.delete',
+    'db.auth.register','db.auth.login','db.auth.resetPassword','db.auth.verify','db.profile.update','db.account.delete',
     'db.shelters.list','db.shelters.get','db.shelters.upsert',
     'db.api.key.get','db.api.key.regenerate','db.api.key.validate','db.api.logs','db.api.log','db.api.dog.upsert',
     'db.dogs.list','db.dogs.get',
@@ -159,15 +159,16 @@ function handleQuery($queue, $data, $db) {
             $role=$db->real_escape_string($data["role"]??'adopter');
             $check=$db->query("SELECT user_id FROM users WHERE email='{$email}' LIMIT 1");
             if ($check && $check->num_rows>0) return ["success"=>false,"error"=>"Email already registered"];
-            $sql="INSERT INTO users (email,password_hash,first_name,last_name,phone,address,role) VALUES ('{$email}','{$passwordHash}','{$firstName}','{$lastName}','{$phone}','{$address}','{$role}')";
+            $token=$db->real_escape_string(bin2hex(random_bytes(32)));
+            $sql="INSERT INTO users (email,password_hash,first_name,last_name,phone,address,role,email_verified,verification_token) VALUES ('{$email}','{$passwordHash}','{$firstName}','{$lastName}','{$phone}','{$address}','{$role}',0,'{$token}')";
             logMsg("Executing SQL: ".$sql);
             if (!$db->query($sql)) return ["success"=>false,"error"=>$db->error];
-            return ["success"=>true,"user_id"=>$db->insert_id];
+            return ["success"=>true,"user_id"=>$db->insert_id,"verification_token"=>$token];
 
         case "db.auth.login":
             if (!isset($data["email"])) return ["success"=>false,"error"=>"Missing email"];
             $email=$db->real_escape_string($data["email"]);
-            $sql="SELECT user_id,email,password_hash,role,first_name,last_name FROM users WHERE email='{$email}' LIMIT 1";
+            $sql="SELECT user_id,email,password_hash,role,first_name,last_name,email_verified,login_notifications FROM users WHERE email='{$email}' LIMIT 1";
             logMsg("Executing SQL: ".$sql);
             $result=$db->query($sql);
             if (!$result||$result->num_rows===0) return ["success"=>false,"user"=>null];
@@ -180,14 +181,24 @@ function handleQuery($queue, $data, $db) {
             if ($db->affected_rows===0) return ["success"=>false,"error"=>"User not found"];
             return ["success"=>true];
 
+        case "db.auth.verify":
+            if (!isset($data["token"])) return ["success"=>false,"error"=>"Missing token"];
+            $token=$db->real_escape_string($data["token"]);
+            $result=$db->query("SELECT user_id FROM users WHERE verification_token='{$token}' AND email_verified=0 LIMIT 1");
+            if (!$result||$result->num_rows===0) return ["success"=>false,"error"=>"Invalid or expired verification link"];
+            $row=$result->fetch_assoc();
+            $db->query("UPDATE users SET email_verified=1,verification_token=NULL WHERE user_id={$row['user_id']}");
+            return ["success"=>true];
+
         case "db.profile.update":
             if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
             $userId=(int)$data["user_id"]; $firstName=$db->real_escape_string($data["first_name"]??'');
             $lastName=$db->real_escape_string($data["last_name"]??''); $phone=$db->real_escape_string($data["phone"]??'');
             $address=$db->real_escape_string($data["address"]??'');
-            $sql="UPDATE users SET first_name='{$firstName}',last_name='{$lastName}',phone='{$phone}',address='{$address}' WHERE user_id={$userId}";
+            $setParts=["first_name='{$firstName}'","last_name='{$lastName}'","phone='{$phone}'","address='{$address}'"];
+            if (array_key_exists("login_notifications",$data)) $setParts[]="login_notifications=".((int)$data["login_notifications"]);
+            $sql="UPDATE users SET ".implode(",",$setParts)." WHERE user_id={$userId}";
             logMsg("Executing SQL: ".$sql); $db->query($sql);
-            if ($db->affected_rows===0) return ["success"=>false,"error"=>"User not found"];
             return ["success"=>true];
 
         case "db.account.delete":
