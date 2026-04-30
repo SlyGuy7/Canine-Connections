@@ -187,8 +187,11 @@ function handleQuery($queue, $data, $db) {
             $result=$db->query("SELECT user_id FROM users WHERE verification_token='{$token}' AND email_verified=0 LIMIT 1");
             if (!$result||$result->num_rows===0) return ["success"=>false,"error"=>"Invalid or expired verification link"];
             $row=$result->fetch_assoc();
-            $db->query("UPDATE users SET email_verified=1,verification_token=NULL WHERE user_id={$row['user_id']}");
-            return ["success"=>true];
+            $userId=(int)$row['user_id'];
+            $db->query("UPDATE users SET email_verified=1,verification_token=NULL WHERE user_id={$userId}");
+            if ($db->affected_rows===0) return ["success"=>false,"error"=>"Verification failed"];
+            logMsg("Email verified for user_id={$userId}");
+            return ["success"=>true,"user_id"=>$userId];
 
         case "db.profile.update":
             if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
@@ -232,7 +235,7 @@ function handleQuery($queue, $data, $db) {
             return $dog?["success"=>true,"dog"=>$dog]:["success"=>false,"error"=>"Dog not found"];
 
         case "db.shelters.list":
-            $result=$db->query("SELECT * FROM shelters");
+            $result=$db->query("SELECT * FROM shelters ORDER BY name ASC");
             if (!$result) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"shelters"=>fetchAllAssoc($result)];
 
