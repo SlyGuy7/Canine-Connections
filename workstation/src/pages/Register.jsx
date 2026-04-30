@@ -101,14 +101,12 @@ export default function Register() {
         email,
         password,
         confirm,
-        idVerificationComplete: true // Tells backend the files were uploaded
+        app_url: window.location.origin,
+        idVerificationComplete: true,
       });
 
       if (result.success) {
         setLoading(false);
-        localStorage.setItem("userFirstName", firstName);
-        localStorage.setItem("userLastName", lastName);
-        localStorage.setItem("userFullName", `${firstName} ${lastName}`);
         navigate("/register-success");
         return;
       }

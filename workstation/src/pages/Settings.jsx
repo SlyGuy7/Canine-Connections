@@ -104,7 +104,24 @@ export default function Settings() {
   const [deleting, setDeleting]   = useState(false)
 
   const [notifs, setNotifs] = useState({ applicationUpdates: true, newMatches: true, meetGreetReminders: false, newsletter: false })
-  const [privacy, setPrivacy] = useState({ loginAlerts: false, shareProfile: true, usageData: false })
+  const [privacy, setPrivacy] = useState({
+    loginAlerts: localStorage.getItem('loginAlerts') === 'true',
+    shareProfile: true,
+    usageData: false,
+  })
+
+  const handleLoginAlertsToggle = async (val) => {
+    setPrivacy(p => ({ ...p, loginAlerts: val }))
+    localStorage.setItem('loginAlerts', val ? 'true' : 'false')
+    const userId = localStorage.getItem('userId')
+    if (!userId) return
+    try {
+      await sendMessage('request.profile.update', {
+        user_id: parseInt(userId),
+        login_notifications: val,
+      })
+    } catch {}
+  }
 
   const handlePasswordSave = async () => {
     if (!passwords.oldPassword || !passwords.newPassword || !passwords.confirmPassword) {
@@ -310,7 +327,7 @@ export default function Settings() {
             <>
               <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #efdfd1', padding: '24px 28px' }}>
                 <h2 style={{ margin: '0 0 20px 0', fontSize: '17px', fontWeight: '700', color: '#2f241d' }}>Account Security</h2>
-                <ToggleRow label='Login alerts' description='Email me when a new device logs into my account' checked={privacy.loginAlerts} onChange={v => setPrivacy(p => ({ ...p, loginAlerts: v }))} />
+                <ToggleRow label='Login alerts' description='Email me when a new device logs into my account' checked={privacy.loginAlerts} onChange={handleLoginAlertsToggle} />
               </div>
               <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #efdfd1', padding: '24px 28px' }}>
                 <h2 style={{ margin: '0 0 20px 0', fontSize: '17px', fontWeight: '700', color: '#2f241d' }}>Data Sharing</h2>

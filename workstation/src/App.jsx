@@ -19,6 +19,7 @@ import QuizResults from "./pages/Quizresults"
 import ApplicationForm from "./pages/ApplicationForm"
 import Applications from "./pages/Applications"
 import Register from "./pages/Register"
+import VerifyEmail from "./pages/VerifyEmail"
 import Journal from "./pages/Journal"
 import Profile from "./pages/Profile"
 import NotFound from "./pages/NotFound"
@@ -53,6 +54,7 @@ export default function App() {
       <Route path="/login"           element={<Navigate to="/" replace />} />
       <Route path="/register"        element={<Register />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/verify-email" element={<VerifyEmail />} />
       
       {/* Admin Pages (No User Sidebar) */}
       <Route path="/admin"              element={<AdminLogin />} />

@@ -1,0 +1,78 @@
+import React, { useState, useEffect } from "react"
+import { useNavigate, useSearchParams } from "react-router-dom"
+import { sendMessage } from "../services/messaging"
+
+export default function VerifyEmail() {
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
+  const [status, setStatus] = useState("verifying")
+  const [error, setError] = useState("")
+
+  useEffect(() => {
+    const token = searchParams.get("token")
+    if (!token) {
+      setStatus("error")
+      setError("No verification token found in the link.")
+      return
+    }
+    sendMessage("request.auth.verify", { token })
+      .then(result => {
+        if (result?.success) {
+          setStatus("success")
+        } else {
+          setStatus("error")
+          setError(result?.error || "Verification failed. The link may have expired.")
+        }
+      })
+      .catch(() => {
+        setStatus("error")
+        setError("Could not connect. Please try again.")
+      })
+  }, [])
+
+  return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f7efe7", padding: "20px" }}>
+      <div style={{ background: "white", borderRadius: "24px", padding: "52px 40px", maxWidth: "460px", width: "100%", textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.08)", border: "1px solid #efdfd1" }}>
+
+        {status === "verifying" && (
+          <>
+            <div style={{ fontSize: "56px", marginBottom: "20px" }}>🐾</div>
+            <h2 style={{ color: "#2f241d", fontSize: "26px", fontWeight: "800", margin: "0 0 12px 0" }}>Verifying your email…</h2>
+            <p style={{ color: "#6f5848", fontSize: "16px", margin: 0 }}>Just a moment while we activate your account.</p>
+          </>
+        )}
+
+        {status === "success" && (
+          <>
+            <div style={{ fontSize: "56px", marginBottom: "20px" }}>✅</div>
+            <h2 style={{ color: "#2f241d", fontSize: "26px", fontWeight: "800", margin: "0 0 12px 0" }}>Email Verified!</h2>
+            <p style={{ color: "#6f5848", fontSize: "16px", margin: "0 0 32px 0" }}>
+              Your account is now active. You can log in and start your adoption journey.
+            </p>
+            <button
+              onClick={() => navigate("/")}
+              style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "17px", cursor: "pointer" }}
+            >
+              Go to Login
+            </button>
+          </>
+        )}
+
+        {status === "error" && (
+          <>
+            <div style={{ fontSize: "56px", marginBottom: "20px" }}>❌</div>
+            <h2 style={{ color: "#2f241d", fontSize: "26px", fontWeight: "800", margin: "0 0 12px 0" }}>Verification Failed</h2>
+            <p style={{ color: "#6f5848", fontSize: "16px", margin: "0 0 32px 0" }}>{error}</p>
+            <button
+              onClick={() => navigate("/")}
+              style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "17px", cursor: "pointer" }}
+            >
+              Back to Home
+            </button>
+          </>
+        )}
+
+      </div>
+    </div>
+  )
+}

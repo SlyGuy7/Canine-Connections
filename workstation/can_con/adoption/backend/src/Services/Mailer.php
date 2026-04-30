@@ -40,6 +40,48 @@ final class Mailer
         );
     }
 
+    public static function verifyEmail(string $to, string $firstName, string $verifyUrl): bool
+    {
+        return self::send(
+            $to,
+            'Verify Your Email — Canine Connections',
+            "
+            <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
+                <h1 style='color:#b45309'>Welcome to Canine Connections!</h1>
+                <p>Hi {$firstName},</p>
+                <p>Thanks for registering! Please verify your email address to activate your account.</p>
+                <div style='text-align:center;margin:32px 0'>
+                    <a href='{$verifyUrl}' style='background:#d97706;color:white;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block'>Verify My Email</a>
+                </div>
+                <p style='color:#999;font-size:13px'>If the button doesn't work, copy this link into your browser:<br>{$verifyUrl}</p>
+                <p style='color:#999;font-size:13px'>If you did not create an account, you can safely ignore this email.</p>
+                <br>
+                <p style='color:#666'>The Canine Connections Team</p>
+            </div>
+            "
+        );
+    }
+
+    public static function loginAlert(string $to, string $firstName): bool
+    {
+        $time = date('F j, Y \a\t g:i A T');
+        return self::send(
+            $to,
+            'New Login Detected — Canine Connections',
+            "
+            <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
+                <h1 style='color:#b45309'>New Login Detected</h1>
+                <p>Hi {$firstName},</p>
+                <p>We noticed a new login to your Canine Connections account on <strong>{$time}</strong>.</p>
+                <p>If this was you, no action is needed.</p>
+                <p>If you did not log in, please change your password immediately by visiting your account settings.</p>
+                <br>
+                <p style='color:#666'>The Canine Connections Team</p>
+            </div>
+            "
+        );
+    }
+
     public static function passwordReset(string $to, string $firstName): bool
     {
         return self::send(

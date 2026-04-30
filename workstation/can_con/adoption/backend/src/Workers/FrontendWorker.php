@@ -21,6 +21,7 @@ final class FrontendWorker
 
         $this->mq->registerConsumer('request.auth.register',       [$this, 'handleRegister']);
         $this->mq->registerConsumer('request.auth.login',          [$this, 'handleLogin']);
+        $this->mq->registerConsumer('request.auth.verify',         [$this, 'handleVerifyEmail']);
         $this->mq->registerConsumer('request.auth.resetPassword',  [$this, 'handleResetPassword']);
         $this->mq->registerConsumer('request.profile.update',      [$this, 'handleProfileUpdate']);
         $this->mq->registerConsumer('request.account.delete',      [$this, 'handleAccountDelete']);
@@ -173,13 +174,19 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'email and password are required'], $corrId);
                     return;
                 }
+                if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+                    $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'Please enter a valid email address'], $corrId);
+                    return;
+                }
+                $firstName = $data['firstName'] ?? $data['first_name'] ?? '';
+                $lastName  = $data['lastName']  ?? $data['last_name']  ?? '';
                 $result = $mq->publishAndWait('bridge.auth.register', [
                     'email'         => $data['email'],
                     'password_hash' => $this->enc->hashPassword($data['password']),
-                    'first_name'    => $this->encryptIfPresent($data['first_name'] ?? ''),
-                    'last_name'     => $this->encryptIfPresent($data['last_name']  ?? ''),
-                    'phone'         => $this->encryptIfPresent($data['phone']      ?? ''),
-                    'address'       => $this->encryptIfPresent($data['address']    ?? ''),
+                    'first_name'    => $this->encryptIfPresent($firstName),
+                    'last_name'     => $this->encryptIfPresent($lastName),
+                    'phone'         => $this->encryptIfPresent($data['phone']    ?? ''),
+                    'address'       => $this->encryptIfPresent($data['address']  ?? ''),
                     'role'          => 'adopter',
                 ], $corrId);
                 if (!$result || empty($result['success'])) {
@@ -190,11 +197,15 @@ final class FrontendWorker
                     'success'    => true,
                     'user_id'    => $result['user_id'] ?? null,
                     'email'      => $data['email'],
-                    'first_name' => $data['first_name'] ?? '',
-                    'last_name'  => $data['last_name']  ?? '',
+                    'first_name' => $firstName,
+                    'last_name'  => $lastName,
                     'role'       => 'adopter',
                 ], $corrId);
-                // Mailer::welcome($data['email'], $data['first_name'] ?? '');
+                $token  = $result['verification_token'] ?? null;
+                $appUrl = rtrim($data['app_url'] ?? 'http://localhost:7012', '/');
+                if ($token) {
+                    Mailer::verifyEmail($data['email'], $firstName, "{$appUrl}/verify-email?token={$token}");
+                }
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleRegister: {$e->getMessage()}\n";
                 $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'Registration failed'], $corrId);
@@ -218,6 +229,10 @@ final class FrontendWorker
                     return;
                 }
                 $user = $result['user'];
+                if (isset($user['email_verified']) && (int)$user['email_verified'] === 0) {
+                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Please verify your email before logging in. Check your inbox for the verification link.'], $corrId);
+                    return;
+                }
                 if (!password_verify($data['password'], $user['password_hash'])) {
                     // CRITICAL: Security log for Fail2Ban monitoring
                     echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . "\n";
@@ -229,9 +244,30 @@ final class FrontendWorker
                 $user['first_name'] = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : '';
                 $user['last_name']  = isset($user['last_name'])  && $user['last_name']  !== '' ? $this->dec($user['last_name'])  : '';
                 $this->respond($mq, 'response.auth.login', $replyTo, ['success' => true, 'user' => $user], $corrId);
+                if (!empty($user['login_notifications'])) {
+                    Mailer::loginAlert($user['email'] ?? $data['email'], $user['first_name']);
+                }
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleLogin: {$e->getMessage()}\n";
                 $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Login failed'], $corrId);
+            }
+        }, $msg);
+    }
+
+    public function handleVerifyEmail(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            try {
+                if (empty($data['token'])) {
+                    $this->respond($mq, 'response.auth.verify', $replyTo, ['success' => false, 'error' => 'Verification token is required'], $corrId);
+                    return;
+                }
+                $result = $mq->publishAndWait('bridge.auth.verify', ['token' => $data['token']], $corrId);
+                $this->respond($mq, 'response.auth.verify', $replyTo, $result ?? ['success' => false, 'error' => 'Verification failed'], $corrId);
+            } catch (\Throwable $e) {
+                echo "[FrontendWorker][ERROR] handleVerifyEmail: {$e->getMessage()}\n";
+                $this->respond($mq, 'response.auth.verify', $replyTo, ['success' => false, 'error' => 'Verification failed'], $corrId);
             }
         }, $msg);
     }
@@ -284,13 +320,17 @@ final class FrontendWorker
                     $this->respond($mq, 'response.profile.update', $replyTo, ['success' => false, 'error' => 'user_id is required'], $corrId);
                     return;
                 }
-                $result = $mq->publishAndWait('bridge.profile.update', [
+                $payload = [
                     'user_id'    => $userId,
                     'first_name' => $this->encryptIfPresent($data['first_name'] ?? ''),
                     'last_name'  => $this->encryptIfPresent($data['last_name']  ?? ''),
                     'phone'      => $this->encryptIfPresent($data['phone']      ?? ''),
                     'address'    => $this->encryptIfPresent($data['address']    ?? ''),
-                ], $corrId);
+                ];
+                if (array_key_exists('login_notifications', $data)) {
+                    $payload['login_notifications'] = $data['login_notifications'] ? 1 : 0;
+                }
+                $result = $mq->publishAndWait('bridge.profile.update', $payload, $corrId);
                 $this->respond($mq, 'response.profile.update', $replyTo, $result ?? ['success' => false, 'error' => 'Could not update profile'], $corrId);
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleProfileUpdate: {$e->getMessage()}\n";

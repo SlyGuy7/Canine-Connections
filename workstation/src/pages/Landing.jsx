@@ -4,113 +4,143 @@ import { sendMessage } from "../services/messaging"
 import AuthModal from "../components/AuthModal"
 
 function CategoryPreviewModal({ category, dogs, close, navigate }) {
-  if (!category) return null;
+  if (!category) return null
 
-  let previewDogs = [];
-  let title = "";
-  let subtitle = "";
+  let previewDogs = []
+  let title = ""
+  let subtitle = ""
 
   if (category === "Small Dogs") {
-    previewDogs = dogs.filter((d) => d.size === "Small");
-    title = "Little Pups, Big Hearts";
-    subtitle = "These bite-sized companions are perfectly sized for any home.";
+    previewDogs = dogs.filter((d) => d.size === "Small")
+    title = "Little Pups, Big Hearts"
+    subtitle = "These bite-sized companions are perfectly sized for any home."
   } else if (category === "Large Dogs") {
-    previewDogs = dogs.filter((d) => d.size === "Large");
-    title = "Gentle Giants";
-    subtitle = "Looking for a bigger companion? Meet our large breed dogs.";
+    previewDogs = dogs.filter((d) => d.size === "Large")
+    title = "Gentle Giants"
+    subtitle = "Looking for a bigger companion? Meet our large breed dogs."
   } else if (category === "Puppies") {
-    previewDogs = dogs.filter((d) => d.ageGroup === "Puppy");
-    title = "Playful Puppies";
-    subtitle = "Young, energetic, and ready to join your family.";
+    previewDogs = dogs.filter((d) => d.ageGroup === "Puppy")
+    title = "Playful Puppies"
+    subtitle = "Young, energetic, and ready to join your family."
   }
 
   if (previewDogs.length < 4 && dogs.length > 0) {
-    const extraDogs = dogs.filter(d => !previewDogs.includes(d));
-    previewDogs = [...previewDogs, ...extraDogs].slice(0, 4);
+    const extra = dogs.filter(d => !previewDogs.includes(d))
+    previewDogs = [...previewDogs, ...extra].slice(0, 4)
   } else {
-    previewDogs = previewDogs.slice(0, 4);
+    previewDogs = previewDogs.slice(0, 4)
   }
 
   return (
-    <div className="modal-overlay" onClick={close}>
+    <div
+      onClick={close}
+      style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}
+    >
       <div
-        className="modal-content"
-        style={{ width: "850px", padding: "40px", backgroundColor: "#fffaf5", borderRadius: "24px", position: "relative", boxShadow: "0 24px 70px rgba(0,0,0,0.28)" }}
-        onClick={(e) => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: "860px", background: "#fffaf5", borderRadius: "24px", padding: "40px", position: "relative", boxShadow: "0 24px 70px rgba(0,0,0,0.28)", maxHeight: "90vh", overflowY: "auto" }}
       >
-        <button className="close-x" onClick={close} style={{ position: "absolute", top: "20px", right: "25px", background: "transparent", border: "none", fontSize: "30px", cursor: "pointer", color: "#2f241d" }}>
-          &times;
+        <button
+          onClick={close}
+          style={{ position: "absolute", top: "16px", right: "20px", background: "none", border: "none", fontSize: "26px", cursor: "pointer", color: "#6f5848", lineHeight: 1, padding: "4px 8px", borderRadius: "8px" }}
+        >
+          ×
         </button>
-        <h2 style={{ marginTop: 0, color: "#2f241d", fontSize: "32px" }}>{title}</h2>
-        <p style={{ color: "#6f5848", marginBottom: "30px", fontSize: "16px" }}>{subtitle}</p>
-        <div style={{ display: "flex", gap: "15px", marginBottom: "35px" }}>
-          {previewDogs.length > 0 ? (
-            previewDogs.map((dog) => (
-              <div key={dog.id} style={{ flex: 1, border: "1px solid #efdfd1", borderRadius: "16px", overflow: "hidden", textAlign: "center", background: "white", boxShadow: "0 4px 10px rgba(0,0,0,0.05)" }}>
-                {dog.image ? (
-                  <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "150px", objectFit: "cover" }} />
-                ) : (
-                  <div style={{ width: "100%", height: "150px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>🐕</div>
-                )}
-                <div style={{ padding: "15px" }}>
-                  <h4 style={{ margin: "0 0 5px 0", color: "#2f241d", fontSize: "18px" }}>{dog.name}</h4>
-                  <p style={{ margin: 0, fontSize: "13px", color: "#d97706", fontWeight: "bold" }}>{dog.breed}</p>
-                </div>
+        <h2 style={{ marginTop: 0, color: "#2f241d", fontSize: "28px", fontWeight: "800" }}>{title}</h2>
+        <p style={{ color: "#6f5848", marginBottom: "28px", fontSize: "15px" }}>{subtitle}</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "16px", marginBottom: "32px" }}>
+          {previewDogs.length > 0 ? previewDogs.map((dog) => (
+            <div key={dog.id} style={{ border: "1px solid #efdfd1", borderRadius: "16px", overflow: "hidden", background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+              {dog.image ? (
+                <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "140px", objectFit: "cover" }} />
+              ) : (
+                <div style={{ width: "100%", height: "140px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "44px" }}>🐕</div>
+              )}
+              <div style={{ padding: "14px" }}>
+                <h4 style={{ margin: "0 0 4px 0", color: "#2f241d", fontSize: "16px", fontWeight: "700" }}>{dog.name}</h4>
+                <p style={{ margin: 0, fontSize: "12px", color: "#d97706", fontWeight: "600" }}>{dog.breed}</p>
               </div>
-            ))
-          ) : (
-            <div style={{ width: "100%", textAlign: "center", padding: "40px 0", color: "#6f5848" }}>
+            </div>
+          )) : (
+            <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "#6f5848" }}>
               Fetching pups... 🦴
             </div>
           )}
         </div>
         <button
-          style={{ width: "100%", fontSize: "18px", padding: "16px", background: "#d97706", color: "white", border: "none", borderRadius: "12px", fontWeight: "bold", cursor: "pointer" }}
-          onClick={() => { close(); navigate("/browse-dogs"); }}
+          style={{ width: "100%", fontSize: "17px", padding: "16px", background: "#d97706", color: "white", border: "none", borderRadius: "12px", fontWeight: "700", cursor: "pointer" }}
+          onClick={() => { close(); navigate("/browse-dogs") }}
         >
           See All {category}
         </button>
       </div>
     </div>
-  );
+  )
 }
 
 function DogModal({ dog, close, requireAuth }) {
-  if (!dog) return null;
+  if (!dog) return null
   return (
-    <div className="modal-overlay" onClick={close}>
-      <div className="modal-content" style={{ width: "900px", overflow: "hidden", display: "flex", flexDirection: "column" }} onClick={(e) => e.stopPropagation()}>
-        <button className="close-x" onClick={close}>&times;</button>
+    <div
+      onClick={close}
+      style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}
+    >
+      <div
+        onClick={e => e.stopPropagation()}
+        style={{ width: "100%", maxWidth: "520px", background: "white", borderRadius: "24px", overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.25)", position: "relative" }}
+      >
+        <button
+          onClick={close}
+          style={{ position: "absolute", top: "12px", right: "16px", background: "rgba(0,0,0,0.35)", border: "none", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", fontSize: "18px", color: "white", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, lineHeight: 1 }}
+        >
+          ×
+        </button>
         {dog.image ? (
-          <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "340px", objectFit: "cover" }} />
+          <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "300px", objectFit: "cover" }} />
         ) : (
-          <div style={{ width: "100%", height: "340px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px" }}>🐕</div>
+          <div style={{ width: "100%", height: "300px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px" }}>🐕</div>
         )}
-        <div style={{ padding: "30px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div style={{ padding: "28px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
             <div>
-              <h2 style={{ fontSize: "32px", color: "#2f241d", margin: "0 0 5px 0" }}>{dog.name}</h2>
-              <p style={{ color: "#d97706", fontWeight: "bold", margin: 0, fontSize: "18px" }}>{dog.breed}</p>
+              <h2 style={{ fontSize: "28px", color: "#2f241d", margin: "0 0 4px 0", fontWeight: "800" }}>{dog.name}</h2>
+              <p style={{ color: "#d97706", fontWeight: "700", margin: 0, fontSize: "16px" }}>{dog.breed}</p>
             </div>
-            <div style={{ display: "flex", gap: "10px" }}>
-              <button className="nav-login-btn" onClick={requireAuth}>❤️ Save</button>
-              <button className="nav-register-btn" onClick={requireAuth}>Apply to Adopt</button>
-            </div>
+            {(dog.age_years || dog.size) && (
+              <div style={{ textAlign: "right" }}>
+                {dog.age_years && <p style={{ margin: "0 0 2px 0", fontSize: "13px", color: "#6f5848" }}>{dog.age_years} yr</p>}
+                {dog.size && <p style={{ margin: 0, fontSize: "13px", color: "#6f5848" }}>{dog.size}</p>}
+              </div>
+            )}
           </div>
-          <p style={{ margin: "20px 0", lineHeight: "1.6", color: "#5f4a3c", fontSize: "16px" }}>
+          <p style={{ margin: "0 0 24px 0", lineHeight: "1.6", color: "#5f4a3c", fontSize: "15px" }}>
             {dog.description || `${dog.name} is a wonderful ${dog.breed} looking for a forever home. They are fully vetted, microchipped, and ready to meet their new family.`}
           </p>
+          <div style={{ display: "flex", gap: "12px" }}>
+            <button
+              onClick={requireAuth}
+              style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "1px solid #efdfd1", background: "white", cursor: "pointer", fontWeight: "700", fontSize: "15px", color: "#2f241d" }}
+            >
+              🤍 Save
+            </button>
+            <button
+              onClick={requireAuth}
+              style={{ flex: 2, padding: "14px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", cursor: "pointer", fontWeight: "700", fontSize: "15px" }}
+            >
+              Apply to Adopt
+            </button>
+          </div>
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 const IconSmallDog = () => (
   <svg width="44" height="44" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
     <ellipse cx="26" cy="38" rx="16" ry="13" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
     <circle cx="26" cy="20" r="10" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
-    <ellipse cx="16" cy="14" rx="5" ry="7" fill="#fde6cf" stroke="#d97706" strokeWidth="2" transform="..." />
+    <ellipse cx="16" cy="14" rx="5" ry="7" fill="#fde6cf" stroke="#d97706" strokeWidth="2" />
     <ellipse cx="36" cy="14" rx="4" ry="6" fill="#fde6cf" stroke="#d97706" strokeWidth="2" transform="rotate(20 36 14)"/>
     <circle cx="23" cy="20" r="1.5" fill="#d97706"/>
     <circle cx="29" cy="20" r="1.5" fill="#d97706"/>
@@ -153,6 +183,12 @@ const IconShelter = () => (
   </svg>
 )
 
+const SHIMMER = {
+  background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)",
+  backgroundSize: "200% 100%",
+  animation: "shimmer 1.4s infinite",
+}
+
 export default function Landing() {
   const navigate = useNavigate()
   const [modalMode, setModalMode] = useState(null)
@@ -169,7 +205,7 @@ export default function Landing() {
             ...dog,
             id: dog.dog_id,
             image: dog.photos ? dog.photos.split(",")[0].trim() : "",
-            size: dog.size === "small" ? "Small" : dog.size === "medium" ? "Medium" : dog.size === "large" || dog.size === "extra_large" ? "Large" : "Medium",
+            size: dog.size === "small" ? "Small" : dog.size === "medium" ? "Medium" : (dog.size === "large" || dog.size === "extra_large") ? "Large" : "Medium",
             ageGroup: Number(dog.age_years) <= 1 ? "Puppy" : "Adult",
           })))
         }
@@ -186,10 +222,10 @@ export default function Landing() {
   }
 
   const categories = [
-    { label: "Small Dogs",  icon: <IconSmallDog />,  key: "Small Dogs" },
-    { label: "Large Dogs",  icon: <IconLargeDog />,  key: "Large Dogs" },
-    { label: "Puppies",     icon: <IconPaw />,       key: "Puppies"    },
-    { label: "Shelters",    icon: <IconShelter />,   key: "shelters"   },
+    { label: "Small Dogs", icon: <IconSmallDog />, key: "Small Dogs" },
+    { label: "Large Dogs", icon: <IconLargeDog />, key: "Large Dogs" },
+    { label: "Puppies",    icon: <IconPaw />,      key: "Puppies"    },
+    { label: "Shelters",   icon: <IconShelter />,  key: "shelters"   },
   ]
 
   const steps = [
@@ -215,9 +251,17 @@ export default function Landing() {
       {/* ── Hero ── */}
       <header className="hero-banner" style={{ height: "100vh", justifyContent: "center" }}>
         <h1 style={{ fontSize: "62px", margin: "0 0 16px 0", fontWeight: "800", lineHeight: 1.1 }}>Find your New Best Friend</h1>
-        <p style={{ fontSize: "20px", margin: 0, opacity: 0.9, maxWidth: "520px" }}>
+        <p style={{ fontSize: "20px", margin: "0 0 36px 0", opacity: 0.9, maxWidth: "520px" }}>
           Connect with local shelters and give a rescue dog the forever home they deserve.
         </p>
+        <button
+          onClick={() => setModalMode("register")}
+          style={{ padding: "16px 40px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "800", fontSize: "17px", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.2)", transition: "transform 0.2s" }}
+          onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+          onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+        >
+          Get Started — It's Free
+        </button>
       </header>
 
       {/* ── Stats Strip ── */}
@@ -259,7 +303,7 @@ export default function Landing() {
       </div>
 
       {/* ── How It Works ── */}
-      <section style={{ background: "#fff", padding: "80px 20px" }}>
+      <section id="how-it-works" style={{ background: "#fff", padding: "80px 20px" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "56px" }}>
             <h2 style={{ fontSize: "34px", fontWeight: "800", color: "#2f241d", margin: "0 0 10px 0" }}>How It Works</h2>
@@ -359,10 +403,11 @@ export default function Landing() {
             {dogsLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} style={{ background: "white", borderRadius: "16px", overflow: "hidden", border: "1px solid #efdfd1" }}>
-                  <div style={{ height: "180px", background: "#f0e6db" }} />
-                  <div style={{ padding: "16px" }}>
-                    <div style={{ height: "16px", background: "#f0e6db", borderRadius: "8px", marginBottom: "8px", width: "60%" }} />
-                    <div style={{ height: "12px", background: "#f0e6db", borderRadius: "8px", width: "40%" }} />
+                  <div style={{ height: "200px", ...SHIMMER }} />
+                  <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    <div style={{ height: "16px", borderRadius: "8px", width: "60%", ...SHIMMER }} />
+                    <div style={{ height: "12px", borderRadius: "8px", width: "40%", ...SHIMMER }} />
+                    <div style={{ height: "12px", borderRadius: "8px", width: "55%", ...SHIMMER }} />
                   </div>
                 </div>
               ))
@@ -376,13 +421,18 @@ export default function Landing() {
                   onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)" }}
                 >
                   {dog.image ? (
-                    <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "180px", objectFit: "cover" }} />
+                    <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "200px", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none" }} />
                   ) : (
-                    <div style={{ height: "180px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "56px" }}>🐕</div>
+                    <div style={{ height: "200px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "56px" }}>🐕</div>
                   )}
                   <div style={{ padding: "16px" }}>
                     <h3 style={{ margin: "0 0 4px 0", fontSize: "17px", fontWeight: "700", color: "#2f241d" }}>{dog.name}</h3>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#d97706", fontWeight: "600" }}>{dog.breed}</p>
+                    <p style={{ margin: "0 0 2px 0", fontSize: "13px", color: "#d97706", fontWeight: "600" }}>{dog.breed}</p>
+                    {(dog.age_years || dog.size) && (
+                      <p style={{ margin: 0, fontSize: "12px", color: "#a8a29e" }}>
+                        {[dog.age_years && `${dog.age_years} yr`, dog.size, dog.gender].filter(Boolean).join(" · ")}
+                      </p>
+                    )}
                   </div>
                 </div>
               ))
@@ -391,7 +441,7 @@ export default function Landing() {
             {/* See More Card */}
             <div
               onClick={() => setModalMode("register")}
-              style={{ background: "#2f241d", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", cursor: "pointer", textAlign: "center", minHeight: "260px", transition: "transform 0.2s" }}
+              style={{ background: "#2f241d", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", cursor: "pointer", textAlign: "center", minHeight: "280px", transition: "transform 0.2s" }}
               onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
               onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
             >
@@ -422,17 +472,18 @@ export default function Landing() {
                 { heading: "Account", links: ["Login", "Register", "Forgot Password"] },
               ].map(col => (
                 <div key={col.heading}>
-                  <h4 style={{ color: "white", fontWeight: "700", fontSize: "14px", marginBottom: "16px", margin: "0 0 16px 0" }}>{col.heading}</h4>
+                  <h4 style={{ color: "white", fontWeight: "700", fontSize: "14px", margin: "0 0 16px 0" }}>{col.heading}</h4>
                   <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
                     {col.links.map(link => (
                       <li key={link}>
-                        <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", cursor: "pointer" }}
+                        <span
+                          style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", cursor: "pointer" }}
                           onClick={() => {
                             if (link === "Login") setModalMode("login")
                             else if (link === "Register") setModalMode("register")
                             else if (link === "Browse Dogs") setModalMode("register")
                             else if (link === "Shelters") navigate("/shelters")
-                            else if (link === "How It Works") document.getElementById("home").scrollTo(0,0)
+                            else if (link === "How It Works") document.getElementById("how-it-works").scrollIntoView({ behavior: "smooth" })
                             else if (link === "Forgot Password") setModalMode("forgot-password")
                           }}
                         >{link}</span>

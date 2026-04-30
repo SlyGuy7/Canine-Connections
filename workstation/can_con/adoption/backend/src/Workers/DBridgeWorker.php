@@ -16,6 +16,7 @@ final class DBridgeWorker
 
         $this->mq->registerConsumer('bridge.auth.register',       [$this, 'handleAuthRegister']);
         $this->mq->registerConsumer('bridge.auth.login',          [$this, 'handleAuthLogin']);
+        $this->mq->registerConsumer('bridge.auth.verify',         [$this, 'handleAuthVerify']);
         $this->mq->registerConsumer('bridge.auth.resetPassword',  [$this, 'handleResetPassword']);
         $this->mq->registerConsumer('bridge.profile.update',      [$this, 'handleProfileUpdate']);
         $this->mq->registerConsumer('bridge.account.delete',      [$this, 'handleAccountDelete']);
@@ -162,6 +163,12 @@ final class DBridgeWorker
     {
         $replyTo = $this->getReplyTo($msg);
         $this->fork(fn() => $this->relay('bridge.auth.login', 'db.auth.login', $data, $corrId, $replyTo), $msg);
+    }
+
+    public function handleAuthVerify(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->getReplyTo($msg);
+        $this->fork(fn() => $this->relay('bridge.auth.verify', 'db.auth.verify', $data, $corrId, $replyTo), $msg);
     }
 
     public function handleResetPassword(array $data, $msg, ?string $corrId): void
