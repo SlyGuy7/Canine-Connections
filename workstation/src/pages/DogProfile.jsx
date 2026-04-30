@@ -68,7 +68,9 @@ export default function DogProfile() {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
+      <div className="dashboard-wrapper">
+        <Sidebar />
+        <div className="page-container">
           <p>Loading dog profile...</p>
         </div>
       </div>
@@ -77,7 +79,9 @@ export default function DogProfile() {
 
   if (!dog) {
     return (
-      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
+      <div className="dashboard-wrapper">
+        <Sidebar />
+        <div className="page-container">
           <button className="btn btn-secondary" onClick={() => navigate(-1)} style={{ marginBottom: "20px" }}>
             ← Back to Browse
           </button>
@@ -226,5 +230,5 @@ export default function DogProfile() {
         </div>
       </div>
     </div>
-  )
+  );
 }
