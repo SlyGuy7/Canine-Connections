@@ -5,11 +5,11 @@ import { sendMessage } from "../services/messaging"
 export default function AdminLogin() {
   const navigate = useNavigate()
   const [formData, setFormData] = useState({ email: "", password: "" })
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const [error, setError]       = useState("")
+  const [loading, setLoading]   = useState(false)
 
   const handleChange = (e) => {
-    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }))
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
 
   const handleSubmit = async (e) => {
@@ -18,27 +18,26 @@ export default function AdminLogin() {
     setLoading(true)
     try {
       const result = await sendMessage("request.auth.login", {
-        email: formData.email,
+        email:    formData.email,
         password: formData.password,
       })
-
-      if (result && result.success && result.user) {
+      if (result?.success && result.user) {
         const role = result.user.role
         if (role !== "admin" && role !== "shelter_staff") {
-          setError("Access denied. You do not have admin privileges.")
+          setError("Access denied. Admin privileges required.")
           setLoading(false)
           return
         }
-        localStorage.setItem("adminToken", "true")
-        localStorage.setItem("adminRole", role)
-        localStorage.setItem("adminUserId", result.user.user_id)
-        localStorage.setItem("adminEmail", result.user.email)
+        localStorage.setItem("adminToken",     "true")
+        localStorage.setItem("adminRole",      role)
+        localStorage.setItem("adminUserId",    result.user.user_id)
+        localStorage.setItem("adminEmail",     result.user.email)
         localStorage.setItem("adminFirstName", result.user.first_name || "")
         navigate("/admin/dashboard")
       } else {
         setError(result?.error || "Invalid email or password.")
       }
-    } catch (err) {
+    } catch {
       setError("Network error. Please try again.")
     } finally {
       setLoading(false)
@@ -46,65 +45,67 @@ export default function AdminLogin() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#fdf6ef', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
-      <div style={{ background: 'white', borderRadius: '20px', padding: '48px', width: '100%', maxWidth: '440px', boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+    <div style={{ minHeight:'100vh', background:'#0a0a0a', display:'flex', alignItems:'center', justifyContent:'center', padding:'24px' }}>
+      <div style={{ background:'#141414', border:'1px solid #1f1f1f', borderRadius:'16px', padding:'48px', width:'100%', maxWidth:'420px' }}>
 
-        <div style={{ textAlign: 'center', marginBottom: '36px' }}>
-          <div style={{ width: '56px', height: '56px', background: '#b45309', borderRadius: '14px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <span style={{ color: 'white', fontSize: '24px', fontWeight: '700' }}>CC</span>
+        <div style={{ textAlign:'center', marginBottom:'36px' }}>
+          <div style={{ width:'52px', height:'52px', background:'#dc2626', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+            <span style={{ color:'white', fontSize:'18px', fontWeight:'800' }}>CC</span>
           </div>
-          <h1 style={{ margin: '0 0 8px 0', fontSize: '24px', color: '#2f241d' }}>Admin Portal</h1>
-          <p style={{ margin: 0, color: '#6f5848', fontSize: '14px' }}>Canine Connections Shelter Management</p>
+          <h1 style={{ margin:'0 0 8px 0', fontSize:'22px', fontWeight:'700', color:'white' }}>Admin Portal</h1>
+          <p style={{ margin:0, color:'#555', fontSize:'13px' }}>Canine Connections Shelter Management</p>
         </div>
 
         {error && (
-          <div style={{ background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '10px', padding: '12px 16px', marginBottom: '20px', color: '#dc2626', fontSize: '14px' }}>
+          <div style={{ background:'#450a0a', border:'1px solid #7f1d1d', borderRadius:'8px', padding:'12px 16px', marginBottom:'20px', color:'#f87171', fontSize:'13px' }}>
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleSubmit} style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
           <div>
-            <label className="form-label">Email Address</label>
+            <label style={{ fontSize:'12px', fontWeight:'600', color:'#666', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:'6px' }}>
+              Email Address
+            </label>
             <input
               required
               type="email"
               name="email"
               value={formData.email}
               onChange={handleChange}
-              className="form-input"
               placeholder="admin@shelter.org"
+              style={{ width:'100%', background:'#111', border:'1px solid #1f1f1f', borderRadius:'8px', padding:'11px 14px', color:'white', fontSize:'14px', outline:'none', boxSizing:'border-box' }}
             />
           </div>
           <div>
-            <label className="form-label">Password</label>
+            <label style={{ fontSize:'12px', fontWeight:'600', color:'#666', textTransform:'uppercase', letterSpacing:'0.05em', display:'block', marginBottom:'6px' }}>
+              Password
+            </label>
             <input
               required
               type="password"
               name="password"
               value={formData.password}
               onChange={handleChange}
-              className="form-input"
               placeholder="Your password"
+              style={{ width:'100%', background:'#111', border:'1px solid #1f1f1f', borderRadius:'8px', padding:'11px 14px', color:'white', fontSize:'14px', outline:'none', boxSizing:'border-box' }}
             />
           </div>
           <button
             type="submit"
-            className="btn btn-primary"
-            style={{ width: '100%', padding: '14px', fontSize: '15px', marginTop: '8px' }}
             disabled={loading}
+            style={{ background:'#dc2626', border:'none', borderRadius:'8px', padding:'13px', color:'white', fontWeight:'700', fontSize:'15px', cursor:'pointer', marginTop:'8px', opacity: loading ? 0.7 : 1 }}
           >
-            {loading ? "Signing in..." : "Sign In to Admin Portal"}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        <p style={{ textAlign: 'center', marginTop: '24px', fontSize: '13px', color: '#94a3b8' }}>
+        <p style={{ textAlign:'center', marginTop:'24px', fontSize:'12px', color:'#333' }}>
           Not an admin?{" "}
-          <span style={{ color: '#b45309', cursor: 'pointer', fontWeight: '600' }} onClick={() => navigate("/")}>
+          <span style={{ color:'#dc2626', cursor:'pointer', fontWeight:'600' }} onClick={() => navigate("/landing")}>
             Return to main site
           </span>
         </p>
-
       </div>
     </div>
   )
