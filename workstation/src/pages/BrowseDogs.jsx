@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
+import { useDataCache } from "../context/DataCacheContext";
 import { useToast } from "../context/ToastContext";
 
 const PAGE_SIZE = 24;
@@ -112,6 +113,7 @@ export default function BrowseDogs() {
   const [page, setPage] = useState(1);
   const [savedIds, setSavedIds] = useState(() => new Set(JSON.parse(localStorage.getItem("savedDogs") || "[]").map(d => d.dog_id)));
   const hasFetched = useRef(false);
+  const { getDogs, dogsLoading: cacheLoading } = useDataCache();
   const [searchParams] = useSearchParams();
   const shelterIdParam = searchParams.get("shelter_id");
 

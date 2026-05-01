@@ -14,6 +14,7 @@ import DogProfile from "./pages/DogProfile.jsx"
 import Settings from "./pages/Settings.jsx"
 import Layout from "./components/Layout.jsx"
 import { ToastProvider } from "./context/ToastContext"
+import { DataCacheProvider } from "./context/DataCacheContext"
 import ApplicationForm from "./pages/ApplicationForm.jsx"
 import Shelters from "./pages/Shelters.jsx"
 import ShelterDetails from "./pages/ShelterDetails.jsx"
@@ -32,6 +33,7 @@ import VerifyEmail from "./pages/VerifyEmail.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ToastProvider>
+    <DataCacheProvider>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Navigate to="/landing" replace />} />
@@ -66,5 +68,6 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>
     </BrowserRouter>
+  </DataCacheProvider>
   </ToastProvider>
 )

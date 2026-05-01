@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
+import { useDataCache } from "../context/DataCacheContext"
 
 function ShelterSkeleton() {
   return (
@@ -21,6 +22,7 @@ export default function Shelters() {
   const [shelters, setShelters] = useState([])
   const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
+  const { getShelters } = useDataCache()
   const [error, setError] = useState("")
 
   useEffect(() => { loadShelters() }, [])

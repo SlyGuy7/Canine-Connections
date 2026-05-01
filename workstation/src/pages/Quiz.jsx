@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
+import { useDataCache } from "../context/DataCacheContext";
 import { useToast } from "../context/ToastContext";
 
 // ─── Professional text overrides ────────────────────────────────────────────
@@ -152,6 +153,7 @@ export default function Quiz() {
   const originalPrefilled = useRef({});
 
   const hasFetched = useRef(false);
+  const { getQuizQuestions } = useDataCache();
   const navigate   = useNavigate();
   const { addToast } = useToast();
 
@@ -169,9 +171,8 @@ export default function Quiz() {
     setLoading(true);
     setError("");
     try {
-      const result = await sendMessage("request.quiz.questions", {});
-      if (result?.success && Array.isArray(result.questions) && result.questions.length > 0) {
-        const qs = result.questions;
+      const qs = await getQuizQuestions();
+      if (Array.isArray(qs) && qs.length > 0) {
         setQuestions(qs);
         if (hasProfile) {
           const prefilled = buildPreFill(qs, profilePrefs);
