@@ -129,15 +129,20 @@ export default function BrowseDogs() {
 
   async function loadDogs() {
     try {
-      const result = await sendMessage("request.dogs.list", { limit: 500, offset: 0, shelter_id: shelterIdParam ? parseInt(shelterIdParam) : null });
-      if (result?.success && Array.isArray(result.dogs)) {
-        setAllDogs(result.dogs.map(dog => ({
-          ...dog,
-          photoList: dog.photos ? dog.photos.split(",").map(p => p.trim()).filter(Boolean) : [],
-          image: dog.photos ? dog.photos.split(",")[0].trim() : null,
-        })));
+      if (!shelterIdParam) {
+        const cached = await getDogs();
+        setAllDogs(cached);
       } else {
-        setAllDogs([]);
+        const result = await sendMessage("request.dogs.list", { limit: 500, offset: 0, shelter_id: parseInt(shelterIdParam) });
+        if (result?.success && Array.isArray(result.dogs)) {
+          setAllDogs(result.dogs.map(dog => ({
+            ...dog,
+            photoList: dog.photos ? dog.photos.split(",").map(p => p.trim()).filter(Boolean) : [],
+            image: dog.photos ? dog.photos.split(",")[0].trim() : null,
+          })));
+        } else {
+          setAllDogs([]);
+        }
       }
     } catch {
       setAllDogs([]);
@@ -146,8 +151,7 @@ export default function BrowseDogs() {
       setLoading(false);
     }
   }
-
-  const handleSaveDog = (dog) => {
+    const handleSaveDog = (dog) => {
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
     const isSaved = savedIds.has(dog.dog_id);
     let updated;

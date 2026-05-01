@@ -31,20 +31,15 @@ export default function Shelters() {
     setLoading(true)
     setError("")
     try {
-      const result = await sendMessage("request.shelters.list", {})
-      if (result?.success) {
-        setShelters(result.shelters || [])
-      } else {
-        setError("Failed to load shelters.")
-      }
-    } catch {
+      const data = await getShelters()
+      setShelters(data)
+    } catch (err) {
       setError("Could not connect to server.")
     } finally {
       setLoading(false)
     }
   }
-
-  const filtered = shelters.filter(s => {
+    const filtered = shelters.filter(s => {
     const term = searchTerm.toLowerCase()
     return (
       s.name?.toLowerCase().includes(term) ||
