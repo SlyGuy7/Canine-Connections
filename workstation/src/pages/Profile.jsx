@@ -71,18 +71,17 @@ export default function Profile() {
   const displayEmail = localStorage.getItem("userEmail") || ""
   const initials     = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
 
-  const [bio, setBio]       = useState("")
-  const [phone, setPhone]   = useState("")
-  const [address, setAddress] = useState("")
-  const [prefs, setPrefs]   = useState({})
+  const phone   = localStorage.getItem("userPhone") || ""
+  const address = localStorage.getItem("userAddress") || ""
+
+  const [bio, setBio]     = useState("")
+  const [prefs, setPrefs] = useState({})
   const [focusedField, setFocusedField] = useState(null)
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}")
     setBio(stored.bio || "")
     setPrefs(stored.prefs || {})
-    setPhone(localStorage.getItem("userPhone") || "")
-    setAddress(localStorage.getItem("userAddress") || "")
   }, [])
 
   const handleSelect = (fieldKey, value) => {
@@ -91,8 +90,6 @@ export default function Profile() {
 
   const handleSave = () => {
     localStorage.setItem(PROFILE_KEY, JSON.stringify({ bio, prefs }))
-    localStorage.setItem("userPhone", phone)
-    localStorage.setItem("userAddress", address)
     addToast("Profile saved!", "success")
   }
 
@@ -166,25 +163,15 @@ export default function Profile() {
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Phone</label>
-                <input
-                  value={phone}
-                  onChange={e => setPhone(e.target.value)}
-                  onFocus={() => setFocusedField("phone")}
-                  onBlur={() => setFocusedField(null)}
-                  placeholder="e.g. (555) 123-4567"
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: focusedField === "phone" ? "1.5px solid #d97706" : "1px solid #e5ddd6", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", color: "#2f241d", boxSizing: "border-box", transition: "border-color 0.15s" }}
-                />
+                <div style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5ddd6", fontSize: "14px", fontFamily: "'Inter', sans-serif", color: phone ? "#2f241d" : "#b8a89a", background: "#fdfaf7", boxSizing: "border-box" }}>
+                  {phone || "Not provided"}
+                </div>
               </div>
               <div>
                 <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Home address</label>
-                <input
-                  value={address}
-                  onChange={e => setAddress(e.target.value)}
-                  onFocus={() => setFocusedField("address")}
-                  onBlur={() => setFocusedField(null)}
-                  placeholder="Street, City, State, ZIP"
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: focusedField === "address" ? "1.5px solid #d97706" : "1px solid #e5ddd6", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", color: "#2f241d", boxSizing: "border-box", transition: "border-color 0.15s" }}
-                />
+                <div style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5ddd6", fontSize: "14px", fontFamily: "'Inter', sans-serif", color: address ? "#2f241d" : "#b8a89a", background: "#fdfaf7", boxSizing: "border-box" }}>
+                  {address || "Not provided"}
+                </div>
               </div>
             </div>
           </div>

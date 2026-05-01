@@ -107,6 +107,8 @@ export default function Register() {
 
       if (result.success) {
         setLoading(false);
+        localStorage.setItem("userPhone", phone);
+        localStorage.setItem("userAddress", address);
         navigate("/register-success");
         return;
       }

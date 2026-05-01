@@ -33,6 +33,8 @@ export default function Login({ switchToRegister, switchToForgot }) {
         localStorage.setItem("userEmail", email);
         localStorage.setItem("userId", user.user_id || "");
         localStorage.setItem("userRole", user.role || "adopter");
+        if (user.phone)   localStorage.setItem("userPhone", user.phone);
+        if (user.address) localStorage.setItem("userAddress", user.address);
         setLoading(false);
         navigate("/dashboard");
         return;
