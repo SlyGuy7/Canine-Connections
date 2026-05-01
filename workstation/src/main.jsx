@@ -6,6 +6,7 @@ import Landing from "./pages/Landing.jsx"
 import RegisterSuccess from "./pages/RegisterSuccess.jsx"
 import Dashboard from "./pages/Dashboard.jsx"
 import ProtectedRoute from "./components/ProtectedRoute.jsx"
+import AdminGuard from "./components/AdminGuard.jsx"
 import MyDogs from "./pages/MyDogs.jsx"
 import Messages from "./pages/Messages.jsx"
 import Applications from "./pages/Applications.jsx"
@@ -58,11 +59,11 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/shelters" element={<Layout><Shelters /></Layout>} />
         <Route path="/shelters/:id" element={<Layout><ShelterDetails /></Layout>} />
 
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/users" element={<AdminUsers />} />
-        <Route path="/admin/applications" element={<AdminApplications />} />
-        <Route path="/admin/stories" element={<AdminStories />} />
-        <Route path="/admin/dogs" element={<AdminDogs />} />
+        <Route path="/admin/dashboard" element={<AdminGuard><AdminDashboard /></AdminGuard>} />
+        <Route path="/admin/users" element={<AdminGuard><AdminUsers /></AdminGuard>} />
+        <Route path="/admin/applications" element={<AdminGuard><AdminApplications /></AdminGuard>} />
+        <Route path="/admin/stories" element={<AdminGuard><AdminStories /></AdminGuard>} />
+        <Route path="/admin/dogs" element={<AdminGuard><AdminDogs /></AdminGuard>} />
 
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="*" element={<Navigate to="/landing" replace />} />

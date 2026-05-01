@@ -23,7 +23,7 @@ export default function AdminLogin() {
       })
       if (result?.success && result.user) {
         const role = result.user.role
-        if (role !== "admin" && role !== "shelter_staff") {
+        if (role !== "super_admin" && role !== "shelter_admin") {
           setError("Access denied. Admin privileges required.")
           setLoading(false)
           return
