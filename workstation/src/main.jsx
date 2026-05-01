@@ -49,7 +49,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/apply" element={<ProtectedRoute><Layout><ApplicationForm /></Layout></ProtectedRoute>} />
         <Route path="/quiz" element={<ProtectedRoute><Layout><Quiz /></Layout></ProtectedRoute>} />
         <Route path="/quiz-results" element={<ProtectedRoute><Layout><QuizResults /></Layout></ProtectedRoute>} />
-        <Route path="/my-dogs" element={<ProtectedRoute><Layout><SavedDogs /></Layout></ProtectedRoute>} />
+        <Route path="/saved-dogs" element={<ProtectedRoute><Layout><SavedDogs /></Layout></ProtectedRoute>} />
 
         <Route path="/dogs/:id" element={<Layout><DogProfile /></Layout>} />
         <Route path="/browse-dogs" element={<Layout><BrowseDogs /></Layout>} />

@@ -25,9 +25,7 @@ export default function SavedDogs() {
   }
 
   const handleApply = (dog) => {
-    localStorage.setItem("pendingApplicationDogId", dog.dog_id)
-    localStorage.setItem("pendingApplicationDogName", dog.name)
-    navigate("/apply")
+    navigate("/apply", { state: { dogId: dog.dog_id, dogName: dog.name } })
   }
 
   const getPrimaryPhoto = (dog) => {

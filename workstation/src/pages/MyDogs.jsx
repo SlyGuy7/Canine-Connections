@@ -148,7 +148,7 @@ export default function MyDogs() {
                         View Profile
                       </button>
                       <button
-                        onClick={() => navigate(`/apply?dog_id=${dog.dog_id}`)}
+                        onClick={() => navigate("/apply", { state: { dogId: dog.dog_id, dogName: dog.name } })}
                         style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer", transition: "background 0.15s ease" }}
                         onMouseEnter={e => e.currentTarget.style.background = "#fdf6ef"}
                         onMouseLeave={e => e.currentTarget.style.background = "white"}
