@@ -98,7 +98,7 @@ export default function Settings() {
   const quizTaken      = !!localStorage.getItem('quizMatchedDogIds')
   const profileDone    = !!localStorage.getItem('userProfile')
 
-  const [passwords, setPasswords] = useState({ oldPassword: '', newPassword: '', confirmPassword: '' })
+  const [passwords, setPasswords] = useState({ oldPassword: localStorage.getItem('userPassword') || '', newPassword: '', confirmPassword: '' })
   const [savingPw, setSavingPw]   = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting]   = useState(false)
@@ -142,7 +142,8 @@ export default function Settings() {
       })
       if (result?.success) {
         addToast('Password updated successfully!', 'success')
-        setPasswords({ oldPassword: '', newPassword: '', confirmPassword: '' })
+        localStorage.setItem('userPassword', passwords.newPassword)
+        setPasswords({ oldPassword: passwords.newPassword, newPassword: '', confirmPassword: '' })
       } else {
         addToast(result?.error || 'Password update failed.', 'error')
       }
