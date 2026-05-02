@@ -23,6 +23,9 @@ final class FrontendWorker
         $this->mq->registerConsumer('request.auth.login',          [$this, 'handleLogin']);
         $this->mq->registerConsumer('request.auth.verify',         [$this, 'handleVerifyEmail']);
         $this->mq->registerConsumer('request.auth.resetPassword',  [$this, 'handleResetPassword']);
+        $this->mq->registerConsumer('request.auth.forgotPassword',         [$this, 'handleForgotPassword']);
+        $this->mq->registerConsumer('request.auth.setNewPassword',         [$this, 'handleSetNewPassword']);
+        $this->mq->registerConsumer('request.auth.resendVerification',     [$this, 'handleResendVerification']);
         $this->mq->registerConsumer('request.profile.update',      [$this, 'handleProfileUpdate']);
         $this->mq->registerConsumer('request.account.delete',      [$this, 'handleAccountDelete']);
         $this->mq->registerConsumer('request.shelters.list',       [$this, 'handleSheltersList']);
@@ -306,6 +309,120 @@ final class FrontendWorker
                 echo "[FrontendWorker][ERROR] handleResetPassword: {$e->getMessage()}\n";
                 $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'Reset failed'], $corrId);
             }
+        }, $msg);
+    }
+
+    public function handleForgotPassword(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            echo "[FrontendWorker] handleForgotPassword: " . ($data['email'] ?? 'no email') . "\n";
+            try {
+                $email  = $data['email']   ?? '';
+                $appUrl = $data['app_url'] ?? '';
+                if (empty($email)) {
+                    $this->respond($mq, 'response.auth.forgotPassword', $replyTo, ['success' => false, 'error' => 'Email is required'], $corrId);
+                    return;
+                }
+                // Always respond success to prevent email enumeration
+                $this->respond($mq, 'response.auth.forgotPassword', $replyTo, ['success' => true], $corrId);
+
+                $result = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId);
+                if (!$result || empty($result['user'])) return;
+
+                $user    = $result['user'];
+                $payload = base64_encode(json_encode(['email' => $email, 'exp' => time() + 3600]));
+                $sig     = hash_hmac('sha256', $payload, $_ENV['APP_KEY'] ?? 'secret');
+                $token   = $payload . '.' . $sig;
+                $resetUrl = "{$appUrl}/reset-password?token={$token}";
+
+                Mailer::send(
+                    $email,
+                    'Reset Your Password — Canine Connections',
+                    "<div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
+                        <h1 style='color:#b45309'>Reset Your Password</h1>
+                        <p>Hi {$user['first_name']},</p>
+                        <p>We received a request to reset your password. Click the button below to choose a new one.</p>
+                        <p style='color:#999;font-size:13px'>This link expires in 1 hour.</p>
+                        <div style='text-align:center;margin:32px 0'>
+                            <a href='{$resetUrl}' style='background:#d97706;color:white;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block'>Reset Password</a>
+                        </div>
+                        <p style='color:#999;font-size:13px'>If the button doesn't work, paste this into your browser:<br>{$resetUrl}</p>
+                        <p style='color:#999;font-size:13px'>If you didn't request a reset, you can safely ignore this email.</p>
+                        <br><p style='color:#666'>The Canine Connections Team</p>
+                    </div>"
+                );
+            } catch (\Throwable $e) {
+                echo "[FrontendWorker][ERROR] handleForgotPassword: {$e->getMessage()}\n";
+            }
+        }, $msg);
+    }
+
+    public function handleSetNewPassword(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            echo "[FrontendWorker] handleSetNewPassword\n";
+            try {
+                $token       = $data['token']       ?? '';
+                $newPassword = $data['newPassword'] ?? '';
+                if (empty($token) || empty($newPassword)) {
+                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Token and password are required'], $corrId);
+                    return;
+                }
+                $parts = explode('.', $token, 2);
+                if (count($parts) !== 2) {
+                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Invalid or expired link'], $corrId);
+                    return;
+                }
+                [$payload, $sig] = $parts;
+                $expectedSig = hash_hmac('sha256', $payload, $_ENV['APP_KEY'] ?? 'secret');
+                if (!hash_equals($expectedSig, $sig)) {
+                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Invalid or expired link'], $corrId);
+                    return;
+                }
+                $decoded = json_decode(base64_decode($payload), true);
+                if (!$decoded || ($decoded['exp'] ?? 0) < time()) {
+                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Reset link has expired. Please request a new one.'], $corrId);
+                    return;
+                }
+                $email  = $decoded['email'];
+                $result = $mq->publishAndWait('bridge.auth.resetPassword', [
+                    'email'         => $email,
+                    'password_hash' => $this->enc->hashPassword($newPassword),
+                ], $corrId . '_reset');
+                if (!$result || empty($result['success'])) {
+                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'Could not update password'], $corrId);
+                    return;
+                }
+                $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => true], $corrId);
+                $userResult = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId . '_lookup');
+                if ($userResult && !empty($userResult['user'])) {
+                    Mailer::passwordReset($email, $userResult['user']['first_name'] ?? '');
+                }
+            } catch (\Throwable $e) {
+                echo "[FrontendWorker][ERROR] handleSetNewPassword: {$e->getMessage()}\n";
+                $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Reset failed'], $corrId);
+            }
+        }, $msg);
+    }
+
+    public function handleResendVerification(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            echo "[FrontendWorker] handleResendVerification: " . ($data['email'] ?? 'no email') . "\n";
+            $email  = $data['email']   ?? '';
+            $appUrl = $data['app_url'] ?? '';
+            // Always respond success to prevent email enumeration
+            $this->respond($mq, 'response.auth.resendVerification', $replyTo, ['success' => true], $corrId);
+            if (empty($email)) return;
+            $result = $mq->publishAndWait('bridge.auth.refreshVerification', ['email' => $email], $corrId);
+            if (!$result || empty($result['success'])) return;
+            $token     = $result['verification_token'];
+            $firstName = $result['first_name'] ?? '';
+            if ($firstName) $firstName = $this->dec($firstName);
+            Mailer::verifyEmail($email, $firstName, "{$appUrl}/verify-email?token={$token}");
         }, $msg);
     }
 
