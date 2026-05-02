@@ -19,6 +19,7 @@ node_modules
 dist
 dist-ssr
 *.local
+!**/fail2ban/jail.local
 
 # Editor directories and files
 .vscode/*
