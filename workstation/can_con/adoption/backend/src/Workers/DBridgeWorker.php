@@ -17,7 +17,8 @@ final class DBridgeWorker
         $this->mq->registerConsumer('bridge.auth.register',       [$this, 'handleAuthRegister']);
         $this->mq->registerConsumer('bridge.auth.login',          [$this, 'handleAuthLogin']);
         $this->mq->registerConsumer('bridge.auth.verify',         [$this, 'handleAuthVerify']);
-        $this->mq->registerConsumer('bridge.auth.resetPassword',  [$this, 'handleResetPassword']);
+        $this->mq->registerConsumer('bridge.auth.resetPassword',       [$this, 'handleResetPassword']);
+        $this->mq->registerConsumer('bridge.auth.refreshVerification', [$this, 'handleRefreshVerification']);
         $this->mq->registerConsumer('bridge.profile.update',      [$this, 'handleProfileUpdate']);
         $this->mq->registerConsumer('bridge.account.delete',      [$this, 'handleAccountDelete']);
         $this->mq->registerConsumer('bridge.shelters.list',       [$this, 'handleSheltersList']);
@@ -176,6 +177,12 @@ final class DBridgeWorker
     {
         $replyTo = $this->getReplyTo($msg);
         $this->fork(fn() => $this->relay('bridge.auth.resetPassword', 'db.auth.resetPassword', $data, $corrId, $replyTo), $msg);
+    }
+
+    public function handleRefreshVerification(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->getReplyTo($msg);
+        $this->fork(fn() => $this->relay('bridge.auth.refreshVerification', 'db.auth.refreshVerification', $data, $corrId, $replyTo), $msg);
     }
 
     public function handleProfileUpdate(array $data, $msg, ?string $corrId): void

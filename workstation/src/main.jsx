@@ -32,6 +32,7 @@ import AdminDogs from "./pages/AdminDogs.jsx"
 import Profile from "./pages/Profile.jsx"
 import Resources from "./pages/Resources.jsx"
 import VerifyEmail from "./pages/VerifyEmail.jsx"
+import ResetPassword from "./pages/ResetPassword.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ToastProvider>
@@ -68,6 +69,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
 
         <Route path="/resources" element={<Layout><Resources /></Layout>} />
         <Route path="/verify-email" element={<VerifyEmail />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>
     </BrowserRouter>

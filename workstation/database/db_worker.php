@@ -181,6 +181,17 @@ function handleQuery($queue, $data, $db) {
             if ($db->affected_rows===0) return ["success"=>false,"error"=>"User not found"];
             return ["success"=>true];
 
+        case "db.auth.refreshVerification":
+            if (!isset($data["email"])) return ["success"=>false,"error"=>"Missing email"];
+            $email=$db->real_escape_string($data["email"]);
+            $check=$db->query("SELECT user_id,first_name FROM users WHERE email='{$email}' AND email_verified=0 LIMIT 1");
+            if (!$check||$check->num_rows===0) return ["success"=>false,"error"=>"Not found or already verified"];
+            $row=$check->fetch_assoc();
+            $newToken=$db->real_escape_string(bin2hex(random_bytes(32)));
+            $db->query("UPDATE users SET verification_token='{$newToken}' WHERE user_id={$row['user_id']}");
+            if ($db->affected_rows===0) return ["success"=>false,"error"=>"Could not refresh token"];
+            return ["success"=>true,"verification_token"=>$newToken,"first_name"=>$row['first_name']];
+
         case "db.auth.verify":
             if (!isset($data["token"])) return ["success"=>false,"error"=>"Missing token"];
             $token=$db->real_escape_string($data["token"]);
