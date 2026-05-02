@@ -226,6 +226,7 @@ export default function Quiz() {
       if (result?.success) {
         localStorage.setItem("quizMatchedDogIds", JSON.stringify(result.matched_dog_ids || []));
         localStorage.setItem("quizAnswers", JSON.stringify(answers));
+        localStorage.setItem("quizCompleted", "true");
         addToast("Quiz submitted! Here are your matches.", "success");
         navigate("/quiz-results");
       } else {

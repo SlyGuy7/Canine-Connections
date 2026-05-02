@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useRef } from "react"
 import { useToast } from "../context/ToastContext"
 
 const PROFILE_KEY = "userProfile"
@@ -77,12 +77,31 @@ export default function Profile() {
   const [bio, setBio]     = useState("")
   const [prefs, setPrefs] = useState({})
   const [focusedField, setFocusedField] = useState(null)
+  const savedState = useRef({ bio: "", prefs: {} })
+  const isDirty = () => {
+    return bio !== savedState.current.bio ||
+      JSON.stringify(prefs) !== JSON.stringify(savedState.current.prefs)
+  }
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}")
-    setBio(stored.bio || "")
-    setPrefs(stored.prefs || {})
+    const loadedBio   = stored.bio   || ""
+    const loadedPrefs = stored.prefs || {}
+    setBio(loadedBio)
+    setPrefs(loadedPrefs)
+    savedState.current = { bio: loadedBio, prefs: loadedPrefs }
   }, [])
+
+  useEffect(() => {
+    const handler = e => {
+      if (isDirty()) {
+        e.preventDefault()
+        e.returnValue = ""
+      }
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  })
 
   const handleSelect = (fieldKey, value) => {
     setPrefs(prev => ({ ...prev, [fieldKey]: value }))
@@ -90,6 +109,7 @@ export default function Profile() {
 
   const handleSave = () => {
     localStorage.setItem(PROFILE_KEY, JSON.stringify({ bio, prefs }))
+    savedState.current = { bio, prefs }
     addToast("Profile saved!", "success")
   }
 

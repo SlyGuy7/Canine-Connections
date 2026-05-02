@@ -20,11 +20,12 @@ function profileToFormDefaults() {
     "Mostly home all day":   "Rarely alone — home most of the day",
   };
 
-  const currentAnimals = prefs.otherPets === "None" ? "None" : "";
-  const hoursAlone     = hoursMap[prefs.hoursHome] || "";
-  const allergies      = (prefs.allergies === "Yes — hypoallergenic only" || prefs.allergies === "Mild — prefer low-shedding") ? "Yes" : "No";
+  const currentAnimals  = prefs.otherPets === "None" ? "None" : "";
+  const hoursAlone      = hoursMap[prefs.hoursHome] || "";
+  const allergies       = (prefs.allergies === "Yes — hypoallergenic only" || prefs.allergies === "Mild — prefer low-shedding") ? "Yes" : "No";
+  const priorExperience = prefs.experience || "";
 
-  return { residenceType, yardType, currentAnimals, hoursAlone, allergies };
+  return { residenceType, yardType, currentAnimals, hoursAlone, allergies, priorExperience };
 }
 
 const INPUT = {
@@ -88,6 +89,7 @@ export default function ApplicationForm() {
     handlingDestruction: "",
     adjustmentPeriod:   "",
     allergies:          defaults.allergies,
+    priorExperience:    defaults.priorExperience,
     agreeToHomeVisit:   false,
     agreeToFee:         false,
   });
@@ -120,6 +122,11 @@ export default function ApplicationForm() {
 
   const handleOpenReview = e => {
     e.preventDefault();
+    const { firstName, lastName, email, phone, address, householdSize, hoursAlone, handlingDestruction, adjustmentPeriod } = formData;
+    if (!firstName || !lastName || !email || !phone || !address || !householdSize || !hoursAlone || !handlingDestruction || !adjustmentPeriod) {
+      addToast("Please fill in all required fields before reviewing.", "error");
+      return;
+    }
     if (!formData.agreeToHomeVisit || !formData.agreeToFee) {
       addToast("Please agree to all terms before reviewing.", "error");
       return;
@@ -144,7 +151,7 @@ export default function ApplicationForm() {
         has_other_pets:         formData.currentAnimals.trim().toLowerCase() !== "none" && formData.currentAnimals.trim() !== "",
         other_pets_description: formData.currentAnimals,
         has_children:           formData.hasChildren !== "No",
-        prior_pet_experience:   formData.currentAnimals,
+        prior_pet_experience:   formData.priorExperience,
         reason_for_adopting:    formData.adjustmentPeriod,
         email:                  formData.email,
         first_name:             formData.firstName,

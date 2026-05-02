@@ -43,7 +43,9 @@ export default function Journal() {
     try {
       const result = await sendMessage("request.adoption.log.list", { user_id: userId, dog_id: 0 })
       if (result?.success) {
-        setEntries(result.logs || [])
+        const logs = result.logs || []
+        setEntries(logs)
+        localStorage.setItem("journal_entries", JSON.stringify(logs))
       } else {
         setEntries([])
       }

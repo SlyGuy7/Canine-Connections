@@ -3,9 +3,9 @@ const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 function getHeaders() {
   const headers = { "Content-Type": "application/json" };
 
-  const userEmail = localStorage.getItem("userEmail");
-  if (userEmail) {
-    headers["Authorization"] = `Bearer ${userEmail}`;
+  const userId = localStorage.getItem("userId");
+  if (userId) {
+    headers["Authorization"] = `Bearer ${userId}`;
   }
   
   return headers;

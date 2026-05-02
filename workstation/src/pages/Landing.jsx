@@ -42,7 +42,6 @@ function CategoryPreviewModal({ category, close, navigate }) {
       .catch(() => {})
       .finally(() => setCatLoading(false))
   }, [category])
-  console.log("Filtered:", previewDogs.length, "dogs")
 
   return (
     <div

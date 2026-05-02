@@ -21,6 +21,10 @@ export default function ShelterDetails() {
       const result = await sendMessage("request.shelters.get", { shelter_id: parseInt(id) })
       if (result?.success) {
         setShelter(result.shelter)
+        const viewed = JSON.parse(localStorage.getItem("viewedShelters") || "[]")
+        if (!viewed.includes(parseInt(id))) {
+          localStorage.setItem("viewedShelters", JSON.stringify([...viewed, parseInt(id)]))
+        }
       } else {
         setError("Shelter not found.")
       }

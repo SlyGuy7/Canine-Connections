@@ -59,7 +59,9 @@ export default function Applications() {
     try {
       const result = await sendMessage("request.application.list", { user_id: userId });
       if (result?.success && Array.isArray(result.applications)) {
-        setApplications(result.applications.filter(a => String(a.user_id) === String(userId)));
+        const mine = result.applications.filter(a => String(a.user_id) === String(userId));
+        setApplications(mine);
+        localStorage.setItem("myApplications", JSON.stringify(mine));
       }
     } catch {
       addToast("Could not load applications.", "error");

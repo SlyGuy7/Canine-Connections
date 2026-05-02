@@ -2,118 +2,81 @@ import React, { useState } from "react";
 import { sendMessage } from "../services/messaging";
 
 export default function ForgotPassword({ switchToLogin }) {
-  const [formData, setFormData] = useState({
-    email: "",
-    oldPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
+  const [email, setEmail]   = useState("");
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleReset = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setStatus(null);
-
-    if (formData.newPassword !== formData.confirmPassword) {
-      setStatus({ type: "error", message: "New passwords do not match." });
-      return;
-    }
-
     setLoading(true);
     try {
-      const result = await sendMessage("request.auth.resetPassword", formData);
-      if (result && result.success) {
-        setStatus({ type: "success", message: "Password updated successfully!" });
+      const result = await sendMessage("request.auth.forgotPassword", { email, app_url: window.location.origin });
+      if (result?.success) {
+        setStatus({ type: "success", message: "Check your email — a reset link has been sent." });
       } else {
-        setStatus({ type: "error", message: result.message || "Update failed. Please check your credentials." });
+        setStatus({ type: "error", message: result?.error || "Could not send reset email. Please try again." });
       }
-    } catch (err) {
-      // Mock error to test the visual state if the backend fails
-      setStatus({ type: "error", message: "Connection Error: Unable to reach the server." });
+    } catch {
+      setStatus({ type: "error", message: "Connection error. Please try again." });
     } finally {
       setLoading(false);
     }
   };
 
-  // Inline styling for precise layout control
-  const containerStyle = { display: "flex", flexDirection: "column", gap: "20px", maxWidth: "400px", margin: "0 auto", padding: "20px", fontFamily: "sans-serif" };
-  const formStyle = { display: "flex", flexDirection: "column", gap: "15px" };
-  const inputGroupStyle = { display: "flex", flexDirection: "column", textAlign: "left", gap: "5px" };
-  const labelStyle = { fontWeight: "bold", fontSize: "14px", color: "#333" };
-  const inputStyle = { padding: "12px", borderRadius: "8px", border: "1px solid #ccc", fontSize: "16px" };
-  const buttonStyle = { padding: "12px", borderRadius: "8px", cursor: "pointer", fontSize: "16px", fontWeight: "bold", border: "none", backgroundColor: "#007bff", color: "white" };
-  const errorStyle = { color: "#dc3545", fontWeight: "bold", textAlign: "center", padding: "10px", backgroundColor: "#f8d7da", borderRadius: "8px", border: "1px solid #f5c6cb" };
-  const successStyle = { color: "#28a745", fontWeight: "bold", textAlign: "center", padding: "10px", backgroundColor: "#d4edda", borderRadius: "8px", border: "1px solid #c3e6cb" };
-  const linkStyle = { background: "none", border: "none", color: "#007bff", cursor: "pointer", textDecoration: "underline", marginTop: "10px", fontSize: "14px" };
-
   return (
-    <div style={containerStyle}>
-      <h2>Update Password</h2>
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px", fontFamily: "sans-serif" }}>
+      <div>
+        <h2 style={{ margin: "0 0 6px 0", fontSize: "20px", fontWeight: "700", color: "#2f241d" }}>Forgot Password</h2>
+        <p style={{ margin: 0, fontSize: "14px", color: "#78716c" }}>
+          Enter your email and we'll send you a link to reset your password.
+        </p>
+      </div>
 
       {status && (
-        <div style={status.type === "success" ? successStyle : errorStyle}>
+        <div style={{
+          padding: "12px 16px", borderRadius: "10px", fontSize: "14px", fontWeight: "600",
+          background: status.type === "success" ? "#d4edda" : "#fff1f2",
+          color:      status.type === "success" ? "#155724" : "#b42318",
+          border:     `1px solid ${status.type === "success" ? "#c3e6cb" : "#fecdd3"}`,
+        }}>
           {status.message}
         </div>
       )}
 
-      <form onSubmit={handleReset} style={formStyle}>
-        <div style={inputGroupStyle}>
-          <label style={labelStyle}>Email Address</label>
-          <input
-            style={inputStyle}
-            name="email"
-            type="email"
-            value={formData.email}
-            onChange={handleChange}
-            required
-          />
-        </div>
+      {status?.type !== "success" && (
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          <div>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", color: "#4a382d", fontSize: "13px" }}>
+              Email Address
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid #dcc8b7", fontSize: "15px", boxSizing: "border-box", color: "#2f241d" }}
+            />
+          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{ width: "100%", padding: "13px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "16px", cursor: "pointer", boxShadow: "0 10px 24px rgba(217,119,6,0.22)" }}
+          >
+            {loading ? "Sending…" : "Send Reset Link"}
+          </button>
+        </form>
+      )}
 
-        <div style={inputGroupStyle}>
-          <label style={labelStyle}>Old Password</label>
-          <input
-            style={inputStyle}
-            name="oldPassword"
-            type="password"
-            value={formData.oldPassword}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div style={inputGroupStyle}>
-          <label style={labelStyle}>New Password</label>
-          <input
-            style={inputStyle}
-            name="newPassword"
-            type="password"
-            value={formData.newPassword}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <div style={inputGroupStyle}>
-          <label style={labelStyle}>Confirm New Password</label>
-          <input
-            style={inputStyle}
-            name="confirmPassword"
-            type="password"
-            value={formData.confirmPassword}
-            onChange={handleChange}
-            required
-          />
-        </div>
-
-        <button type="submit" style={buttonStyle} disabled={loading}>
-          {loading ? "Processing..." : "Update Password"}
+      {switchToLogin && (
+        <button
+          onClick={switchToLogin}
+          style={{ background: "none", border: "none", color: "#d97706", cursor: "pointer", fontSize: "14px", fontWeight: "600", padding: 0, textAlign: "left" }}
+        >
+          ← Back to Login
         </button>
-      </form>
+      )}
     </div>
   );
 }
