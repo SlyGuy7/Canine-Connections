@@ -34,6 +34,7 @@ export default function Login({ switchToRegister, switchToForgot }) {
         }
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("userEmail", email);
+        localStorage.setItem("userPassword", password);
         localStorage.setItem("userId", user.user_id || "");
         localStorage.setItem("userRole", user.role || "adopter");
         if (user.phone)   localStorage.setItem("userPhone", user.phone);
