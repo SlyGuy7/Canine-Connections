@@ -6,7 +6,10 @@ export default function Login({ switchToRegister, switchToForgot }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendSent, setResendSent] = useState(false);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
+  const isVerifyError = error.toLowerCase().includes("verify your email");
   async function onSubmit(e) {
     e.preventDefault();
     setError("");
@@ -51,9 +54,31 @@ export default function Login({ switchToRegister, switchToForgot }) {
     e.preventDefault();
     switchToForgot();
   };
+  const handleResend = async (e) => {
+    e.preventDefault();
+    setResending(true);
+    await sendMessage("request.auth.resendVerification", { email, app_url: window.location.origin });
+    setResending(false);
+    setResendSent(true);
+  };
   return (
     <form onSubmit={onSubmit} style={styles.form}>
-      {error && <p style={styles.error}>{error}</p>}
+      {error && (
+        <div style={styles.error}>
+          {error}
+          {isVerifyError && (
+            <div style={{ marginTop: "8px" }}>
+              {resendSent ? (
+                <span style={{ color: "#166534", fontWeight: "600" }}>Verification email sent — check your inbox.</span>
+              ) : (
+                <a href="#" onClick={handleResend} style={{ color: "#b45309", fontWeight: "700", textDecoration: "underline", fontSize: "13px" }}>
+                  {resending ? "Sending…" : "Resend verification email"}
+                </a>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       <div>
         <label style={styles.label}>Email</label>
         <input
