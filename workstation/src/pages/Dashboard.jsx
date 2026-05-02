@@ -133,6 +133,7 @@ export default function Dashboard() {
     { label: "Take the Quiz", icon: "🧩", desc: "Find compatible breeds", path: "/quiz"         },
     { label: "Applications",  icon: "📋", desc: "Track your progress",   path: "/applications" },
     { label: "Shelters",      icon: "🏡", desc: "View partner shelters",  path: "/shelters"     },
+    { label: "Resources",     icon: "📚", desc: "Guides & tips",          path: "/resources"    },
   ]
 
   const doneCount = nextSteps.filter(s => s.done).length
