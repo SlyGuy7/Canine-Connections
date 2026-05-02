@@ -32,8 +32,8 @@ export default function Dashboard() {
     const firstName = localStorage.getItem("userFirstName")
     const fullName  = localStorage.getItem("userFullName")
     const email     = localStorage.getItem("userEmail")
-    if (firstName) { setUser(firstName); return }
-    if (fullName)  { setUser(fullName);  return }
+    if (firstName) { setUser(firstName.split(' ')[0]); return }
+    if (fullName)  { setUser(fullName.split(' ')[0]); return }
     if (email)     { setUser(email.split("@")[0]); return }
     setUser("Friend")
   }
