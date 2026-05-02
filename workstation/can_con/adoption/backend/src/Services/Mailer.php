@@ -2,20 +2,33 @@
 
 namespace App\Services;
 
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+
 final class Mailer
 {
     public static function send(string $to, string $subject, string $body): bool
     {
         try {
-            $client = \Resend::client($_ENV['RESEND_API_KEY']);
-            $result = $client->emails->send([
-                'from'    => $_ENV['MAIL_FROM'] ?? 'onboarding@resend.dev',
-                'to'      => [$to],
-                'subject' => $subject,
-                'html'    => $body,
-            ]);
-            echo "[Mailer] Email sent to {$to} — ID: {$result->id}\n";
-            return isset($result->id);
+            $mail = new PHPMailer(true);
+            $mail->isSMTP();
+            $mail->Host       = $_ENV['SMTP_HOST'] ?? 'smtp.gmail.com';
+            $mail->SMTPAuth   = true;
+            $mail->Username   = $_ENV['SMTP_USER'] ?? '';
+            $mail->Password   = $_ENV['SMTP_PASS'] ?? '';
+            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+            $mail->Port       = (int)($_ENV['SMTP_PORT'] ?? 587);
+            $mail->setFrom(
+                $_ENV['SMTP_USER'] ?? '',
+                $_ENV['MAIL_FROM_NAME'] ?? 'Canine Connections'
+            );
+            $mail->addAddress($to);
+            $mail->isHTML(true);
+            $mail->Subject = $subject;
+            $mail->Body    = $body;
+            $mail->send();
+            echo "[Mailer] Email sent to {$to}\n";
+            return true;
         } catch (\Throwable $e) {
             echo "[Mailer][ERROR] {$e->getMessage()}\n";
             return false;
