@@ -3,29 +3,45 @@ import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import AuthModal from "../components/AuthModal"
 
-function CategoryPreviewModal({ category, dogs, close, navigate }) {
+function CategoryPreviewModal({ category, close, navigate }) {
   if (!category) return null
 
-  let previewDogs = []
+  const [previewDogs, setPreviewDogs] = React.useState([])
+  const [catLoading, setCatLoading] = React.useState(true)
+
   let title = ""
   let subtitle = ""
+  let queryParams = {}
 
   if (category === "Small Dogs") {
-    previewDogs = dogs.filter((d) => d.size === "Small")
     title = "Little Pups, Big Hearts"
     subtitle = "These bite-sized companions are perfectly sized for any home."
+    queryParams = { size: "small", status: "available", limit: 4 }
   } else if (category === "Large Dogs") {
-    previewDogs = dogs.filter((d) => d.size === "Large")
     title = "Gentle Giants"
     subtitle = "Looking for a bigger companion? Meet our large breed dogs."
+    queryParams = { size: "large", status: "available", limit: 4 }
   } else if (category === "Puppies") {
-    previewDogs = dogs.filter((d) => d.ageGroup === "Puppy")
     title = "Playful Puppies"
     subtitle = "Young, energetic, and ready to join your family."
+    queryParams = { max_age: 1, status: "available", limit: 4 }
   }
 
-  console.log("Category:", category, "Total dogs:", dogs.length, "Sizes sample:", dogs.slice(0,5).map(d => d.size))
-  previewDogs = previewDogs.slice(0, 4)
+  React.useEffect(() => {
+    setCatLoading(true)
+    sendMessage("request.dogs.list", { ...queryParams, offset: 0 })
+      .then(result => {
+        if (result?.success && Array.isArray(result.dogs)) {
+          setPreviewDogs(result.dogs.map(dog => ({
+            ...dog,
+            id: dog.dog_id,
+            image: dog.photos ? dog.photos.split(",")[0].trim() : "",
+          })))
+        }
+      })
+      .catch(() => {})
+      .finally(() => setCatLoading(false))
+  }, [category])
   console.log("Filtered:", previewDogs.length, "dogs")
 
   return (
@@ -60,7 +76,7 @@ function CategoryPreviewModal({ category, dogs, close, navigate }) {
             </div>
           )) : (
             <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "#6f5848" }}>
-              Fetching pups... 🦴
+              catLoading ? "Loading..." : "No dogs found in this category."
             </div>
           )}
         </div>
@@ -534,7 +550,7 @@ export default function Landing() {
 
       {/* ── Modals ── */}
       {previewCategory && (
-        <CategoryPreviewModal category={previewCategory} dogs={dogs} close={() => setPreviewCategory(null)} navigate={navigate} />
+        <CategoryPreviewModal category={previewCategory} close={() => setPreviewCategory(null)} navigate={navigate} />
       )}
       {selectedDog && (
         <DogModal dog={selectedDog} close={() => setSelectedDog(null)} requireAuth={requireAuth} />
