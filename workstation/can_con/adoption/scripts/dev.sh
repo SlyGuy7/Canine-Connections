@@ -3,7 +3,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 kill_tunnels() {
     echo "[DEBUG-MSG] Clearing existing tunnels..."
-    for port in $LOCAL_RABBITMQ_AMQP_PORT $LOCAL_RABBITMQ_UI_PORT $LOCAL_RABBITMQ_STOMP_PORT $LOCAL_MYSQL_PORT $LOCAL_PHP_PORT $LOCAL_FRONTEND_PORT; do
+    for port in $LOCAL_RABBITMQ_AMQP_PORT $LOCAL_RABBITMQ_UI_PORT $LOCAL_MYSQL_PORT $LOCAL_PHP_PORT $LOCAL_FRONTEND_PORT; do
         fuser -k "${port}/tcp" &>/dev/null || true
     done
     for sock in /tmp/ssh_mux_*; do
@@ -105,7 +105,7 @@ diagnostics() {
 
     echo ""
     echo "[DIAGNOSTICS] ── RabbitMQ Nodes ────────────────────────────────────────"
-    diag_rabbitmq_node "RabbitMQ-Node1" "$RABBITMQ_SSH_USER"    "$RABBITMQ_HOST"       &
+    diag_rabbitmq_node "RabbitMQ-Node1" "$RABBITMQ_USER"       "$RABBITMQ_HOST"       &
     diag_rabbitmq_node "RabbitMQ-Node2" "$RABBITMQ_NODE2_USER" "$RABBITMQ_NODE2_HOST" &
     diag_rabbitmq_node "RabbitMQ-Node3" "$RABBITMQ_NODE3_USER" "$RABBITMQ_NODE3_HOST" &
     wait
@@ -121,55 +121,89 @@ diagnostics() {
     echo ""
 }
 
+resolve_rabbitmq() {
+    local nodes=(
+        "$RABBITMQ_USER|$RABBITMQ_HOST"
+        "$RABBITMQ_NODE2_USER|$RABBITMQ_NODE2_HOST"
+        "$RABBITMQ_NODE3_USER|$RABBITMQ_NODE3_HOST"
+    )
+    for entry in "${nodes[@]}"; do
+        local u="${entry%%|*}" h="${entry##*|}"
+        [ -z "$h" ] && continue
+        if ssh_cmd "$u" "$h" "echo ok" &>/dev/null; then
+            echo "$u|$h"
+            return 0
+        fi
+        echo "[DEBUG-MSG] RabbitMQ node $h unreachable, trying next..."
+    done
+    echo "[ERROR-MSG] All RabbitMQ nodes unreachable"
+    return 1
+}
+
 start_rabbitmq() {
     echo "[STARTING - - - ] **** RabbitMQ ****"
-    check_ssh "$RABBITMQ_SSH_USER" "$RABBITMQ_HOST" "RabbitMQ" || return 1
+    local resolved
+    resolved=$(resolve_rabbitmq) || return 1
+    local R_USER="${resolved%%|*}" R_HOST="${resolved##*|}"
+    echo "[DEBUG-MSG] Using RabbitMQ node: $R_HOST"
 
-    if is_active "$RABBITMQ_SSH_USER" "$RABBITMQ_HOST" "rabbitmq-server"; then
+    if is_active "$R_USER" "$R_HOST" "rabbitmq-server"; then
         echo "[DEBUG-MSG] RabbitMQ already running"
     else
         echo "[DEBUG-MSG] Starting RabbitMQ..."
-        ssh_cmd "$RABBITMQ_SSH_USER" "$RABBITMQ_HOST" \
+        ssh_cmd "$R_USER" "$R_HOST" \
             "sudo systemctl enable rabbitmq-server && sudo systemctl restart rabbitmq-server"
-        wait_for port_listening "RabbitMQ" 30 "$RABBITMQ_SSH_USER" "$RABBITMQ_HOST" 5672 || return 1
+        wait_for port_listening "RabbitMQ" 30 "$R_USER" "$R_HOST" 5672 || return 1
     fi
 
-    ssh_cmd "$RABBITMQ_SSH_USER" "$RABBITMQ_HOST" \
-        "sudo rabbitmq-plugins enable rabbitmq_management rabbitmq_web_stomp &>/dev/null || true"
-
-    echo "[DEBUG-MSG] Ensuring RabbitMQ user '$RABBITMQ_USER'..."
-    ssh_cmd "$RABBITMQ_SSH_USER" "$RABBITMQ_HOST" "
-        sudo rabbitmqctl add_user '$RABBITMQ_USER' '$RABBITMQ_PASS' 2>/dev/null || \
-            sudo rabbitmqctl change_password '$RABBITMQ_USER' '$RABBITMQ_PASS'
-        sudo rabbitmqctl set_user_tags '$RABBITMQ_USER' administrator
-        sudo rabbitmqctl set_permissions -p / '$RABBITMQ_USER' '.*' '.*' '.*'
-    "
-
-    tunnel "$RABBITMQ_SSH_USER" "$RABBITMQ_HOST" \
+    ssh_cmd "$R_USER" "$R_HOST" \
+        "sudo rabbitmq-plugins enable rabbitmq_management &>/dev/null || true"
+    tunnel "$R_USER" "$R_HOST" \
         "${LOCAL_RABBITMQ_AMQP_PORT}:localhost:5672" \
-        "${LOCAL_RABBITMQ_UI_PORT}:localhost:15672" \
-        "${LOCAL_RABBITMQ_STOMP_PORT}:localhost:15674"
+        "${LOCAL_RABBITMQ_UI_PORT}:localhost:15672"
 
     echo "[DEBUG-MSG] RabbitMQ ready"
-    echo "[DEBUG-MSG]   AMQP -> amqp://${RABBITMQ_HOST}:${LOCAL_RABBITMQ_AMQP_PORT}"
-    echo "[DEBUG-MSG]   UI   -> http://${RABBITMQ_HOST}:${LOCAL_RABBITMQ_UI_PORT}/"
+    echo "[DEBUG-MSG]   AMQP -> amqp://${R_HOST}:${LOCAL_RABBITMQ_AMQP_PORT}"
+    echo "[DEBUG-MSG]   UI   -> http://${R_HOST}:${LOCAL_RABBITMQ_UI_PORT}/"
+}
+
+resolve_mysql() {
+    local nodes=(
+        "$MYSQL_USER|$MYSQL_HOST"
+        "$MYSQL_NODE2_USER|$MYSQL_NODE2_HOST"
+        "$MYSQL_NODE3_USER|$MYSQL_NODE3_HOST"
+    )
+    for entry in "${nodes[@]}"; do
+        local u="${entry%%|*}" h="${entry##*|}"
+        [ -z "$h" ] && continue
+        if ssh_cmd "$u" "$h" "echo ok" &>/dev/null; then
+            echo "$u|$h"
+            return 0
+        fi
+        echo "[DEBUG-MSG] MySQL node $h unreachable, trying next..."
+    done
+    echo "[ERROR-MSG] All MySQL nodes unreachable"
+    return 1
 }
 
 start_mysql() {
     echo "[STARTING - - - ] **** MySQL ****"
-    check_ssh "$MYSQL_USER" "$MYSQL_HOST" "MySQL" || return 1
+    local resolved
+    resolved=$(resolve_mysql) || return 1
+    local M_USER="${resolved%%|*}" M_HOST="${resolved##*|}"
+    echo "[DEBUG-MSG] Using MySQL node: $M_HOST"
 
-    if is_active "$MYSQL_USER" "$MYSQL_HOST" "mysql"; then
+    if is_active "$M_USER" "$M_HOST" "mysql"; then
         echo "[DEBUG-MSG] MySQL already running"
     else
         echo "[DEBUG-MSG] Starting MySQL..."
-        ssh_cmd "$MYSQL_USER" "$MYSQL_HOST" \
+        ssh_cmd "$M_USER" "$M_HOST" \
             "sudo systemctl enable mysql && sudo systemctl restart mysql"
-        wait_for is_active "MySQL" 10 "$MYSQL_USER" "$MYSQL_HOST" "mysql" || return 1
+        wait_for is_active "MySQL" 10 "$M_USER" "$M_HOST" "mysql" || return 1
     fi
 
-    tunnel "$MYSQL_USER" "$MYSQL_HOST" "${LOCAL_MYSQL_PORT}:localhost:3306"
-    echo "[DEBUG-MSG] MySQL ready -> ${MYSQL_HOST}:${LOCAL_MYSQL_PORT}"
+    tunnel "$M_USER" "$M_HOST" "${LOCAL_MYSQL_PORT}:localhost:3306"
+    echo "[DEBUG-MSG] MySQL ready -> ${M_HOST}:${LOCAL_MYSQL_PORT}"
 }
 
 start_php() {
@@ -229,9 +263,9 @@ start_frontend() {
 
 stop_rabbitmq() {
     echo "[STOPPING - - - ] **** RabbitMQ ****"
-    check_ssh "$RABBITMQ_SSH_USER" "$RABBITMQ_HOST" "RabbitMQ" || return 1
+    check_ssh "$RABBITMQ_USER" "$RABBITMQ_HOST" "RabbitMQ" || return 1
     echo "[DEBUG-MSG] Stopping rabbitmq-server..."
-    ssh_cmd "$RABBITMQ_SSH_USER" "$RABBITMQ_HOST" "sudo systemctl stop rabbitmq-server" || true
+    ssh_cmd "$RABBITMQ_USER" "$RABBITMQ_HOST" "sudo systemctl stop rabbitmq-server" || true
     fuser -k "${LOCAL_RABBITMQ_AMQP_PORT}/tcp" &>/dev/null || true
     fuser -k "${LOCAL_RABBITMQ_UI_PORT}/tcp" &>/dev/null || true
     echo "[DEBUG-MSG] RabbitMQ stopped"
@@ -346,7 +380,7 @@ deploy() {
 status_all() {
     echo "[STATUS] Checking all services..."
     for svc in \
-        "RabbitMQ|$RABBITMQ_SSH_USER|$RABBITMQ_HOST|rabbitmq-server" \
+        "RabbitMQ|$RABBITMQ_USER|$RABBITMQ_HOST|rabbitmq-server" \
         "MySQL|$MYSQL_USER|$MYSQL_HOST|mysql"
     do
         IFS='|' read -r label user host service <<< "$svc"
