@@ -109,6 +109,7 @@ export default function Register() {
         setLoading(false);
         localStorage.setItem("userPhone", phone);
         localStorage.setItem("userAddress", address);
+        localStorage.setItem("userPassword", password);
         navigate("/register-success");
         return;
       }
