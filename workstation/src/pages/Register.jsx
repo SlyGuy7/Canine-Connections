@@ -110,6 +110,11 @@ export default function Register() {
         localStorage.setItem("userPhone", phone);
         localStorage.setItem("userAddress", address);
         localStorage.setItem("userPassword", password);
+        localStorage.setItem("userFirstName", firstName);
+        localStorage.setItem("userLastName", lastName);
+        localStorage.setItem("userFullName", `${firstName} ${lastName}`.trim());
+        localStorage.setItem("userId", result.user_id || "");
+        localStorage.setItem("userEmail", email);
         navigate("/register-success");
         return;
       }

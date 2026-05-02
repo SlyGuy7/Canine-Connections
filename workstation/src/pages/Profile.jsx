@@ -68,7 +68,7 @@ const allFieldKeys = sections.flatMap(s => Object.keys(s.fields))
 export default function Profile() {
   const { addToast } = useToast()
 
-  const displayName  = localStorage.getItem("userFirstName") || localStorage.getItem("userFullName")?.split(" ")[0] || "User"
+  const displayName  = localStorage.getItem("userFirstName") || localStorage.getItem("userFullName")?.split(" ")[0] || localStorage.getItem("userEmail")?.split("@")[0] || "User"
   const displayEmail = localStorage.getItem("userEmail") || ""
   const initials     = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
 
