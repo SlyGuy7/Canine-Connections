@@ -24,7 +24,9 @@ function CategoryPreviewModal({ category, dogs, close, navigate }) {
     subtitle = "Young, energetic, and ready to join your family."
   }
 
+  console.log("Category:", category, "Total dogs:", dogs.length, "Sizes sample:", dogs.slice(0,5).map(d => d.size))
   previewDogs = previewDogs.slice(0, 4)
+  console.log("Filtered:", previewDogs.length, "dogs")
 
   return (
     <div
