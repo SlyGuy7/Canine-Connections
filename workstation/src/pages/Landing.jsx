@@ -11,15 +11,15 @@ function CategoryPreviewModal({ category, dogs, close, navigate }) {
   let subtitle = ""
 
   if (category === "Small Dogs") {
-    previewDogs = dogs.filter((d) => (d.size || "").toLowerCase() === "small")
+    previewDogs = dogs.filter((d) => d.size === "Small")
     title = "Little Pups, Big Hearts"
     subtitle = "These bite-sized companions are perfectly sized for any home."
   } else if (category === "Large Dogs") {
-    previewDogs = dogs.filter((d) => ["large","extra_large"].includes((d.size || "").toLowerCase()))
+    previewDogs = dogs.filter((d) => d.size === "Large")
     title = "Gentle Giants"
     subtitle = "Looking for a bigger companion? Meet our large breed dogs."
   } else if (category === "Puppies") {
-    previewDogs = dogs.filter((d) => Number(d.age_years) <= 1)
+    previewDogs = dogs.filter((d) => d.ageGroup === "Puppy")
     title = "Playful Puppies"
     subtitle = "Young, energetic, and ready to join your family."
   }
