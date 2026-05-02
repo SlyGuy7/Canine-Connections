@@ -11,25 +11,20 @@ function CategoryPreviewModal({ category, dogs, close, navigate }) {
   let subtitle = ""
 
   if (category === "Small Dogs") {
-    previewDogs = dogs.filter((d) => d.size === "Small")
+    previewDogs = dogs.filter((d) => (d.size || "").toLowerCase() === "small")
     title = "Little Pups, Big Hearts"
     subtitle = "These bite-sized companions are perfectly sized for any home."
   } else if (category === "Large Dogs") {
-    previewDogs = dogs.filter((d) => d.size === "Large")
+    previewDogs = dogs.filter((d) => ["large","extra_large"].includes((d.size || "").toLowerCase()))
     title = "Gentle Giants"
     subtitle = "Looking for a bigger companion? Meet our large breed dogs."
   } else if (category === "Puppies") {
-    previewDogs = dogs.filter((d) => d.ageGroup === "Puppy")
+    previewDogs = dogs.filter((d) => Number(d.age_years) <= 1)
     title = "Playful Puppies"
     subtitle = "Young, energetic, and ready to join your family."
   }
 
-  if (previewDogs.length < 4 && dogs.length > 0) {
-    const extra = dogs.filter(d => !previewDogs.includes(d))
-    previewDogs = [...previewDogs, ...extra].slice(0, 4)
-  } else {
-    previewDogs = previewDogs.slice(0, 4)
-  }
+  previewDogs = previewDogs.slice(0, 4)
 
   return (
     <div
@@ -207,7 +202,7 @@ export default function Landing() {
   }
 
   useEffect(() => {
-    sendMessage("request.dogs.list", { limit: 8 })
+    sendMessage("request.dogs.list", { limit: 200 })
       .then((result) => {
         if (result?.success && Array.isArray(result.dogs) && result.dogs.length > 0) {
           setDogs(result.dogs.map((dog) => ({
