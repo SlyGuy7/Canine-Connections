@@ -115,7 +115,7 @@ export default function Profile() {
   const completedFields = allFieldKeys.filter(k => prefs[k]).length
   const bioFilled       = bio.trim().length > 0
   const progress        = Math.round(((completedFields + (bioFilled ? 1 : 0)) / (allFieldKeys.length + 1)) * 100)
-  const isReady         = progress >= 80
+  const isReady         = progress === 100
 
   return (
     <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 60px 0", fontFamily: "'Inter', sans-serif" }}>
