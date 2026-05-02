@@ -23,6 +23,7 @@ const navLinks = [
 { path: "/messages",   label: "Messages",    icon: "💬" },
 { path: "/quiz",       label: "Quiz",        icon: "🧩" },
 { path: "/journal",    label: "Journal",     icon: "📖" },
+{ path: "/resources",  label: "Resources",   icon: "📚" },
 { path: "/settings",   label: "Settings",    icon: "⚙️" },
 ];
 

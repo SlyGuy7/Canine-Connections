@@ -90,7 +90,7 @@ $queues = [
     'db.application.submit','db.application.status','db.application.list','db.application.approve','db.application.reject',
     'db.adoptions.list','db.adoptions.get','db.adoptions.finalize',
     'db.quiz.questions','db.quiz.submit','db.quiz.results',
-    'db.adoption.log.create','db.adoption.log.list',
+    'db.adoption.log.create','db.adoption.log.list','db.adoption.log.delete',
     'db.foster.apply','db.foster.list','db.foster.cancel',
     'db.parks.list','db.resources.list','db.resources.get',
     'db.stories.list','db.stories.submit','db.stories.approve',
@@ -340,16 +340,16 @@ function handleQuery($queue, $data, $db) {
             $id=(int)$data["application_id"]; $reviewedBy=isset($data["reviewed_by"])?(int)$data["reviewed_by"]:"NULL";
             $notes=$db->real_escape_string($data["reviewer_notes"]??'');
             $db->query("UPDATE adoption_applications SET status='approved',reviewed_by={$reviewedBy},reviewer_notes='{$notes}' WHERE application_id={$id}");
-            $row=fetchOneAssoc($db->query("SELECT user_id FROM adoption_applications WHERE application_id={$id}"));
-            return ["success"=>true,"user_id"=>$row['user_id']??null];
+            $row=fetchOneAssoc($db->query("SELECT aa.user_id,u.email,u.first_name,d.name as dog_name FROM adoption_applications aa JOIN users u ON aa.user_id=u.user_id JOIN dogs d ON aa.dog_id=d.dog_id WHERE aa.application_id={$id}"));
+            return ["success"=>true,"user_id"=>$row['user_id']??null,"email"=>$row['email']??'',"first_name"=>$row['first_name']??'',"dog_name"=>$row['dog_name']??''];
 
         case "db.application.reject":
             if (!isset($data["application_id"])) return ["success"=>false,"error"=>"Missing application_id"];
             $id=(int)$data["application_id"]; $reviewedBy=isset($data["reviewed_by"])?(int)$data["reviewed_by"]:"NULL";
             $notes=$db->real_escape_string($data["reviewer_notes"]??'');
             $db->query("UPDATE adoption_applications SET status='rejected',reviewed_by={$reviewedBy},reviewer_notes='{$notes}' WHERE application_id={$id}");
-            $row=fetchOneAssoc($db->query("SELECT user_id FROM adoption_applications WHERE application_id={$id}"));
-            return ["success"=>true,"user_id"=>$row['user_id']??null];
+            $row=fetchOneAssoc($db->query("SELECT aa.user_id,u.email,u.first_name,d.name as dog_name FROM adoption_applications aa JOIN users u ON aa.user_id=u.user_id JOIN dogs d ON aa.dog_id=d.dog_id WHERE aa.application_id={$id}"));
+            return ["success"=>true,"user_id"=>$row['user_id']??null,"email"=>$row['email']??'',"first_name"=>$row['first_name']??'',"dog_name"=>$row['dog_name']??''];
 
         case "db.parks.list":
             $result=$db->query("SELECT * FROM pet_parks"); if (!$result) return ["success"=>false,"error"=>$db->error];
@@ -491,6 +491,13 @@ function handleQuery($queue, $data, $db) {
             $result=$db->query("SELECT * FROM post_adoption_logs WHERE user_id={$userId} AND dog_id={$dogId} ORDER BY log_date DESC");
             if (!$result) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"logs"=>fetchAllAssoc($result)];
+
+        case "db.adoption.log.delete":
+            if (!isset($data["log_id"])) return ["success"=>false,"error"=>"Missing log_id"];
+            $logId=(int)$data["log_id"]; $userId=(int)($data["user_id"]??0);
+            $db->query("DELETE FROM post_adoption_logs WHERE log_id={$logId} AND user_id={$userId}");
+            if ($db->affected_rows===0) return ["success"=>false,"error"=>"Log not found"];
+            return ["success"=>true];
 
         case "db.quiz.questions":
             $questions=fetchAllAssoc($db->query("SELECT * FROM quiz_questions ORDER BY question_id ASC"));

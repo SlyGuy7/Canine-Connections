@@ -409,6 +409,7 @@ final class FrontendWorker
                     'size'         => $data['size']         ?? null,
                     'energy_level' => $data['energy_level'] ?? null,
                     'shelter_id'   => $data['shelter_id']   ?? null,
+                    'max_age'      => $data['max_age']      ?? null,
                     'limit'        => $data['limit']        ?? 20,
                     'offset'       => $data['offset']       ?? 0,
                 ], $corrId);
@@ -610,6 +611,18 @@ final class FrontendWorker
                 $result = $mq->publishAndWait('bridge.adoption.log.list', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'log_type' => $data['log_type'] ?? null], $corrId);
                 $this->respond($mq, 'response.adoption.log.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.adoption.log.list', $replyTo, ['success' => false, 'error' => 'Could not load logs'], $corrId); }
+        }, $msg);
+    }
+
+    public function handleAdoptionLogDelete(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            try {
+                if (empty($data['log_id'])) { $this->respond($mq, 'response.adoption.log.delete', $replyTo, ['success' => false, 'error' => 'log_id is required'], $corrId); return; }
+                $result = $mq->publishAndWait('bridge.adoption.log.delete', ['log_id' => $data['log_id'], 'user_id' => $data['user_id'] ?? null], $corrId);
+                $this->respond($mq, 'response.adoption.log.delete', $replyTo, $result ?? ['success' => false, 'error' => 'Could not delete log'], $corrId);
+            } catch (\Throwable $e) { $this->respond($mq, 'response.adoption.log.delete', $replyTo, ['success' => false, 'error' => 'Could not delete log'], $corrId); }
         }, $msg);
     }
 

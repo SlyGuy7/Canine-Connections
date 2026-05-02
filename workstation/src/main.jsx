@@ -30,6 +30,7 @@ import AdminApplications from "./pages/AdminApplications.jsx"
 import AdminStories from "./pages/AdminStories.jsx"
 import AdminDogs from "./pages/AdminDogs.jsx"
 import Profile from "./pages/Profile.jsx"
+import Resources from "./pages/Resources.jsx"
 import VerifyEmail from "./pages/VerifyEmail.jsx"
 
 ReactDOM.createRoot(document.getElementById("root")).render(
@@ -65,6 +66,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
         <Route path="/admin/stories" element={<AdminGuard><AdminStories /></AdminGuard>} />
         <Route path="/admin/dogs" element={<AdminGuard><AdminDogs /></AdminGuard>} />
 
+        <Route path="/resources" element={<Layout><Resources /></Layout>} />
         <Route path="/verify-email" element={<VerifyEmail />} />
         <Route path="*" element={<Navigate to="/landing" replace />} />
       </Routes>

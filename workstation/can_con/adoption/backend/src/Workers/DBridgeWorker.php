@@ -40,6 +40,7 @@ final class DBridgeWorker
         $this->mq->registerConsumer('bridge.quiz.results',        [$this, 'handleQuizResults']);
         $this->mq->registerConsumer('bridge.adoption.log.create', [$this, 'handleAdoptionLogCreate']);
         $this->mq->registerConsumer('bridge.adoption.log.list',   [$this, 'handleAdoptionLogList']);
+        $this->mq->registerConsumer('bridge.adoption.log.delete', [$this, 'handleAdoptionLogDelete']);
         $this->mq->registerConsumer('bridge.foster.apply',        [$this, 'handleFosterApply']);
         $this->mq->registerConsumer('bridge.foster.list',         [$this, 'handleFosterList']);
         $this->mq->registerConsumer('bridge.foster.cancel',       [$this, 'handleFosterCancel']);
@@ -301,6 +302,12 @@ final class DBridgeWorker
     {
         $replyTo = $this->getReplyTo($msg);
         $this->fork(fn() => $this->relay('bridge.adoption.log.list', 'db.adoption.log.list', $data, $corrId, $replyTo), $msg);
+    }
+
+    public function handleAdoptionLogDelete(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->getReplyTo($msg);
+        $this->fork(fn() => $this->relay('bridge.adoption.log.delete', 'db.adoption.log.delete', $data, $corrId, $replyTo), $msg);
     }
 
     public function handleFosterApply(array $data, $msg, ?string $corrId): void
