@@ -191,6 +191,10 @@ final class FrontendWorker
                     'phone'         => $this->encryptIfPresent($data['phone']    ?? ''),
                     'address'       => $this->encryptIfPresent($data['address']  ?? ''),
                     'role'          => 'adopter',
+                    'id_one_b64'    => $data['id_one_b64']  ?? null,
+                    'id_one_name'   => $data['id_one_name'] ?? null,
+                    'id_two_b64'    => $data['id_two_b64']  ?? null,
+                    'id_two_name'   => $data['id_two_name'] ?? null,
                 ], $corrId);
                 if (!$result || empty($result['success'])) {
                     $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'Registration failed'], $corrId);
