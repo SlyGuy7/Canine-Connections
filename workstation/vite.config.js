@@ -26,6 +26,10 @@ export default defineConfig({
         target: "ws://100.99.21.39:15674",
         ws: true,
         changeOrigin: true
+      },
+      "/client-ip": {
+        target: "http://100.99.21.39",
+        changeOrigin: true
       }
     }
   }
