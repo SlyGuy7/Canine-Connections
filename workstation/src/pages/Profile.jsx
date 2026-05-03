@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react"
+import { useBlocker } from "react-router-dom"
 import { useToast } from "../context/ToastContext"
 
 const PROFILE_KEY = "userProfile"
@@ -67,7 +68,7 @@ const allFieldKeys = sections.flatMap(s => Object.keys(s.fields))
 export default function Profile() {
   const { addToast } = useToast()
 
-  const displayName  = localStorage.getItem("userFirstName") || localStorage.getItem("userFullName")?.split(" ")[0] || "User"
+  const displayName  = localStorage.getItem("userFirstName") || localStorage.getItem("userFullName")?.split(" ")[0] || localStorage.getItem("userEmail")?.split("@")[0] || "User"
   const displayEmail = localStorage.getItem("userEmail") || ""
   const initials     = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
 
@@ -78,10 +79,11 @@ export default function Profile() {
   const [prefs, setPrefs] = useState({})
   const [focusedField, setFocusedField] = useState(null)
   const savedState = useRef({ bio: "", prefs: {} })
-  const isDirty = () => {
-    return bio !== savedState.current.bio ||
-      JSON.stringify(prefs) !== JSON.stringify(savedState.current.prefs)
-  }
+  const isDirty = () =>
+    bio !== savedState.current.bio ||
+    JSON.stringify(prefs) !== JSON.stringify(savedState.current.prefs)
+
+  const blocker = useBlocker(isDirty)
 
   useEffect(() => {
     const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}")
@@ -94,10 +96,7 @@ export default function Profile() {
 
   useEffect(() => {
     const handler = e => {
-      if (isDirty()) {
-        e.preventDefault()
-        e.returnValue = ""
-      }
+      if (isDirty()) { e.preventDefault(); e.returnValue = "" }
     }
     window.addEventListener("beforeunload", handler)
     return () => window.removeEventListener("beforeunload", handler)
@@ -116,7 +115,7 @@ export default function Profile() {
   const completedFields = allFieldKeys.filter(k => prefs[k]).length
   const bioFilled       = bio.trim().length > 0
   const progress        = Math.round(((completedFields + (bioFilled ? 1 : 0)) / (allFieldKeys.length + 1)) * 100)
-  const isReady         = progress >= 80
+  const isReady         = progress === 100
 
   return (
     <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 60px 0", fontFamily: "'Inter', sans-serif" }}>
@@ -244,6 +243,29 @@ export default function Profile() {
         </div>
 
       </div>
+
+      {blocker.state === "blocked" && (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}>
+        <div style={{ background: "white", borderRadius: "20px", padding: "32px", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+          <h3 style={{ margin: "0 0 10px 0", fontSize: "18px", fontWeight: "800", color: "#2f241d" }}>Unsaved changes</h3>
+          <p style={{ margin: "0 0 24px 0", color: "#78716c", fontSize: "15px" }}>You have unsaved changes on your profile. Leave without saving?</p>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              onClick={() => blocker.reset()}
+              style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
+            >
+              Stay
+            </button>
+            <button
+              onClick={() => blocker.proceed()}
+              style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "none", background: "#ef4444", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}
+            >
+              Leave without saving
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     </div>
   )
 }

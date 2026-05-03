@@ -11,6 +11,7 @@ export default function DogProfile() {
   const [dog, setDog]             = useState(null);
   const [loading, setLoading]     = useState(true);
   const [isSaved, setIsSaved]     = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);
   const [activePhoto, setActivePhoto] = useState(0);
   const hasFetched = useRef(false);
 
@@ -25,11 +26,16 @@ export default function DogProfile() {
   async function load() {
     setLoading(true);
     try {
-      const result = await sendMessage("request.dogs.get", { dog_id: parseInt(id, 10) });
-      if (result?.success && result.dog) {
-        setDog(result.dog);
+      const [dogResult, appResult] = await Promise.all([
+        sendMessage("request.dogs.get", { dog_id: parseInt(id, 10) }),
+        sendMessage("request.application.list", { user_id: parseInt(localStorage.getItem("userId") || "0") }),
+      ]);
+      if (dogResult?.success && dogResult.dog) {
+        setDog(dogResult.dog);
         const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
-        setIsSaved(saved.some(d => d.dog_id === result.dog.dog_id));
+        setIsSaved(saved.some(d => d.dog_id === dogResult.dog.dog_id));
+        const apps = appResult?.applications || [];
+        setHasApplied(apps.some(a => String(a.dog_id) === String(id)));
       } else {
         addToast("Could not load dog details.", "error");
       }
@@ -192,14 +198,23 @@ export default function DogProfile() {
           </div>
 
           {/* CTA */}
-          <button
-            onClick={() => navigate("/apply", { state: { dogId: dog.dog_id, dogName: dog.name } })}
-            style={{ width: "100%", padding: "16px", borderRadius: "14px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "17px", cursor: "pointer", boxShadow: "0 4px 16px rgba(217,119,6,0.3)", transition: "opacity 0.15s" }}
-            onMouseEnter={e => (e.target.style.opacity = "0.88")}
-            onMouseLeave={e => (e.target.style.opacity = "1")}
-          >
-            Start Adoption Application
-          </button>
+          {hasApplied ? (
+            <div style={{ width: "100%", padding: "16px", borderRadius: "14px", background: "#f0fdf4", border: "1.5px solid #86efac", textAlign: "center" }}>
+              <span style={{ fontSize: "17px", fontWeight: "700", color: "#16a34a" }}>✓ You've already applied for {dog.name}</span>
+              <p style={{ margin: "6px 0 0 0", fontSize: "13px", color: "#4ade80" }}>
+                <span style={{ color: "#166534", cursor: "pointer", textDecoration: "underline" }} onClick={() => navigate("/applications")}>View your application →</span>
+              </p>
+            </div>
+          ) : (
+            <button
+              onClick={() => navigate("/apply", { state: { dogId: dog.dog_id, dogName: dog.name } })}
+              style={{ width: "100%", padding: "16px", borderRadius: "14px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "17px", cursor: "pointer", boxShadow: "0 4px 16px rgba(217,119,6,0.3)", transition: "opacity 0.15s" }}
+              onMouseEnter={e => (e.target.style.opacity = "0.88")}
+              onMouseLeave={e => (e.target.style.opacity = "1")}
+            >
+              Start Adoption Application
+            </button>
+          )}
         </div>
       </div>
     </div>

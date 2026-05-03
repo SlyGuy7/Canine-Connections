@@ -66,6 +66,13 @@ export default function Register() {
     setError(""); 
   };
 
+  const toBase64 = (file) => new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+
   const onSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -93,6 +100,8 @@ export default function Register() {
     setLoading(true);
 
     try {
+      const [idOneB64, idTwoB64] = await Promise.all([toBase64(idOne), toBase64(idTwo)]);
+
       const result = await sendMessage("request.auth.register", {
         firstName,
         lastName,
@@ -102,13 +111,22 @@ export default function Register() {
         password,
         confirm,
         app_url: window.location.origin,
-        idVerificationComplete: true,
+        id_one_b64: idOneB64,
+        id_one_name: idOne.name,
+        id_two_b64: idTwoB64,
+        id_two_name: idTwo.name,
       });
 
       if (result.success) {
         setLoading(false);
         localStorage.setItem("userPhone", phone);
         localStorage.setItem("userAddress", address);
+        localStorage.setItem("userPassword", password);
+        localStorage.setItem("userFirstName", firstName);
+        localStorage.setItem("userLastName", lastName);
+        localStorage.setItem("userFullName", `${firstName} ${lastName}`.trim());
+        localStorage.setItem("userId", result.user_id || "");
+        localStorage.setItem("userEmail", email);
         navigate("/register-success");
         return;
       }
