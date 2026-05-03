@@ -20,7 +20,7 @@ export default function Login({ switchToRegister, switchToForgot }) {
     setLoading(true);
     try {
       let clientIp = "unknown";
-      try { clientIp = await fetch("http://100.99.21.39/client-ip").then(r => r.text()); } catch {}
+      try { clientIp = await fetch("/client-ip").then(r => r.text()); } catch {}
       const result = await sendMessage("request.auth.login", {
         email,
         password,

@@ -29,7 +29,8 @@ export default defineConfig({
       },
       "/client-ip": {
         target: "http://100.99.21.39",
-        changeOrigin: true
+        changeOrigin: true,
+        xfwd: true
       }
     }
   }
