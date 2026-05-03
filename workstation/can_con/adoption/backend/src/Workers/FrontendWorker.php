@@ -191,6 +191,10 @@ final class FrontendWorker
                     'phone'         => $this->encryptIfPresent($data['phone']    ?? ''),
                     'address'       => $this->encryptIfPresent($data['address']  ?? ''),
                     'role'          => 'adopter',
+                    'id_one_b64'    => $data['id_one_b64']  ?? null,
+                    'id_one_name'   => $data['id_one_name'] ?? null,
+                    'id_two_b64'    => $data['id_two_b64']  ?? null,
+                    'id_two_name'   => $data['id_two_name'] ?? null,
                 ], $corrId);
                 if (!$result || empty($result['success'])) {
                     $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'Registration failed'], $corrId);
@@ -330,7 +334,8 @@ final class FrontendWorker
                 $result = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId);
                 if (!$result || empty($result['user'])) return;
 
-                $user    = $result['user'];
+                $user      = $result['user'];
+                $firstName = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : 'there';
                 $payload = base64_encode(json_encode(['email' => $email, 'exp' => time() + 3600]));
                 $sig     = hash_hmac('sha256', $payload, $_ENV['APP_KEY'] ?? 'secret');
                 $token   = $payload . '.' . $sig;
@@ -338,10 +343,10 @@ final class FrontendWorker
 
                 Mailer::send(
                     $email,
-                    'Reset Your Password — Canine Connections',
+                    'Reset Your Password - Canine Connections',
                     "<div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                         <h1 style='color:#b45309'>Reset Your Password</h1>
-                        <p>Hi {$user['first_name']},</p>
+                        <p>Hi {$firstName},</p>
                         <p>We received a request to reset your password. Click the button below to choose a new one.</p>
                         <p style='color:#999;font-size:13px'>This link expires in 1 hour.</p>
                         <div style='text-align:center;margin:32px 0'>
