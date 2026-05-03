@@ -57,7 +57,7 @@ final class Mailer
     {
         return self::send(
             $to,
-            'Verify Your Email — Canine Connections',
+            'Verify Your Email -Canine Connections',
             "
             <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                 <h1 style='color:#b45309'>Welcome to Canine Connections!</h1>
@@ -80,7 +80,7 @@ final class Mailer
         $time = date('F j, Y \a\t g:i A T');
         return self::send(
             $to,
-            'New Login Detected — Canine Connections',
+            'New Login Detected -Canine Connections',
             "
             <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                 <h1 style='color:#b45309'>New Login Detected</h1>
@@ -99,7 +99,7 @@ final class Mailer
     {
         return self::send(
             $to,
-            'Password Reset Successful — Canine Connections',
+            'Password Reset Successful -Canine Connections',
             "
             <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                 <h1 style='color:#b45309'>Password Reset Successful</h1>
@@ -117,7 +117,7 @@ final class Mailer
     {
         return self::send(
             $to,
-            'Application Received — Canine Connections',
+            'Application Received -Canine Connections',
             "
             <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                 <h1 style='color:#b45309'>Application Received</h1>
@@ -135,7 +135,7 @@ final class Mailer
     {
         return self::send(
             $to,
-            'Application Approved — Canine Connections',
+            'Application Approved -Canine Connections',
             "
             <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                 <h1 style='color:#b45309'>Congratulations!</h1>
@@ -153,13 +153,13 @@ final class Mailer
     {
         return self::send(
             $to,
-            'Application Update — Canine Connections',
+            'Application Update -Canine Connections',
             "
             <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                 <h1 style='color:#b45309'>Application Update</h1>
                 <p>Hi {$firstName},</p>
                 <p>Unfortunately your adoption application for <strong>{$dogName}</strong> was not successful this time.</p>
-                <p>Please browse our other available dogs — your perfect match is out there!</p>
+                <p>Please browse our other available dogs -your perfect match is out there!</p>
                 <br>
                 <p style='color:#666'>The Canine Connections Team</p>
             </div>
@@ -171,7 +171,7 @@ final class Mailer
     {
         return self::send(
             $to,
-            'Meet & Greet Confirmed — Canine Connections',
+            'Meet & Greet Confirmed -Canine Connections',
             "
             <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                 <h1 style='color:#b45309'>Meet & Greet Confirmed</h1>
@@ -189,7 +189,7 @@ final class Mailer
     {
         return self::send(
             $to,
-            'Adoption Complete — Canine Connections',
+            'Adoption Complete -Canine Connections',
             "
             <div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                 <h1 style='color:#b45309'>Welcome to the Family!</h1>

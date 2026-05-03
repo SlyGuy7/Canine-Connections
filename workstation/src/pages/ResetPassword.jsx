@@ -51,7 +51,7 @@ export default function ResetPassword() {
     return (
       <div style={wrapStyle}>
         <div style={{ fontSize: "48px", marginBottom: "16px" }}>✅</div>
-        <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "800", color: "#2f241d" }}>Password updated!</h2>
+        <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "800", color: "#2f241d" }}>Password Updated!</h2>
         <p style={{ margin: "0 0 24px 0", color: "#78716c", fontSize: "15px" }}>You can now log in with your new password.</p>
         <button
           onClick={() => navigate("/landing")}

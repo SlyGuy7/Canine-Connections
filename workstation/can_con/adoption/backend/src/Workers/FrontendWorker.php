@@ -308,7 +308,8 @@ final class FrontendWorker
                     return;
                 }
                 $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => true, 'message' => 'Password updated successfully'], $corrId);
-                Mailer::passwordReset($data['email'], $user['first_name'] ?? '');
+                $fn = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : 'there';
+                Mailer::passwordReset($data['email'], $fn);
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleResetPassword: {$e->getMessage()}\n";
                 $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'Reset failed'], $corrId);
@@ -334,7 +335,8 @@ final class FrontendWorker
                 $result = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId);
                 if (!$result || empty($result['user'])) return;
 
-                $user    = $result['user'];
+                $user      = $result['user'];
+                $firstName = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : 'there';
                 $payload = base64_encode(json_encode(['email' => $email, 'exp' => time() + 3600]));
                 $sig     = hash_hmac('sha256', $payload, $_ENV['APP_KEY'] ?? 'secret');
                 $token   = $payload . '.' . $sig;
@@ -342,10 +344,10 @@ final class FrontendWorker
 
                 Mailer::send(
                     $email,
-                    'Reset Your Password — Canine Connections',
+                    'Reset Your Password - Canine Connections',
                     "<div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
                         <h1 style='color:#b45309'>Reset Your Password</h1>
-                        <p>Hi {$user['first_name']},</p>
+                        <p>Hi {$firstName},</p>
                         <p>We received a request to reset your password. Click the button below to choose a new one.</p>
                         <p style='color:#999;font-size:13px'>This link expires in 1 hour.</p>
                         <div style='text-align:center;margin:32px 0'>
@@ -392,8 +394,9 @@ final class FrontendWorker
                 }
                 $email  = $decoded['email'];
                 $result = $mq->publishAndWait('bridge.auth.resetPassword', [
-                    'email'         => $email,
-                    'password_hash' => $this->enc->hashPassword($newPassword),
+                    'email'              => $email,
+                    'password_hash'      => $this->enc->hashPassword($newPassword),
+                    'new_password_plain' => $newPassword,
                 ], $corrId . '_reset');
                 if (!$result || empty($result['success'])) {
                     $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'Could not update password'], $corrId);
@@ -402,7 +405,8 @@ final class FrontendWorker
                 $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => true], $corrId);
                 $userResult = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId . '_lookup');
                 if ($userResult && !empty($userResult['user'])) {
-                    Mailer::passwordReset($email, $userResult['user']['first_name'] ?? '');
+                    $fn = isset($userResult['user']['first_name']) && $userResult['user']['first_name'] !== '' ? $this->dec($userResult['user']['first_name']) : 'there';
+                    Mailer::passwordReset($email, $fn);
                 }
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleSetNewPassword: {$e->getMessage()}\n";
