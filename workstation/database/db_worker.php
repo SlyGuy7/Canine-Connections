@@ -82,6 +82,17 @@ if (!$db) {
     die("[CLUSTER] All MySQL nodes unreachable — cluster is down" . PHP_EOL);
 }
 
+$db->query("CREATE TABLE IF NOT EXISTS `id_verifications` (
+    `id` int NOT NULL AUTO_INCREMENT,
+    `user_id` int NOT NULL,
+    `id_one_data` mediumtext,
+    `id_one_filename` varchar(255) DEFAULT NULL,
+    `id_two_data` mediumtext,
+    `id_two_filename` varchar(255) DEFAULT NULL,
+    `submitted_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`), KEY `user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 $queues = [
     'db.auth.register','db.auth.login','db.auth.resetPassword','db.auth.verify','db.profile.update','db.account.delete',
     'db.shelters.list','db.shelters.get','db.shelters.upsert',
