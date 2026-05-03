@@ -4,7 +4,7 @@ const BROKER_URL =
   import.meta.env.VITE_MESSAGING_URL ||
   `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`;
 
-const REQUEST_TIMEOUT_MS = 30000;
+const REQUEST_TIMEOUT_MS = 60000;
 
 function makeCorrelationId() {
   return `req_${Date.now()}_${Math.random().toString(16).slice(2)}`;
