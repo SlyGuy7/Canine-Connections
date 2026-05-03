@@ -20,6 +20,7 @@ const styles = {
   },
   mainContent: {
     flex: 1,
+    marginLeft: "260px",
     height: "100vh",
     overflowY: "auto"
   }
