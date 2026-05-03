@@ -163,7 +163,25 @@ function handleQuery($queue, $data, $db) {
             $sql="INSERT INTO users (email,password_hash,first_name,last_name,phone,address,role,email_verified,verification_token) VALUES ('{$email}','{$passwordHash}','{$firstName}','{$lastName}','{$phone}','{$address}','{$role}',0,'{$token}')";
             logMsg("Executing SQL: ".$sql);
             if (!$db->query($sql)) return ["success"=>false,"error"=>$db->error];
-            return ["success"=>true,"user_id"=>$db->insert_id,"verification_token"=>$token];
+            $newUserId=$db->insert_id;
+            $db->query("CREATE TABLE IF NOT EXISTS `id_verifications` (
+                `id` int NOT NULL AUTO_INCREMENT,
+                `user_id` int NOT NULL,
+                `id_one_data` mediumtext,
+                `id_one_filename` varchar(255) DEFAULT NULL,
+                `id_two_data` mediumtext,
+                `id_two_filename` varchar(255) DEFAULT NULL,
+                `submitted_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`), KEY `user_id` (`user_id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+            if (!empty($data["id_one_b64"]) || !empty($data["id_two_b64"])) {
+                $id1=$db->real_escape_string($data["id_one_b64"]??'');
+                $id1n=$db->real_escape_string($data["id_one_name"]??'');
+                $id2=$db->real_escape_string($data["id_two_b64"]??'');
+                $id2n=$db->real_escape_string($data["id_two_name"]??'');
+                $db->query("INSERT INTO id_verifications (user_id,id_one_data,id_one_filename,id_two_data,id_two_filename) VALUES ({$newUserId},'{$id1}','{$id1n}','{$id2}','{$id2n}')");
+            }
+            return ["success"=>true,"user_id"=>$newUserId,"verification_token"=>$token];
 
         case "db.auth.login":
             if (!isset($data["email"])) return ["success"=>false,"error"=>"Missing email"];
@@ -218,8 +236,24 @@ function handleQuery($queue, $data, $db) {
         case "db.account.delete":
             if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
             $userId=(int)$data["user_id"];
+            $check=$db->query("SELECT user_id FROM users WHERE user_id={$userId} LIMIT 1");
+            if (!$check||$check->num_rows===0) return ["success"=>false,"error"=>"User not found"];
+            // Delete child rows in FK-constraint order before removing the user
+            $db->query("DELETE FROM user_badges WHERE user_id={$userId}");
+            $db->query("DELETE FROM quiz_results WHERE user_id={$userId}");
+            $db->query("DELETE FROM virtual_foster WHERE user_id={$userId}");
+            $db->query("DELETE FROM meet_greet_sessions WHERE user_id={$userId}");
+            $db->query("DELETE FROM chat_messages WHERE session_id IN (SELECT session_id FROM chat_sessions WHERE user_id={$userId})");
+            $db->query("DELETE FROM chat_sessions WHERE user_id={$userId}");
+            $db->query("DELETE FROM notifications WHERE user_id={$userId}");
+            $db->query("DELETE FROM id_verifications WHERE user_id={$userId}");
+            $db->query("UPDATE success_stories SET approved_by=NULL WHERE approved_by={$userId}");
+            $db->query("DELETE FROM success_stories WHERE user_id={$userId}");
+            $db->query("UPDATE adoption_applications SET reviewed_by=NULL WHERE reviewed_by={$userId}");
+            $db->query("DELETE FROM adoption_applications WHERE user_id={$userId}");
+            $db->query("DELETE FROM post_adoption_logs WHERE adoption_id IN (SELECT adoption_id FROM adoptions WHERE user_id={$userId})");
+            $db->query("DELETE FROM adoptions WHERE user_id={$userId}");
             $db->query("DELETE FROM users WHERE user_id={$userId}");
-            if ($db->affected_rows===0) return ["success"=>false,"error"=>"User not found"];
             return ["success"=>true];
 
         case "db.dogs.list":
