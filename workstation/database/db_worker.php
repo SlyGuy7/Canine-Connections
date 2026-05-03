@@ -747,10 +747,25 @@ while ($channel->is_consuming()) {
         if (!$connection) { die("[CLUSTER] All RabbitMQ nodes unreachable — cluster is down" . PHP_EOL); }
         $channel = $connection->channel();
         $channel->basic_qos(0, 1, false);
-        foreach ($queues as $q) {
-            $channel->queue_declare($q, false, true, false, false);
-            $channel->basic_consume($q, '', false, true, false, false, $callback);
+        $declared = false;
+        for ($attempt = 1; $attempt <= 5; $attempt++) {
+            try {
+                foreach ($queues as $q) {
+                    $channel->queue_declare($q, false, true, false, false);
+                    $channel->basic_consume($q, '', false, true, false, false, $callback);
+                }
+                $declared = true;
+                break;
+            } catch (\Throwable $de) {
+                logMsg("[CLUSTER] Queue declare attempt {$attempt} failed: " . $de->getMessage() . " — retrying in 3s...");
+                sleep(3);
+                try {
+                    $connection = reconnectRmq($rmqHosts, $port, $user, $pass);
+                    if ($connection) { $channel = $connection->channel(); $channel->basic_qos(0, 1, false); }
+                } catch (\Throwable $re) {}
+            }
         }
+        if (!$declared) { die("[CLUSTER] Could not re-register queues after 5 attempts — exiting" . PHP_EOL); }
         logMsg("[CLUSTER] RabbitMQ reconnected and consumers re-registered");
     }
 }
