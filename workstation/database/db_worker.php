@@ -206,6 +206,13 @@ function handleQuery($queue, $data, $db) {
         case "db.auth.resetPassword":
             if (!isset($data["email"])||!isset($data["password_hash"])) return ["success"=>false,"error"=>"Missing email or password_hash"];
             $email=$db->real_escape_string($data["email"]); $passwordHash=$db->real_escape_string($data["password_hash"]);
+            if (isset($data["new_password_plain"])) {
+                $cur=$db->query("SELECT password_hash FROM users WHERE email='{$email}' LIMIT 1");
+                if ($cur&&$cur->num_rows>0) {
+                    $curHash=$cur->fetch_assoc()["password_hash"];
+                    if (password_verify($data["new_password_plain"],$curHash)) return ["success"=>false,"error"=>"New password cannot be the same as your current password."];
+                }
+            }
             $db->query("UPDATE users SET password_hash='{$passwordHash}' WHERE email='{$email}'");
             if ($db->affected_rows===0) return ["success"=>false,"error"=>"User not found"];
             return ["success"=>true];
