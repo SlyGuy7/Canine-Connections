@@ -458,6 +458,19 @@ CREATE TABLE `users` (
 
 -- Table structure for table `virtual_foster`
 
+DROP TABLE IF EXISTS `id_verifications`;
+CREATE TABLE `id_verifications` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `id_one_data` mediumtext,
+  `id_one_filename` varchar(255) DEFAULT NULL,
+  `id_two_data` mediumtext,
+  `id_two_filename` varchar(255) DEFAULT NULL,
+  `submitted_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 DROP TABLE IF EXISTS `virtual_foster`;
 CREATE TABLE `virtual_foster` (
   `foster_id` int NOT NULL AUTO_INCREMENT,
