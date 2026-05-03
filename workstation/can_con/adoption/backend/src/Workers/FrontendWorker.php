@@ -394,8 +394,9 @@ final class FrontendWorker
                 }
                 $email  = $decoded['email'];
                 $result = $mq->publishAndWait('bridge.auth.resetPassword', [
-                    'email'         => $email,
-                    'password_hash' => $this->enc->hashPassword($newPassword),
+                    'email'              => $email,
+                    'password_hash'      => $this->enc->hashPassword($newPassword),
+                    'new_password_plain' => $newPassword,
                 ], $corrId . '_reset');
                 if (!$result || empty($result['success'])) {
                     $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'Could not update password'], $corrId);
