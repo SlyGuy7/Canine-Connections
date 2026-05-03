@@ -308,7 +308,8 @@ final class FrontendWorker
                     return;
                 }
                 $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => true, 'message' => 'Password updated successfully'], $corrId);
-                Mailer::passwordReset($data['email'], $user['first_name'] ?? '');
+                $fn = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : 'there';
+                Mailer::passwordReset($data['email'], $fn);
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleResetPassword: {$e->getMessage()}\n";
                 $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'Reset failed'], $corrId);
@@ -403,7 +404,8 @@ final class FrontendWorker
                 $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => true], $corrId);
                 $userResult = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId . '_lookup');
                 if ($userResult && !empty($userResult['user'])) {
-                    Mailer::passwordReset($email, $userResult['user']['first_name'] ?? '');
+                    $fn = isset($userResult['user']['first_name']) && $userResult['user']['first_name'] !== '' ? $this->dec($userResult['user']['first_name']) : 'there';
+                    Mailer::passwordReset($email, $fn);
                 }
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] handleSetNewPassword: {$e->getMessage()}\n";
