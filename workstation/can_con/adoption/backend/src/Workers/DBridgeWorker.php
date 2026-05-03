@@ -105,9 +105,9 @@ final class DBridgeWorker
     private function newMq(): RabbitMqClient
     {
         $hosts = array_values(array_filter([
-            $_ENV['RABBITMQ_HOST3'] ?? null,
-            $_ENV['RABBITMQ_HOST2'] ?? null,
             $_ENV['RABBITMQ_HOST']  ?? null,
+            $_ENV['RABBITMQ_HOST2'] ?? null,
+            $_ENV['RABBITMQ_HOST3'] ?? null,
         ]));
         $lastErr = null;
         foreach ($hosts as $i => $host) {

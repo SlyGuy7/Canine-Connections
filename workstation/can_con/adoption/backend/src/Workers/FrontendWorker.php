@@ -77,9 +77,9 @@ final class FrontendWorker
     private function newMq(): RabbitMqClient
     {
         $hosts = array_filter([
-            $_ENV['RABBITMQ_HOST3'] ?? null,
-            $_ENV['RABBITMQ_HOST2'] ?? null,
             $_ENV['RABBITMQ_HOST']  ?? null,
+            $_ENV['RABBITMQ_HOST2'] ?? null,
+            $_ENV['RABBITMQ_HOST3'] ?? null,
         ]);
         $lastErr = null;
         foreach ($hosts as $host) {
