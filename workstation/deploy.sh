@@ -56,6 +56,9 @@ else
     git add $DEPLOY_DATA && git commit -m "deploy: switch active_node to node1" && git push origin main
 fi
 
+echo "Updating LB frontend files..."
+tar czf /tmp/dist.tar.gz -C dist . && scp -i ~/.ssh/id_ed25519 /tmp/dist.tar.gz deryk@$LB_IP:/tmp/ && ssh -i ~/.ssh/id_ed25519 deryk@$LB_IP "sudo tar xzf /tmp/dist.tar.gz -C /var/www/html"
+
 echo "Restarting backend workers..."
 ssh -i ~/.ssh/id_ed25519 deryk@$LB_IP "sudo systemctl restart canine-frontend canine-dbridge canine-db-worker"
 

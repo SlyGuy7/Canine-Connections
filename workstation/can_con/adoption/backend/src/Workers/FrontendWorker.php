@@ -245,8 +245,17 @@ final class FrontendWorker
                     $srcIp = $data['clientIp'] ?? 'unknown';
                     if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
                     echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . " src_ip=" . $srcIp . "\n";
-                    
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Invalid password'], $corrId);
+                    $safeIp = preg_replace('/[^a-zA-Z0-9._:-]/', '', $srcIp);
+                    $attemptsFile = '/tmp/canine-attempts-' . $safeIp;
+                    $attempts = (int)(@file_get_contents($attemptsFile) ?: 0) + 1;
+                    file_put_contents($attemptsFile, $attempts);
+                    $remaining = max(0, 5 - $attempts);
+                    if ($remaining > 0) {
+                        $errMsg = "Invalid password. {$remaining} attempt" . ($remaining === 1 ? '' : 's') . " remaining.";
+                    } else {
+                        $errMsg = "Locked out for 1 hour.";
+                    }
+                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => $errMsg], $corrId);
                     return;
                 }
                 unset($user['password_hash']);
