@@ -1,6 +1,12 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
+const LOCKOUT_KEY = "canine_lockout_until";
+function formatCountdown(secs) {
+  const m = Math.floor(secs / 60).toString().padStart(2, "0");
+  const s = (secs % 60).toString().padStart(2, "0");
+  return `${m}:${s}`;
+}
 export default function Login({ switchToRegister, switchToForgot }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -8,10 +14,26 @@ export default function Login({ switchToRegister, switchToForgot }) {
   const [loading, setLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
   const [resending, setResending] = useState(false);
+  const [lockoutRemaining, setLockoutRemaining] = useState(() => {
+    const until = parseInt(localStorage.getItem(LOCKOUT_KEY) || "0", 10);
+    const remaining = until - Math.floor(Date.now() / 1000);
+    return remaining > 0 ? remaining : 0;
+  });
   const navigate = useNavigate();
   const isVerifyError = error.toLowerCase().includes("verify your email");
+  useEffect(() => {
+    if (lockoutRemaining <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutRemaining(prev => {
+        if (prev <= 1) { localStorage.removeItem(LOCKOUT_KEY); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutRemaining > 0]);
   async function onSubmit(e) {
     e.preventDefault();
+    if (lockoutRemaining > 0) return;
     setError("");
     if (!email || !password) {
       setError("Please fill in all fields");
@@ -47,7 +69,15 @@ export default function Login({ switchToRegister, switchToForgot }) {
         return;
       }
       setLoading(false);
-      setError(result.error || "Login failed. Invalid credentials.");
+      if (result.locked_until) {
+        const remaining = result.locked_until - Math.floor(Date.now() / 1000);
+        if (remaining > 0) {
+          localStorage.setItem(LOCKOUT_KEY, result.locked_until.toString());
+          setLockoutRemaining(remaining);
+        }
+      } else {
+        setError(result.error || "Login failed. Invalid credentials.");
+      }
     } catch (err) {
       setLoading(false);
       setError("Login failed. Backend or database may be offline.");
@@ -67,7 +97,12 @@ export default function Login({ switchToRegister, switchToForgot }) {
   };
   return (
     <form onSubmit={onSubmit} style={styles.form}>
-      {error && (
+      {lockoutRemaining > 0 && (
+        <div style={styles.error}>
+          Locked out — {formatCountdown(lockoutRemaining)} remaining
+        </div>
+      )}
+      {!lockoutRemaining && error && (
         <div style={styles.error}>
           {error}
           {isVerifyError && (
@@ -108,7 +143,7 @@ export default function Login({ switchToRegister, switchToForgot }) {
           autoComplete="current-password"
         />
       </div>
-      <button style={styles.button} type="submit" disabled={loading}>
+      <button style={{...styles.button, ...(lockoutRemaining > 0 ? {opacity: 0.5, cursor: "not-allowed"} : {})}} type="submit" disabled={loading || lockoutRemaining > 0}>
         {loading ? "Logging In..." : "Login"}
       </button>
     </form>

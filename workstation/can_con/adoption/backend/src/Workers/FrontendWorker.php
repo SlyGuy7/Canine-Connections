@@ -253,7 +253,9 @@ final class FrontendWorker
                     if ($remaining > 0) {
                         $errMsg = "Invalid password. {$remaining} attempt" . ($remaining === 1 ? '' : 's') . " remaining.";
                     } else {
-                        $errMsg = "Locked out for 1 hour.";
+                        $lockedUntil = time() + 3600;
+                        $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Locked out for 1 hour.', 'locked_until' => $lockedUntil], $corrId);
+                        return;
                     }
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => $errMsg], $corrId);
                     return;
