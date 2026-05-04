@@ -243,6 +243,7 @@ final class FrontendWorker
                 if (!password_verify($data['password'], $user['password_hash'])) {
                     // CRITICAL: Security log for Fail2Ban monitoring
                     $srcIp = $data['clientIp'] ?? 'unknown';
+                    if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
                     echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . " src_ip=" . $srcIp . "\n";
                     
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Invalid password'], $corrId);
