@@ -263,6 +263,8 @@ final class FrontendWorker
                 unset($user['password_hash']);
                 $user['first_name'] = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : '';
                 $user['last_name']  = isset($user['last_name'])  && $user['last_name']  !== '' ? $this->dec($user['last_name'])  : '';
+                $user['phone']      = isset($user['phone'])      && $user['phone']      !== '' ? $this->dec($user['phone'])      : '';
+                $user['address']    = isset($user['address'])    && $user['address']    !== '' ? $this->dec($user['address'])    : '';
                 $this->respond($mq, 'response.auth.login', $replyTo, ['success' => true, 'user' => $user], $corrId);
                 if (!empty($user['login_notifications'])) {
                     Mailer::loginAlert($user['email'] ?? $data['email'], $user['first_name']);
