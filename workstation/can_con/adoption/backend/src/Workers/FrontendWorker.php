@@ -63,6 +63,7 @@ final class FrontendWorker
         $this->mq->registerConsumer('request.chat.start',          [$this, 'handleChatStart']);
         $this->mq->registerConsumer('request.chat.message',        [$this, 'handleChatMessage']);
         $this->mq->registerConsumer('request.chat.history',        [$this, 'handleChatHistory']);
+        $this->mq->registerConsumer('request.chat.sessions',       [$this, 'handleChatSessions']);
         $this->mq->registerConsumer('request.meetgreet.schedule',  [$this, 'handleMeetGreetSchedule']);
         $this->mq->registerConsumer('request.meetgreet.list',      [$this, 'handleMeetGreetList']);
         $this->mq->registerConsumer('request.meetgreet.cancel',    [$this, 'handleMeetGreetCancel']);
@@ -243,14 +244,28 @@ final class FrontendWorker
                 if (!password_verify($data['password'], $user['password_hash'])) {
                     // CRITICAL: Security log for Fail2Ban monitoring
                     $srcIp = $data['clientIp'] ?? 'unknown';
+                    if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
                     echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . " src_ip=" . $srcIp . "\n";
-                    
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Invalid password'], $corrId);
+                    $safeIp = preg_replace('/[^a-zA-Z0-9._:-]/', '', $srcIp);
+                    $attemptsFile = '/tmp/canine-attempts-' . $safeIp;
+                    $attempts = (int)(@file_get_contents($attemptsFile) ?: 0) + 1;
+                    file_put_contents($attemptsFile, $attempts);
+                    $remaining = max(0, 5 - $attempts);
+                    if ($remaining > 0) {
+                        $errMsg = "Invalid password. {$remaining} attempt" . ($remaining === 1 ? '' : 's') . " remaining.";
+                    } else {
+                        $lockedUntil = time() + 3600;
+                        $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Locked out for 1 hour.', 'locked_until' => $lockedUntil], $corrId);
+                        return;
+                    }
+                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => $errMsg], $corrId);
                     return;
                 }
                 unset($user['password_hash']);
                 $user['first_name'] = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : '';
                 $user['last_name']  = isset($user['last_name'])  && $user['last_name']  !== '' ? $this->dec($user['last_name'])  : '';
+                $user['phone']      = isset($user['phone'])      && $user['phone']      !== '' ? $this->dec($user['phone'])      : '';
+                $user['address']    = isset($user['address'])    && $user['address']    !== '' ? $this->dec($user['address'])    : '';
                 $this->respond($mq, 'response.auth.login', $replyTo, ['success' => true, 'user' => $user], $corrId);
                 if (!empty($user['login_notifications'])) {
                     Mailer::loginAlert($user['email'] ?? $data['email'], $user['first_name']);
@@ -915,6 +930,17 @@ final class FrontendWorker
                 $result = $mq->publishAndWait('bridge.chat.history', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.chat.history', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load chat'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.chat.history', $replyTo, ['success' => false, 'error' => 'Could not load chat'], $corrId); }
+        }, $msg);
+    }
+
+    public function handleChatSessions(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            try {
+                $result = $mq->publishAndWait('bridge.chat.sessions', ['user_id' => $data['user_id'] ?? null], $corrId);
+                $this->respond($mq, 'response.chat.sessions', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load sessions'], $corrId);
+            } catch (\Throwable $e) { $this->respond($mq, 'response.chat.sessions', $replyTo, ['success' => false, 'error' => 'Could not load sessions'], $corrId); }
         }, $msg);
     }
 

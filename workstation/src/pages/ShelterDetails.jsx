@@ -59,10 +59,7 @@ export default function ShelterDetails() {
   if (error || !shelter) {
     return (
       <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
-        <button onClick={() => navigate("/shelters")} style={{ marginBottom: "20px", padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
-          ← Back to Shelters
-        </button>
-        <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "20px", color: "#dc2626" }}>
+<div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "20px", color: "#dc2626" }}>
           {error || "Shelter not found."}
         </div>
       </div>
@@ -72,11 +69,7 @@ export default function ShelterDetails() {
   return (
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
 
-      <button onClick={() => navigate("/shelters")} style={{ marginBottom: "24px", padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
-        ← Back to Shelters
-      </button>
-
-        <div style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "32px", marginBottom: "32px" }}>
+<div style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "32px", marginBottom: "32px" }}>
           <div style={{ display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ width: "100px", height: "100px", background: "linear-gradient(135deg, #e8f3f1, #fdf6ef)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               {shelter.logo_url ? (
@@ -119,6 +112,13 @@ export default function ShelterDetails() {
                   {shelter.description}
                 </p>
               )}
+
+              <button
+                onClick={() => navigate("/messages", { state: { shelterId: parseInt(id), shelter } })}
+                style={{ marginTop: "16px", display: "inline-flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}
+              >
+                💬 Message Shelter
+              </button>
             </div>
           </div>
         </div>

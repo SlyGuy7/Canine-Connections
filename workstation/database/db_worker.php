@@ -107,7 +107,7 @@ $queues = [
     'db.stories.list','db.stories.submit','db.stories.approve',
     'db.badges.list','db.badges.mine',
     'db.enquiry.send',
-    'db.chat.start','db.chat.message','db.chat.history',
+    'db.chat.start','db.chat.message','db.chat.history','db.chat.sessions',
     'db.meetgreet.schedule','db.meetgreet.list','db.meetgreet.cancel',
     'db.notifications.list','db.notifications.read'
 ];
@@ -197,7 +197,7 @@ function handleQuery($queue, $data, $db) {
         case "db.auth.login":
             if (!isset($data["email"])) return ["success"=>false,"error"=>"Missing email"];
             $email=$db->real_escape_string($data["email"]);
-            $sql="SELECT user_id,email,password_hash,role,first_name,last_name,email_verified,login_notifications FROM users WHERE email='{$email}' LIMIT 1";
+            $sql="SELECT user_id,email,password_hash,role,first_name,last_name,phone,address,email_verified,login_notifications FROM users WHERE email='{$email}' LIMIT 1";
             logMsg("Executing SQL: ".$sql);
             $result=$db->query($sql);
             if (!$result||$result->num_rows===0) return ["success"=>false,"user"=>null];
@@ -280,11 +280,13 @@ function handleQuery($queue, $data, $db) {
             $size=isset($data['size'])&&$data['size']?$db->real_escape_string($data['size']):null;
             $energyLevel=isset($data['energy_level'])&&$data['energy_level']?$db->real_escape_string($data['energy_level']):null;
             $shelterId=isset($data['shelter_id'])&&$data['shelter_id']?(int)$data['shelter_id']:null;
+            $maxAge=isset($data['max_age'])&&$data['max_age']!==null&&$data['max_age']!==''?(int)$data['max_age']:null;
             $limit=isset($data['limit'])?(int)$data['limit']:20; $offset=isset($data['offset'])?(int)$data['offset']:0;
             $where=["d.status='{$status}'"]; if($breed)$where[]="d.breed='{$breed}'"; if($size)$where[]="d.size='{$size}'";
             if($energyLevel)$where[]="d.energy_level='{$energyLevel}'"; if($shelterId)$where[]="d.shelter_id={$shelterId}";
+            if($maxAge!==null)$where[]="d.age_years<={$maxAge}";
             $whereClause=implode(' AND ',$where);
-            $sql="SELECT d.*,GROUP_CONCAT(p.photo_url ORDER BY p.is_primary DESC) as photos FROM dogs d LEFT JOIN dog_photos p ON d.dog_id=p.dog_id WHERE {$whereClause} GROUP BY d.dog_id LIMIT {$limit} OFFSET {$offset}";
+            $sql="SELECT d.*,GROUP_CONCAT(p.photo_url ORDER BY p.is_primary DESC) as photos FROM dogs d LEFT JOIN dog_photos p ON d.dog_id=p.dog_id WHERE {$whereClause} GROUP BY d.dog_id ORDER BY RAND() LIMIT {$limit} OFFSET {$offset}";
             logMsg("Executing SQL: ".$sql); $result=$db->query($sql);
             if (!$result) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"dogs"=>fetchAllAssoc($result)];
@@ -480,22 +482,34 @@ function handleQuery($queue, $data, $db) {
 
         case "db.chat.start":
             if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
-            $userId=(int)$data["user_id"]; $dogId=(int)($data["dog_id"]??0); $shelterId=(int)($data["shelter_id"]??0);
-            $existing=fetchOneAssoc($db->query("SELECT session_id FROM chat_sessions WHERE user_id={$userId} AND dog_id={$dogId} AND shelter_id={$shelterId} AND status='open' LIMIT 1"));
+            $userId=(int)$data["user_id"]; $shelterId=(int)($data["shelter_id"]??0);
+            $dogId=isset($data["dog_id"])&&$data["dog_id"]?(int)$data["dog_id"]:null;
+            $dogCond=$dogId?"dog_id={$dogId}":"dog_id IS NULL";
+            $dogVal=$dogId?$dogId:"NULL";
+            $existing=fetchOneAssoc($db->query("SELECT session_id FROM chat_sessions WHERE user_id={$userId} AND {$dogCond} AND shelter_id={$shelterId} AND status='open' LIMIT 1"));
             if ($existing) return ["success"=>true,"session_id"=>$existing["session_id"]];
-            $db->query("INSERT INTO chat_sessions (user_id,dog_id,shelter_id,status) VALUES ({$userId},{$dogId},{$shelterId},'open')");
+            $db->query("INSERT INTO chat_sessions (user_id,dog_id,shelter_id,status) VALUES ({$userId},{$dogVal},{$shelterId},'open')");
+            if ($db->error) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"session_id"=>$db->insert_id];
+
+        case "db.chat.sessions":
+            if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
+            $userId=(int)$data["user_id"];
+            $result=$db->query("SELECT cs.session_id,cs.shelter_id,cs.dog_id,cs.status,cs.started_at,s.name as shelter_name,s.city,s.state,s.phone,s.email,(SELECT cm.message FROM chat_messages cm WHERE cm.session_id=cs.session_id ORDER BY cm.sent_at DESC LIMIT 1) as last_message,(SELECT cm.sent_at FROM chat_messages cm WHERE cm.session_id=cs.session_id ORDER BY cm.sent_at DESC LIMIT 1) as last_message_at FROM chat_sessions cs JOIN shelters s ON cs.shelter_id=s.shelter_id WHERE cs.user_id={$userId} ORDER BY cs.started_at DESC");
+            if (!$result) return ["success"=>false,"error"=>$db->error];
+            return ["success"=>true,"sessions"=>fetchAllAssoc($result)];
 
         case "db.chat.message":
             if (!isset($data["session_id"])||!isset($data["sender_id"])) return ["success"=>false,"error"=>"Missing fields"];
             $sessionId=(int)$data["session_id"]; $senderId=(int)$data["sender_id"]; $message=$db->real_escape_string($data["message"]??'');
-            $db->query("INSERT INTO chat_messages (session_id,sender_id,message,created_at) VALUES ({$sessionId},{$senderId},'{$message}',NOW())");
+            $db->query("INSERT INTO chat_messages (session_id,sender_id,message,sent_at) VALUES ({$sessionId},{$senderId},'{$message}',NOW())");
+            if ($db->error) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"message_id"=>$db->insert_id];
 
         case "db.chat.history":
             if (!isset($data["session_id"])) return ["success"=>false,"error"=>"Missing session_id"];
             $sessionId=(int)$data["session_id"];
-            $result=$db->query("SELECT cm.*,u.first_name,u.last_name FROM chat_messages cm JOIN users u ON cm.sender_id=u.user_id WHERE cm.session_id={$sessionId} ORDER BY cm.created_at ASC");
+            $result=$db->query("SELECT cm.*,u.first_name,u.last_name FROM chat_messages cm JOIN users u ON cm.sender_id=u.user_id WHERE cm.session_id={$sessionId} ORDER BY cm.sent_at ASC");
             if (!$result) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"messages"=>fetchAllAssoc($result)];
 
