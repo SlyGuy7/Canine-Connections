@@ -157,15 +157,27 @@ export default function Applications() {
                   </span>
                 </div>
 
-                {/* Progress bar */}
+                {/* Paw print progress trail */}
                 <div style={{ marginBottom: "18px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                    {STEPS.map((s, i) => (
-                      <span key={s} style={{ fontSize: "11px", fontWeight: i <= step ? "700" : "500", color: i <= step ? "#d97706" : "#c4a98e" }}>{s}</span>
-                    ))}
-                  </div>
-                  <div style={{ height: "6px", borderRadius: "99px", background: "#f3e8de", overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${(step / (STEPS.length - 1)) * 100}%`, background: app.status?.toLowerCase() === "rejected" ? "#ef4444" : "#d97706", borderRadius: "99px", transition: "width 0.4s ease" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: "0" }}>
+                    {STEPS.map((s, i) => {
+                      const done = i <= step;
+                      const isLast = i === STEPS.length - 1;
+                      const rejected = app.status?.toLowerCase() === "rejected" && i === step;
+                      return (
+                        <React.Fragment key={s}>
+                          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+                            <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: rejected ? "#fee2e2" : done ? "#fde6cf" : "#f5ede4", border: `2px solid ${rejected ? "#ef4444" : done ? "#d97706" : "#e5d5c5"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", transition: "all 0.3s" }}>
+                              {rejected ? "✕" : done ? "🐾" : "○"}
+                            </div>
+                            <span style={{ fontSize: "10px", fontWeight: done ? "700" : "500", color: done ? "#d97706" : "#c4a98e", whiteSpace: "nowrap" }}>{s}</span>
+                          </div>
+                          {!isLast && (
+                            <div style={{ flex: 1, height: "2px", background: i < step ? "#d97706" : "#f3e8de", margin: "0 4px", marginBottom: "20px", transition: "background 0.3s" }} />
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
                 </div>
 

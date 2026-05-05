@@ -10,13 +10,36 @@ export default function Layout({ children }) {
   const showBack = !NO_BACK.includes(pathname)
 
   return (
-    <div style={styles.container}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "#fffaf5" }}>
       <Sidebar />
-      <main style={styles.mainContent}>
+      <main
+        key={pathname}
+        style={{
+          flex: 1,
+          marginLeft: "260px",
+          height: "100vh",
+          overflowY: "auto",
+          padding: "40px",
+          animation: "page-enter 0.22s ease",
+        }}
+      >
         {showBack && (
           <button
             onClick={() => navigate(-1)}
-            style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "20px", padding: "9px 18px", borderRadius: "10px", border: "1px solid #efdfd1", background: "white", color: "#6f5848", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              marginBottom: "20px",
+              padding: "9px 18px",
+              borderRadius: "10px",
+              border: "1px solid #efdfd1",
+              background: "white",
+              color: "#6f5848",
+              fontWeight: "600",
+              fontSize: "14px",
+              cursor: "pointer",
+            }}
           >
             ← Back
           </button>
@@ -25,18 +48,4 @@ export default function Layout({ children }) {
       </main>
     </div>
   )
-}
-
-const styles = {
-  container: {
-    display: "flex",
-    minHeight: "100vh",
-    background: "#fffaf5"
-  },
-  mainContent: {
-    flex: 1,
-    marginLeft: "260px",
-    height: "100vh",
-    overflowY: "auto"
-  }
 }

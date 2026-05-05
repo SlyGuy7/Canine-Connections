@@ -75,7 +75,7 @@ function CategoryPreviewModal({ category, close, navigate }) {
             </div>
           )) : (
             <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "#6f5848" }}>
-              catLoading ? "Loading..." : "No dogs found in this category."
+              {catLoading ? "Loading..." : "No dogs found in this category."}
             </div>
           )}
         </div>
@@ -366,6 +366,46 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ── Dog of the Week ── */}
+      {dogs.length > 0 && (() => {
+        const dotw = dogs[new Date().getDay() % dogs.length]
+        const dotwPhoto = dotw?.photos ? dotw.photos.split(",")[0].trim() : null
+        return dotw ? (
+          <section style={{ background: "#fff", padding: "80px 20px" }}>
+            <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", gap: "48px", alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ width: "340px", height: "340px", borderRadius: "24px", overflow: "hidden", background: "#fcedda", flexShrink: 0, position: "relative" }}>
+                {dotwPhoto
+                  ? <img src={dotwPhoto} alt={dotw.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "100px" }}>🐕</div>
+                }
+                <div style={{ position: "absolute", top: "16px", left: "16px", background: "#d97706", color: "white", fontSize: "12px", fontWeight: "800", padding: "6px 14px", borderRadius: "20px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  🌟 Dog of the Week
+                </div>
+              </div>
+              <div style={{ flex: 1, minWidth: "260px" }}>
+                <p style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "700", color: "#d97706", textTransform: "uppercase", letterSpacing: "2px" }}>Dog of the Week</p>
+                <h2 style={{ margin: "0 0 8px 0", fontSize: "40px", fontWeight: "800", color: "#2f241d", lineHeight: 1.1 }}>{dotw.name}</h2>
+                <p style={{ margin: "0 0 8px 0", fontSize: "17px", color: "#d97706", fontWeight: "700" }}>{dotw.breed}</p>
+                <p style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#9c7e6a" }}>
+                  {dotw.age_years} yr · {dotw.size} · {dotw.gender}
+                </p>
+                <p style={{ margin: "0 0 28px 0", color: "#5f4a3c", lineHeight: "1.7", fontSize: "15px" }}>
+                  {dotw.description || `${dotw.name} is a wonderful ${dotw.breed} looking for a forever home.`}
+                </p>
+                <button
+                  onClick={handleCTA}
+                  style={{ padding: "14px 32px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "800", fontSize: "16px", cursor: "pointer", boxShadow: "0 4px 16px rgba(217,119,6,0.3)", transition: "transform 0.2s" }}
+                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                  onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
+                >
+                  Meet {dotw.name} →
+                </button>
+              </div>
+            </div>
+          </section>
+        ) : null
+      })()}
+
       {/* ── Why Adopt? ── */}
       <section style={{ background: "#f7efe7", padding: "80px 20px" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
@@ -485,7 +525,7 @@ export default function Landing() {
             </div>
             <div style={{ display: "flex", gap: "60px", flexWrap: "wrap" }}>
               {[
-                { heading: "Adopt", links: ["Browse Dogs", "Shelters", "How It Works"] },
+                { heading: "Adopt", links: ["Browse Dogs", "Shelters", "How It Works", "Success Stories"] },
                 { heading: "Account", links: ["Login", "Register", "Forgot Password"] },
               ].map(col => (
                 <div key={col.heading}>
@@ -501,6 +541,7 @@ export default function Landing() {
                             else if (link === "Browse Dogs") handleCTA()
                             else if (link === "Shelters") navigate("/shelters")
                             else if (link === "How It Works") document.getElementById("how-it-works").scrollIntoView({ behavior: "smooth" })
+                            else if (link === "Success Stories") navigate("/success-stories")
                             else if (link === "Forgot Password") setModalMode("forgot-password")
                           }}
                         >{link}</span>

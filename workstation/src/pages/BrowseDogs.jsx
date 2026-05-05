@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useDataCache } from "../context/DataCacheContext";
 import { useToast } from "../context/ToastContext";
+import { History } from "lucide-react";
 
 const PAGE_SIZE = 24;
 
@@ -31,7 +32,21 @@ function DogCardSkeleton() {
   );
 }
 
-function DogCard({ dog, isSaved, onSave, onNavigate }) {
+function calcMatchScore(dog, prefs) {
+  if (!prefs || !Object.keys(prefs).length) return null;
+  let score = 60;
+  const size = (dog.size || "").toLowerCase();
+  if (prefs.homeType === "Apartment" && (size === "small" || size === "medium")) score += 10;
+  if (prefs.activityLevel === "High — runs, hikes, very active" && dog.energy_level === "high") score += 10;
+  if (prefs.activityLevel === "Low — mostly indoors" && dog.energy_level === "low") score += 10;
+  if (prefs.otherPets && prefs.otherPets !== "None" && dog.good_with_dogs == "1") score += 8;
+  if (prefs.household?.includes("children") && dog.good_with_kids == "1") score += 8;
+  const age = Number(dog.age_years) || 0;
+  if (prefs.experience === "First-time owner" && age >= 2 && age <= 5) score += 4;
+  return Math.min(score, 99);
+}
+
+function DogCard({ dog, isSaved, onSave, onNavigate, matchScore }) {
   const [imgError, setImgError] = useState(false);
   const [imgIndex, setImgIndex] = useState(0);
 
@@ -69,13 +84,18 @@ function DogCard({ dog, isSaved, onSave, onNavigate }) {
         ) : (
           <span style={{ fontSize: "64px" }}>🐕</span>
         )}
-        <div style={{ position: "absolute", top: "12px", left: "12px", display: "flex", gap: "6px" }}>
+        <div style={{ position: "absolute", top: "12px", left: "12px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
           <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: "rgba(0,0,0,0.45)", color: "white", backdropFilter: "blur(4px)" }}>
             {ageLabel}
           </span>
           <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: sizeStyle.bg, color: sizeStyle.color }}>
             {sizeLabel}
           </span>
+          {matchScore !== null && matchScore !== undefined && (
+            <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: "#d97706", color: "white" }}>
+              {matchScore}% match
+            </span>
+          )}
         </div>
         <button
           onClick={handleSave}
@@ -114,11 +134,27 @@ export default function BrowseDogs() {
   const [savedIds, setSavedIds] = useState(() => new Set(JSON.parse(localStorage.getItem("savedDogs") || "[]").map(d => d.dog_id)));
   const hasFetched = useRef(false);
   const { getDogs, dogsLoading: cacheLoading } = useDataCache();
+  const userPrefs = (() => { try { return JSON.parse(localStorage.getItem("userProfile") || "{}").prefs || {}; } catch { return {}; } })();
   const [searchParams] = useSearchParams();
   const shelterIdParam = searchParams.get("shelter_id");
 
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const searchInputRef = useRef(null);
+  const [recentlyViewed] = useState(() => {
+    try { return JSON.parse(localStorage.getItem("canine_recently_viewed") || "[]"); } catch { return []; }
+  });
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.key === "/" && document.activeElement.tagName !== "INPUT" && document.activeElement.tagName !== "TEXTAREA") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
 
   useEffect(() => {
     hasFetched.current = false;
@@ -201,9 +237,10 @@ export default function BrowseDogs() {
         <div style={{ position: "relative", flex: "1 1 220px", minWidth: "180px" }}>
           <span style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", fontSize: "16px", pointerEvents: "none" }}>🔍</span>
           <input
+            ref={searchInputRef}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Search by name or breed…"
+            placeholder="Search by name or breed… (press / to focus)"
             style={{ width: "100%", padding: "10px 14px 10px 40px", borderRadius: "10px", border: "1px solid #e2d9d0", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", boxSizing: "border-box", color: "#2f241d" }}
           />
         </div>
@@ -234,6 +271,31 @@ export default function BrowseDogs() {
         )}
       </div>
 
+      {/* Recently Viewed */}
+      {recentlyViewed.length > 0 && !searchTerm && filters.breed === "All" && filters.size === "All" && filters.age === "All" && (
+        <div style={{ marginBottom: "28px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+            <History size={16} color="#9a8070" />
+            <span style={{ fontSize: "13px", fontWeight: "700", color: "#9a8070", textTransform: "uppercase", letterSpacing: "0.05em" }}>Recently Viewed</span>
+          </div>
+          <div style={{ display: "flex", gap: "12px", overflowX: "auto", paddingBottom: "4px" }}>
+            {recentlyViewed.slice(0, 6).map(d => (
+              <div key={d.dog_id} onClick={() => navigate(`/dogs/${d.dog_id}`)}
+                style={{ flexShrink: 0, width: "100px", cursor: "pointer", textAlign: "center" }}>
+                <div style={{ width: "72px", height: "72px", borderRadius: "50%", overflow: "hidden", background: "#fde6cf", margin: "0 auto 8px auto", border: "2px solid #efdfd1" }}>
+                  {d.photo
+                    ? <img src={d.photo} alt={d.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.currentTarget.style.display = "none"} />
+                    : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px" }}>🐕</div>
+                  }
+                </div>
+                <div style={{ fontSize: "12px", fontWeight: "600", color: "#2f241d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
+                <div style={{ fontSize: "11px", color: "#9a8070", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.breed}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Grid */}
       {loading ? (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "20px" }}>
@@ -254,7 +316,7 @@ export default function BrowseDogs() {
       ) : (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "20px" }}>
           {paginatedDogs.map(dog => (
-            <DogCard key={dog.dog_id} dog={dog} isSaved={savedIds.has(dog.dog_id)} onSave={handleSaveDog} onNavigate={id => navigate(`/dogs/${id}`)} />
+            <DogCard key={dog.dog_id} dog={dog} isSaved={savedIds.has(dog.dog_id)} onSave={handleSaveDog} onNavigate={id => navigate(`/dogs/${id}`)} matchScore={Object.keys(userPrefs).length ? calcMatchScore(dog, userPrefs) : null} />
           ))}
         </div>
       )}

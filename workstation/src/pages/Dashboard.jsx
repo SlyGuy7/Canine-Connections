@@ -1,8 +1,23 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
+import { Zap } from "lucide-react"
 
 import BadgeGallery from "../components/BadgeGallery"
+
+function calcMatchScore(dog, prefs) {
+  let score = 60
+  const size = (dog.size || "").toLowerCase()
+  if (prefs.homeType === "Apartment" && (size === "small" || size === "medium")) score += 10
+  if (prefs.activityLevel === "High — runs, hikes, very active" && dog.energy_level === "high") score += 10
+  if (prefs.activityLevel === "Low — mostly indoors" && dog.energy_level === "low") score += 10
+  if (prefs.otherPets && prefs.otherPets !== "None" && dog.good_with_dogs == "1") score += 8
+  if (prefs.household?.includes("children") && dog.good_with_kids == "1") score += 8
+  if (prefs.allergies === "Yes — hypoallergenic only" && (dog.breed || "").toLowerCase().includes("poodle")) score += 4
+  const age = Number(dog.age_years) || 0
+  if (prefs.experience === "First-time owner" && age >= 2 && age <= 5) score += 4
+  return Math.min(score, 99)
+}
 
 export default function Dashboard() {
   const navigate = useNavigate()
@@ -19,13 +34,30 @@ export default function Dashboard() {
   const [savingLog, setSavingLog] = useState(false)
   const [showLogForm, setShowLogForm] = useState(false)
   const [stats, setStats] = useState({ saved: 0, applications: 0, journalCount: 0 })
+  const [matchedDogs, setMatchedDogs] = useState([])
 
   useEffect(() => { loadAll() }, [location])
 
   async function loadAll() {
     loadUser()
     loadStats()
-    await Promise.all([loadFeaturedDog(), loadAdoptions()])
+    await Promise.all([loadFeaturedDog(), loadAdoptions(), loadMatchedDogs()])
+  }
+
+  async function loadMatchedDogs() {
+    try {
+      const profile = JSON.parse(localStorage.getItem("userProfile") || "{}")
+      const prefs = profile.prefs || {}
+      if (!Object.keys(prefs).length) return
+      const result = await sendMessage("request.dogs.list", { limit: 30 })
+      if (result?.success && Array.isArray(result.dogs)) {
+        const scored = result.dogs
+          .map(d => ({ ...d, _score: calcMatchScore(d, prefs) }))
+          .sort((a, b) => b._score - a._score)
+          .slice(0, 3)
+        setMatchedDogs(scored)
+      }
+    } catch {}
   }
 
   function loadUser() {
@@ -290,6 +322,52 @@ export default function Dashboard() {
             </div>
           </div>
         </div>
+
+        {/* ── Your Top Matches ── */}
+        {matchedDogs.length > 0 && (
+          <section style={{ marginBottom: "28px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ width: "36px", height: "36px", background: "#fde6cf", borderRadius: "10px", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Zap size={18} color="#d97706" />
+                </div>
+                <div>
+                  <h2 style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "#2f241d" }}>Your Top Matches</h2>
+                  <p style={{ margin: 0, fontSize: "13px", color: "#9a8070" }}>Based on your profile preferences</p>
+                </div>
+              </div>
+              <button onClick={() => navigate("/browse-dogs")} style={{ padding: "9px 18px", borderRadius: "10px", border: "1px solid #efdfd1", background: "white", color: "#d97706", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>
+                See All →
+              </button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "16px" }}>
+              {matchedDogs.map(dog => {
+                const photo = dog.photos ? (Array.isArray(dog.photos) ? dog.photos[0] : dog.photos.split(",")[0].trim()) : null
+                return (
+                  <div key={dog.dog_id} onClick={() => navigate(`/dogs/${dog.dog_id}`)}
+                    style={{ background: "white", borderRadius: "16px", overflow: "hidden", border: "1px solid #efdfd1", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s" }}
+                    onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.09)" }}
+                    onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none" }}
+                  >
+                    <div style={{ height: "160px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+                      {photo
+                        ? <img src={photo} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                        : <span style={{ fontSize: "52px" }}>🐕</span>
+                      }
+                      <div style={{ position: "absolute", top: "10px", right: "10px", background: "#d97706", color: "white", fontSize: "11px", fontWeight: "800", padding: "4px 10px", borderRadius: "20px" }}>
+                        {dog._score}% match
+                      </div>
+                    </div>
+                    <div style={{ padding: "14px 16px" }}>
+                      <h3 style={{ margin: "0 0 2px 0", fontSize: "16px", fontWeight: "700", color: "#2f241d" }}>{dog.name}</h3>
+                      <p style={{ margin: 0, fontSize: "12px", color: "#9a8070" }}>{dog.breed} · {dog.size}</p>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )}
 
         {/* ── Pack Milestones ── */}
         <BadgeGallery />

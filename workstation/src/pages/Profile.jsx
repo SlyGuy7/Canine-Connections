@@ -156,12 +156,16 @@ export default function Profile() {
               </div>
             </div>
 
-            {/* Readiness badge */}
-            {isReady && (
+            {/* Readiness badge / encouragement */}
+            {isReady ? (
               <div style={{ marginTop: "16px", display: "inline-flex", alignItems: "center", gap: "6px", background: "rgba(34,197,94,0.15)", border: "1px solid rgba(34,197,94,0.3)", borderRadius: "20px", padding: "6px 14px", position: "relative", zIndex: 1 }}>
                 <span style={{ fontSize: "13px" }}>✅</span>
                 <span style={{ fontSize: "12px", color: "#4ade80", fontWeight: "700" }}>Ready to apply</span>
               </div>
+            ) : (
+              <p style={{ marginTop: "14px", fontSize: "12px", color: "rgba(255,255,255,0.45)", lineHeight: "1.5", position: "relative", zIndex: 1 }}>
+                Complete your profile to get matched with dogs faster and strengthen your adoption application.
+              </p>
             )}
           </div>
 

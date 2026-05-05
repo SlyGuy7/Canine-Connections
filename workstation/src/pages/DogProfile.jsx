@@ -2,6 +2,17 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
+import { Share2, ChevronLeft, ChevronRight } from "lucide-react";
+
+function trackRecentlyViewed(dog) {
+  try {
+    const key = "canine_recently_viewed";
+    const existing = JSON.parse(localStorage.getItem(key) || "[]");
+    const filtered = existing.filter(d => d.dog_id !== dog.dog_id);
+    const updated = [{ dog_id: dog.dog_id, name: dog.name, breed: dog.breed, photo: dog.photos ? (typeof dog.photos === "string" ? dog.photos.split(",")[0].trim() : "") : "" }, ...filtered].slice(0, 10);
+    localStorage.setItem(key, JSON.stringify(updated));
+  } catch {}
+}
 
 export default function DogProfile() {
   const { id }     = useParams();
@@ -33,6 +44,7 @@ export default function DogProfile() {
       ]);
       if (dogResult?.success && dogResult.dog) {
         setDog(dogResult.dog);
+        trackRecentlyViewed(dogResult.dog);
         const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
         setIsSaved(saved.some(d => d.dog_id === dogResult.dog.dog_id));
         const apps = appResult?.applications || [];
@@ -113,10 +125,27 @@ export default function DogProfile() {
 
         {/* ── Left: photos ── */}
         <div style={{ width: "400px", flexShrink: 0 }}>
-          <div style={{ width: "100%", height: "400px", borderRadius: "20px", overflow: "hidden", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", border: "1px solid #efdfd1" }}>
+          <div style={{ width: "100%", height: "400px", borderRadius: "20px", overflow: "hidden", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", border: "1px solid #efdfd1", position: "relative" }}>
             {currentPhoto
               ? <img src={currentPhoto} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none"; }} />
               : "🐕"}
+            {photos.length > 1 && (
+              <>
+                <button onClick={() => setActivePhoto(i => (i - 1 + photos.length) % photos.length)}
+                  style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", width: "36px", height: "36px", borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.85)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+                  <ChevronLeft size={18} color="#2f241d" />
+                </button>
+                <button onClick={() => setActivePhoto(i => (i + 1) % photos.length)}
+                  style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", width: "36px", height: "36px", borderRadius: "50%", border: "none", background: "rgba(255,255,255,0.85)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+                  <ChevronRight size={18} color="#2f241d" />
+                </button>
+                <div style={{ position: "absolute", bottom: "10px", left: "50%", transform: "translateX(-50%)", display: "flex", gap: "6px" }}>
+                  {photos.map((_, i) => (
+                    <button key={i} onClick={() => setActivePhoto(i)} style={{ width: i === activePhoto ? "20px" : "8px", height: "8px", borderRadius: "4px", border: "none", background: i === activePhoto ? "#d97706" : "rgba(255,255,255,0.7)", transition: "all 0.2s", cursor: "pointer", padding: 0 }} />
+                  ))}
+                </div>
+              </>
+            )}
           </div>
 
           {photos.length > 1 && (
@@ -148,16 +177,33 @@ export default function DogProfile() {
         {/* ── Right: details ── */}
         <div style={{ flex: 1, minWidth: 0 }}>
 
-          {/* Name + save */}
+          {/* Name + save + share */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "6px" }}>
             <h1 style={{ margin: 0, fontSize: "36px", fontWeight: "800", color: "#2f241d", lineHeight: 1.1 }}>{dog.name}</h1>
-            <button
-              onClick={handleSave}
-              style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "12px", border: isSaved ? "1px solid #fca5a5" : "1px solid #efdfd1", background: isSaved ? "#fff1f2" : "white", color: isSaved ? "#e11d48" : "#6f5848", fontWeight: "700", fontSize: "15px", cursor: "pointer", transition: "all 0.15s" }}
-            >
-              <span style={{ fontSize: "18px" }}>{isSaved ? "♥" : "♡"}</span>
-              {isSaved ? "Saved" : "Save"}
-            </button>
+            <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
+              <button
+                onClick={() => {
+                  if (navigator.share) {
+                    navigator.share({ title: `Meet ${dog.name}`, text: `${dog.name} is a ${dog.breed} looking for a forever home!`, url: window.location.href })
+                  } else {
+                    navigator.clipboard.writeText(window.location.href)
+                    addToast("Link copied to clipboard!", "success")
+                  }
+                }}
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "12px", border: "1px solid #efdfd1", background: "white", color: "#6f5848", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
+                title="Share this dog"
+              >
+                <Share2 size={15} />
+                Share
+              </button>
+              <button
+                onClick={handleSave}
+                style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "12px", border: isSaved ? "1px solid #fca5a5" : "1px solid #efdfd1", background: isSaved ? "#fff1f2" : "white", color: isSaved ? "#e11d48" : "#6f5848", fontWeight: "700", fontSize: "15px", cursor: "pointer", transition: "all 0.15s" }}
+              >
+                <span style={{ fontSize: "18px" }}>{isSaved ? "♥" : "♡"}</span>
+                {isSaved ? "Saved" : "Save"}
+              </button>
+            </div>
           </div>
 
           <p style={{ margin: "0 0 6px 0", fontSize: "18px", color: "#d97706", fontWeight: "700" }}>{dog.breed}</p>

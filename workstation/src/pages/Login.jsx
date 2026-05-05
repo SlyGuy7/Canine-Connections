@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
+import { Eye, EyeOff } from "lucide-react";
 const LOCKOUT_KEY = "canine_lockout_until";
 function formatCountdown(secs) {
   const m = Math.floor(secs / 60).toString().padStart(2, "0");
@@ -10,6 +11,7 @@ function formatCountdown(secs) {
 export default function Login({ switchToRegister, switchToForgot }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
@@ -135,13 +137,22 @@ export default function Login({ switchToRegister, switchToForgot }) {
             Forgot Password?
           </a>
         </div>
-        <input
-          style={styles.input}
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          autoComplete="current-password"
-        />
+        <div style={{ position: "relative" }}>
+          <input
+            style={{ ...styles.input, paddingRight: "44px" }}
+            type={showPassword ? "text" : "password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword(v => !v)}
+            style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-60%)", background: "none", border: "none", cursor: "pointer", color: "#9a8070", padding: "4px", display: "flex", alignItems: "center" }}
+          >
+            {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+          </button>
+        </div>
       </div>
       <button style={{...styles.button, ...(lockoutRemaining > 0 ? {opacity: 0.5, cursor: "not-allowed"} : {})}} type="submit" disabled={loading || lockoutRemaining > 0}>
         {loading ? "Logging In..." : "Login"}

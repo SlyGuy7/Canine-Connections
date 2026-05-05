@@ -9,6 +9,7 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom', 'react-router-dom'],
           stomp: ['@stomp/stompjs'],
+          map: ['leaflet', 'react-leaflet'],
         }
       }
     }

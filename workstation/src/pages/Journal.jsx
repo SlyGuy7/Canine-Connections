@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from "react"
 import { sendMessage } from "../services/messaging"
 import { useToast } from "../context/ToastContext"
+import { Sparkles } from "lucide-react"
+
+const MILESTONES = [
+  { title: "First Week Home",      type: "Milestone", notes: "How did the first week go? Any settling-in moments worth remembering?" },
+  { title: "First Vet Visit",      type: "Vet Visit", notes: "Record the vet's name, clinic, vaccinations given, and any health notes." },
+  { title: "First Walk",           type: "Walk",      notes: "Where did you go? How did they do on the leash?" },
+  { title: "First Training Session",type: "Training", notes: "What commands did you work on? Any breakthroughs?" },
+  { title: "One Month Milestone",  type: "Milestone", notes: "How have things changed since adoption day? What's your dog's personality like?" },
+]
 
 const LOG_TYPES = [
   { value: "Milestone", label: "Milestone", bg: "#fef9c3", color: "#854d0e" },
@@ -134,6 +143,33 @@ export default function Journal() {
           + Add Entry
         </button>
       </div>
+
+      {/* Milestone prompts — show when few entries */}
+      {!loading && entries.length < 3 && (
+        <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", padding: "20px 24px", marginBottom: "24px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+            <Sparkles size={16} color="#d97706" />
+            <span style={{ fontSize: "14px", fontWeight: "700", color: "#2f241d" }}>Suggested Milestones</span>
+            <span style={{ fontSize: "12px", color: "#9a8070" }}>— tap one to start an entry</span>
+          </div>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {MILESTONES.map(m => {
+              const already = entries.some(e => e.title === m.title)
+              if (already) return null
+              const ts = getTypeStyle(m.type)
+              return (
+                <button
+                  key={m.title}
+                  onClick={() => { setForm({ ...BLANK, title: m.title, log_type: m.type, notes: m.notes }); setIsModalOpen(true); }}
+                  style={{ padding: "8px 14px", borderRadius: "20px", border: `1px solid ${ts.color}30`, background: ts.bg, color: ts.color, fontSize: "13px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                >
+                  + {m.title}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {entries.length > 0 && (
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "24px" }}>

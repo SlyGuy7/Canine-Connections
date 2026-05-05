@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
+import confetti from "canvas-confetti";
 
 function profileToFormDefaults() {
   const prefs = JSON.parse(localStorage.getItem("userProfile") || "{}").prefs || {};
@@ -161,8 +162,9 @@ export default function ApplicationForm() {
       if (result?.success) {
         localStorage.removeItem("pendingApplicationDogId");
         localStorage.removeItem("pendingApplicationDogName");
+        confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 }, colors: ["#d97706", "#fde6cf", "#10b981", "#fff"] });
         addToast("Application submitted successfully!", "success");
-        navigate("/applications");
+        setTimeout(() => navigate("/applications"), 1200);
       } else {
         addToast(result?.error || "Submission failed. Please try again.", "error");
       }

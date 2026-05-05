@@ -31,6 +31,7 @@ import AdminStories from "./pages/AdminStories.jsx"
 import AdminDogs from "./pages/AdminDogs.jsx"
 import Profile from "./pages/Profile.jsx"
 import Resources from "./pages/Resources.jsx"
+import SuccessStories from "./pages/SuccessStories.jsx"
 import VerifyEmail from "./pages/VerifyEmail.jsx"
 import ResetPassword from "./pages/ResetPassword.jsx"
 
@@ -65,7 +66,8 @@ const router = createBrowserRouter([
   { path: "/admin/stories",      element: <AdminGuard><AdminStories /></AdminGuard> },
   { path: "/admin/dogs",         element: <AdminGuard><AdminDogs /></AdminGuard> },
 
-  { path: "/resources", element: <Layout><Resources /></Layout> },
+  { path: "/resources",       element: <Layout><Resources /></Layout> },
+  { path: "/success-stories", element: <Layout><SuccessStories /></Layout> },
   { path: "*",          element: <Navigate to="/landing" replace /> },
 ])
 
