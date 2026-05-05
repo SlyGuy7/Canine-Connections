@@ -108,13 +108,6 @@ export default function DogProfile() {
   return (
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0", fontFamily: "'Inter', sans-serif" }}>
 
-      {/* Back */}
-      <button
-        onClick={() => navigate(-1)}
-        style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "24px", padding: "9px 18px", borderRadius: "10px", border: "1px solid #efdfd1", background: "white", color: "#6f5848", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
-      >
-        ← Back
-      </button>
 
       <div style={{ display: "flex", gap: "36px", alignItems: "flex-start" }}>
 

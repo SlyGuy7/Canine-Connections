@@ -1,11 +1,26 @@
 import React from "react"
+import { useNavigate, useLocation } from "react-router-dom"
 import Sidebar from "./Sidebar"
 
+const NO_BACK = ["/dashboard", "/browse-dogs", "/shelters", "/resources"]
+
 export default function Layout({ children }) {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const showBack = !NO_BACK.includes(pathname)
+
   return (
     <div style={styles.container}>
       <Sidebar />
       <main style={styles.mainContent}>
+        {showBack && (
+          <button
+            onClick={() => navigate(-1)}
+            style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "20px", padding: "9px 18px", borderRadius: "10px", border: "1px solid #efdfd1", background: "white", color: "#6f5848", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
+          >
+            ← Back
+          </button>
+        )}
         {children}
       </main>
     </div>

@@ -189,10 +189,7 @@ export default function ApplicationForm() {
 
       {/* Header */}
       <div style={{ marginBottom: "28px" }}>
-        <button onClick={() => navigate(-1)} style={{ display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "16px", padding: "9px 18px", borderRadius: "10px", border: "1px solid #efdfd1", background: "white", color: "#6f5848", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
-          ← Back
-        </button>
-        <h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Adoption Application</h1>
+<h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Adoption Application</h1>
         <p style={{ margin: 0, color: "#9c7e6a", fontSize: "15px" }}>Complete all required fields to apply for adoption.</p>
       </div>
 
