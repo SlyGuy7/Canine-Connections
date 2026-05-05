@@ -53,7 +53,7 @@ EOF
     echo "[setup] canine-dbridge installed and started"
 fi
 
-if [ -f "$DATABASE_DIR/db_worker.php" ]; then
+if [ -f "$DATABASE_DIR/db_worker.php" ] && systemctl is-active --quiet mysql; then
     sudo tee /etc/systemd/system/canine-db-worker.service > /dev/null << EOF
 [Unit]
 Description=Canine Connections DB Worker
