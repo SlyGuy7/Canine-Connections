@@ -10,7 +10,7 @@ export default function Layout({ children }) {
   const showBack = !NO_BACK.includes(pathname)
 
   return (
-    <div style={{ display: "flex", minHeight: "100vh", background: "#fffaf5" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-primary)" }}>
       <Sidebar />
       <main
         key={pathname}
@@ -33,9 +33,9 @@ export default function Layout({ children }) {
               marginBottom: "20px",
               padding: "9px 18px",
               borderRadius: "10px",
-              border: "1px solid #efdfd1",
-              background: "white",
-              color: "#6f5848",
+              border: "1px solid var(--border)",
+              background: "var(--card-bg)",
+              color: "var(--text-muted)",
               fontWeight: "600",
               fontSize: "14px",
               cursor: "pointer",

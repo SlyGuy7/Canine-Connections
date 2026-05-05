@@ -65,8 +65,8 @@ export default function Sidebar() {
         position: "fixed",
         left: 0,
         top: 0,
-        backgroundColor: "white",
-        borderRight: "1px solid #efdfd1",
+        backgroundColor: "var(--sidebar-bg)",
+        borderRight: "1px solid var(--border)",
         display: "flex",
         flexDirection: "column",
         padding: "32px 20px",
@@ -81,7 +81,7 @@ export default function Sidebar() {
           gap: "10px",
           fontSize: "18px",
           fontWeight: "800",
-          color: "#2f241d",
+          color: "var(--text-primary)",
           marginBottom: "40px",
           paddingLeft: "8px",
           cursor: "pointer",
@@ -111,8 +111,8 @@ export default function Sidebar() {
                 padding: "11px 14px",
                 textDecoration: "none",
                 borderRadius: "12px",
-                color: isActive || isHovered ? "#d97706" : "#6f5848",
-                backgroundColor: isActive ? "#fcedda" : isHovered ? "#fffaf5" : "transparent",
+                color: isActive || isHovered ? "#d97706" : "var(--text-muted)",
+                backgroundColor: isActive ? "#fcedda" : isHovered ? "var(--bg-secondary)" : "transparent",
                 transition: "all 0.15s ease",
                 position: "relative",
               }}
@@ -135,12 +135,12 @@ export default function Sidebar() {
       </nav>
 
       {/* Bottom actions */}
-      <div style={{ marginTop: "auto", paddingTop: "20px", borderTop: "1px solid #efdfd1", display: "flex", flexDirection: "column", gap: "4px" }}>
+      <div style={{ marginTop: "auto", paddingTop: "20px", borderTop: "1px solid var(--border)", display: "flex", flexDirection: "column", gap: "4px" }}>
         {/* Dark mode toggle */}
         <button
           onClick={toggleDark}
-          style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px", border: "none", background: "transparent", color: "#6f5848", cursor: "pointer", transition: "all 0.15s ease", textAlign: "left" }}
-          onMouseEnter={e => e.currentTarget.style.background = "#fffaf5"}
+          style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px", border: "none", background: "transparent", color: "var(--text-muted)", cursor: "pointer", transition: "all 0.15s ease", textAlign: "left" }}
+          onMouseEnter={e => e.currentTarget.style.background = "var(--bg-secondary)"}
           onMouseLeave={e => e.currentTarget.style.background = "transparent"}
         >
           {dark ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}

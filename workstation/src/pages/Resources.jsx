@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react"
 import { sendMessage } from "../services/messaging"
-import Sidebar from "../components/Sidebar"
 
 const CATEGORIES = [
   { value: "all",       label: "All Resources" },
@@ -60,9 +59,7 @@ export default function Resources() {
   }, {})
 
   return (
-    <div className="dashboard-wrapper">
-      <Sidebar />
-      <div className="page-container">
+    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 60px 0" }}>
 
         <header style={{ marginBottom: "28px" }}>
           <h1 style={{ margin: "0 0 6px 0", color: "#2f241d", fontSize: "28px", fontWeight: "800" }}>
@@ -147,7 +144,6 @@ export default function Resources() {
             )
           })
         )}
-      </div>
     </div>
   )
 }

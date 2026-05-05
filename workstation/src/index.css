@@ -248,11 +248,11 @@
   font-size: 16px;
 }
 /* Dashboard Layout */
-.dashboard-wrapper { display: flex; min-height: 100vh; background-color: #f7efe7; }
+.dashboard-wrapper { display: flex; min-height: 100vh; background-color: var(--bg-secondary); }
 .page-container { flex: 1; margin-left: 260px; padding: 40px; box-sizing: border-box; }
 
 /* Sidebar */
-.sidebar { width: 260px; background: white; height: 100vh; position: fixed; left: 0; top: 0; padding: 40px 20px; border-right: 1px solid #efdfd1; box-sizing: border-box; display: flex; flex-direction: column; z-index: 1000; }
+.sidebar { width: 260px; background: var(--sidebar-bg); height: 100vh; position: fixed; left: 0; top: 0; padding: 40px 20px; border-right: 1px solid var(--border); box-sizing: border-box; display: flex; flex-direction: column; z-index: 1000; }
 .sidebar-title { font-size: 22px; font-weight: bold; color: #2f241d; margin-bottom: 40px; text-align: center; }
 .nav-link { display: block; padding: 12px 15px; color: #6f5848; text-decoration: none; font-weight: bold; border-radius: 10px; margin-bottom: 8px; transition: 0.2s; }
 .nav-link.active, .nav-link:hover { background: #fde6cf; color: #8a541b; }
@@ -500,3 +500,16 @@
   font-size: 15px;
   opacity: 0.9;
 }
+
+/* Dark mode overrides for CSS-class-based components */
+[data-theme="dark"] body { background: var(--bg-primary); color: var(--text-primary); }
+[data-theme="dark"] .form-modal,
+[data-theme="dark"] .dog-modal  { background: var(--card-bg); }
+[data-theme="dark"] .form-input { background: var(--card-bg); color: var(--text-primary); border-color: var(--border); }
+[data-theme="dark"] .welcome-banner { background: var(--card-bg); }
+[data-theme="dark"] .stat-card  { background: var(--card-bg); border-color: var(--border); }
+[data-theme="dark"] .dog-card   { background: var(--card-bg); border-color: var(--border); }
+[data-theme="dark"] .category-card { background: var(--card-bg); border-color: var(--border); color: var(--text-primary); }
+[data-theme="dark"] .featured-card { background: var(--card-bg); border-color: var(--border); }
+[data-theme="dark"] .pet-card   { background: var(--card-bg); border-color: var(--border); }
+[data-theme="dark"] .modal-close { background: var(--card-bg); color: var(--text-primary); }
