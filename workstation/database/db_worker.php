@@ -197,7 +197,7 @@ function handleQuery($queue, $data, $db) {
         case "db.auth.login":
             if (!isset($data["email"])) return ["success"=>false,"error"=>"Missing email"];
             $email=$db->real_escape_string($data["email"]);
-            $sql="SELECT user_id,email,password_hash,role,first_name,last_name,email_verified,login_notifications FROM users WHERE email='{$email}' LIMIT 1";
+            $sql="SELECT user_id,email,password_hash,role,first_name,last_name,phone,address,email_verified,login_notifications FROM users WHERE email='{$email}' LIMIT 1";
             logMsg("Executing SQL: ".$sql);
             $result=$db->query($sql);
             if (!$result||$result->num_rows===0) return ["success"=>false,"user"=>null];

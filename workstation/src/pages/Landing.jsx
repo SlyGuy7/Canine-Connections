@@ -390,35 +390,6 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ── Testimonials ── */}
-      <section style={{ background: "#fff", padding: "80px 20px" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "56px" }}>
-            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "#2f241d", margin: "0 0 10px 0" }}>Happy Families</h2>
-            <p style={{ color: "#6f5848", fontSize: "16px", margin: 0 }}>Real stories from families who found their perfect match.</p>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "24px" }}>
-            {[
-              { name: "Sarah M.", dog: "Adopted Biscuit", quote: "We found Biscuit on Canine Connections and the process was so smooth. He's now the heart of our home — we can't imagine life without him.", avatar: "S" },
-              { name: "James & Priya T.", dog: "Adopted Luna", quote: "Luna was shy at first but she's blossomed into the most loving dog. The meet & greet feature made us feel confident before committing.", avatar: "J" },
-              { name: "Chris D.", dog: "Adopted Rufus", quote: "I was nervous about adopting for the first time. The team walked me through everything. Rufus and I have been inseparable for 8 months now.", avatar: "C" },
-            ].map(t => (
-              <div key={t.name} style={{ background: "#fffaf5", border: "1px solid #efdfd1", borderRadius: "20px", padding: "32px 28px" }}>
-                <div style={{ fontSize: "32px", color: "#d97706", marginBottom: "16px", lineHeight: 1 }}>"</div>
-                <p style={{ color: "#5f4a3c", fontSize: "15px", lineHeight: "1.7", margin: "0 0 24px 0", fontStyle: "italic" }}>{t.quote}</p>
-                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                  <div style={{ width: "44px", height: "44px", background: "#d97706", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", color: "white", fontWeight: "700", fontSize: "18px", flexShrink: 0 }}>{t.avatar}</div>
-                  <div>
-                    <div style={{ fontWeight: "700", color: "#2f241d", fontSize: "15px" }}>{t.name}</div>
-                    <div style={{ color: "#d97706", fontSize: "13px", fontWeight: "600" }}>{t.dog}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* ── CTA Banner ── */}
       <section style={{ background: "#d97706", padding: "72px 20px", textAlign: "center" }}>
         <h2 style={{ fontSize: "38px", fontWeight: "800", color: "white", margin: "0 0 12px 0" }}>
