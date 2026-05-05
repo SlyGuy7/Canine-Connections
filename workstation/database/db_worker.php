@@ -280,9 +280,11 @@ function handleQuery($queue, $data, $db) {
             $size=isset($data['size'])&&$data['size']?$db->real_escape_string($data['size']):null;
             $energyLevel=isset($data['energy_level'])&&$data['energy_level']?$db->real_escape_string($data['energy_level']):null;
             $shelterId=isset($data['shelter_id'])&&$data['shelter_id']?(int)$data['shelter_id']:null;
+            $maxAge=isset($data['max_age'])&&$data['max_age']!==null&&$data['max_age']!==''?(int)$data['max_age']:null;
             $limit=isset($data['limit'])?(int)$data['limit']:20; $offset=isset($data['offset'])?(int)$data['offset']:0;
             $where=["d.status='{$status}'"]; if($breed)$where[]="d.breed='{$breed}'"; if($size)$where[]="d.size='{$size}'";
             if($energyLevel)$where[]="d.energy_level='{$energyLevel}'"; if($shelterId)$where[]="d.shelter_id={$shelterId}";
+            if($maxAge!==null)$where[]="d.age_years<={$maxAge}";
             $whereClause=implode(' AND ',$where);
             $sql="SELECT d.*,GROUP_CONCAT(p.photo_url ORDER BY p.is_primary DESC) as photos FROM dogs d LEFT JOIN dog_photos p ON d.dog_id=p.dog_id WHERE {$whereClause} GROUP BY d.dog_id LIMIT {$limit} OFFSET {$offset}";
             logMsg("Executing SQL: ".$sql); $result=$db->query($sql);
