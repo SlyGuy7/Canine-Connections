@@ -261,7 +261,7 @@ export default function Messages() {
                         </div>
                       </div>
                       <span style={{ fontSize: "11px", color: "#c4a98e", marginTop: "4px", marginLeft: isUser ? 0 : "36px" }}>
-                        {formatTime(msg.created_at)}
+                        {formatTime(msg.sent_at || msg.created_at)}
                       </span>
                     </div>
                   );

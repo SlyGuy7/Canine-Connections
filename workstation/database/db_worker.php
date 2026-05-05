@@ -495,20 +495,21 @@ function handleQuery($queue, $data, $db) {
         case "db.chat.sessions":
             if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
             $userId=(int)$data["user_id"];
-            $result=$db->query("SELECT cs.session_id,cs.shelter_id,cs.dog_id,cs.status,cs.started_at,s.name as shelter_name,s.city,s.state,s.phone,s.email,(SELECT cm.message FROM chat_messages cm WHERE cm.session_id=cs.session_id ORDER BY cm.created_at DESC LIMIT 1) as last_message,(SELECT cm.created_at FROM chat_messages cm WHERE cm.session_id=cs.session_id ORDER BY cm.created_at DESC LIMIT 1) as last_message_at FROM chat_sessions cs JOIN shelters s ON cs.shelter_id=s.shelter_id WHERE cs.user_id={$userId} ORDER BY last_message_at DESC,cs.started_at DESC");
+            $result=$db->query("SELECT cs.session_id,cs.shelter_id,cs.dog_id,cs.status,cs.started_at,s.name as shelter_name,s.city,s.state,s.phone,s.email,(SELECT cm.message FROM chat_messages cm WHERE cm.session_id=cs.session_id ORDER BY cm.sent_at DESC LIMIT 1) as last_message,(SELECT cm.sent_at FROM chat_messages cm WHERE cm.session_id=cs.session_id ORDER BY cm.sent_at DESC LIMIT 1) as last_message_at FROM chat_sessions cs JOIN shelters s ON cs.shelter_id=s.shelter_id WHERE cs.user_id={$userId} ORDER BY cs.started_at DESC");
             if (!$result) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"sessions"=>fetchAllAssoc($result)];
 
         case "db.chat.message":
             if (!isset($data["session_id"])||!isset($data["sender_id"])) return ["success"=>false,"error"=>"Missing fields"];
             $sessionId=(int)$data["session_id"]; $senderId=(int)$data["sender_id"]; $message=$db->real_escape_string($data["message"]??'');
-            $db->query("INSERT INTO chat_messages (session_id,sender_id,message,created_at) VALUES ({$sessionId},{$senderId},'{$message}',NOW())");
+            $db->query("INSERT INTO chat_messages (session_id,sender_id,message,sent_at) VALUES ({$sessionId},{$senderId},'{$message}',NOW())");
+            if ($db->error) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"message_id"=>$db->insert_id];
 
         case "db.chat.history":
             if (!isset($data["session_id"])) return ["success"=>false,"error"=>"Missing session_id"];
             $sessionId=(int)$data["session_id"];
-            $result=$db->query("SELECT cm.*,u.first_name,u.last_name FROM chat_messages cm JOIN users u ON cm.sender_id=u.user_id WHERE cm.session_id={$sessionId} ORDER BY cm.created_at ASC");
+            $result=$db->query("SELECT cm.*,u.first_name,u.last_name FROM chat_messages cm JOIN users u ON cm.sender_id=u.user_id WHERE cm.session_id={$sessionId} ORDER BY cm.sent_at ASC");
             if (!$result) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"messages"=>fetchAllAssoc($result)];
 
