@@ -46,10 +46,17 @@ export default function Settings() {
   const { addToast } = useToast()
   const [activeTab, setActiveTab] = useState('account')
 
-  const displayName  = localStorage.getItem('userFullName') || localStorage.getItem('userFirstName') || 'User'
   const displayEmail = localStorage.getItem('userEmail') || ''
   const userRole     = localStorage.getItem('userRole') || 'adopter'
-  const initials     = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
+
+  const [firstName, setFirstName] = useState(localStorage.getItem('userFirstName') || '')
+  const [lastName,  setLastName]  = useState(localStorage.getItem('userLastName')  || '')
+  const [phone,     setPhone]     = useState(localStorage.getItem('userPhone')     || '')
+  const [address,   setAddress]   = useState(localStorage.getItem('userAddress')   || '')
+  const [savingInfo, setSavingInfo] = useState(false)
+
+  const displayName = `${firstName} ${lastName}`.trim() || displayEmail.split('@')[0] || 'User'
+  const initials    = displayName.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
   const savedDogsCount = JSON.parse(localStorage.getItem('savedDogs') || '[]').length
   const quizTaken      = !!localStorage.getItem('quizMatchedDogIds')
@@ -57,6 +64,32 @@ export default function Settings() {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleting, setDeleting]   = useState(false)
+
+  async function handleSaveInfo() {
+    setSavingInfo(true)
+    try {
+      const userId = localStorage.getItem('userId')
+      if (userId) {
+        await sendMessage('request.profile.update', {
+          user_id:    parseInt(userId),
+          first_name: firstName,
+          last_name:  lastName,
+          phone,
+          address,
+        })
+      }
+      localStorage.setItem('userFirstName', firstName)
+      localStorage.setItem('userLastName',  lastName)
+      if (`${firstName} ${lastName}`.trim()) localStorage.setItem('userFullName', `${firstName} ${lastName}`.trim())
+      if (phone)   localStorage.setItem('userPhone',   phone)
+      if (address) localStorage.setItem('userAddress', address)
+      addToast('Account info saved!', 'success')
+    } catch {
+      addToast('Could not save. Try again.', 'error')
+    } finally {
+      setSavingInfo(false)
+    }
+  }
 
   const [notifs, setNotifs] = useState({ applicationUpdates: true, newMatches: true, meetGreetReminders: false, newsletter: false })
   const [privacy, setPrivacy] = useState({
@@ -208,18 +241,57 @@ export default function Settings() {
               {/* Account Information */}
               <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #efdfd1', padding: '24px 28px' }}>
                 <h2 style={{ margin: '0 0 4px 0', fontSize: '17px', fontWeight: '700', color: '#2f241d' }}>Account Information</h2>
-                <p style={{ margin: '0 0 16px 0', fontSize: '13px', color: '#a8a29e' }}>Your registered account details.</p>
-                <InfoRow label="Full name"     value={displayName} />
+                <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#a8a29e' }}>Your registered account details.</p>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                  {[
+                    { label: 'First name', value: firstName, set: setFirstName },
+                    { label: 'Last name',  value: lastName,  set: setLastName  },
+                  ].map(({ label, value, set }) => (
+                    <div key={label}>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#9c7e6a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>{label}</label>
+                      <input value={value} onChange={e => set(e.target.value)} placeholder={`Enter ${label.toLowerCase()}`}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #e5ddd6', fontSize: '14px', fontFamily: "'Inter', sans-serif", color: '#2f241d', background: '#fdfaf7', boxSizing: 'border-box', outline: 'none' }}
+                        onFocus={e => e.target.style.borderColor = '#d97706'}
+                        onBlur={e => e.target.style.borderColor = '#e5ddd6'}
+                      />
+                    </div>
+                  ))}
+                </div>
+
                 <InfoRow label="Email address" value={displayEmail} />
                 <InfoRow label="Account type"  value={userRole.charAt(0).toUpperCase() + userRole.slice(1)} badge />
-                <InfoRow label="Email verified" value="✓ Verified" />
-                <div style={{ marginTop: '16px' }}>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '14px' }}>
+                  {[
+                    { label: 'Phone number', value: phone,   set: setPhone,   placeholder: 'e.g. (555) 123-4567' },
+                    { label: 'Home address', value: address, set: setAddress, placeholder: 'Street, City, State' },
+                  ].map(({ label, value, set, placeholder }) => (
+                    <div key={label}>
+                      <label style={{ display: 'block', fontSize: '11px', fontWeight: '700', color: '#9c7e6a', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '6px' }}>{label}</label>
+                      <input value={value} onChange={e => set(e.target.value)} placeholder={placeholder}
+                        style={{ width: '100%', padding: '10px 12px', borderRadius: '10px', border: '1px solid #e5ddd6', fontSize: '14px', fontFamily: "'Inter', sans-serif", color: '#2f241d', background: '#fdfaf7', boxSizing: 'border-box', outline: 'none' }}
+                        onFocus={e => e.target.style.borderColor = '#d97706'}
+                        onBlur={e => e.target.style.borderColor = '#e5ddd6'}
+                      />
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
+                  <button onClick={handleSaveInfo} disabled={savingInfo}
+                    style={{ padding: '10px 22px', borderRadius: '10px', border: 'none', background: '#d97706', color: 'white', fontWeight: '700', fontSize: '13px', cursor: savingInfo ? 'default' : 'pointer', opacity: savingInfo ? 0.7 : 1 }}
+                    onMouseEnter={e => { if (!savingInfo) e.currentTarget.style.background = '#b45309' }}
+                    onMouseLeave={e => { if (!savingInfo) e.currentTarget.style.background = '#d97706' }}
+                  >
+                    {savingInfo ? 'Saving…' : 'Save Changes'}
+                  </button>
                   <button onClick={() => navigate('/profile')}
                     style={{ padding: '10px 20px', borderRadius: '10px', border: '1px solid #e2d9d0', background: 'white', color: '#2f241d', fontWeight: '600', fontSize: '13px', cursor: 'pointer' }}
                     onMouseEnter={e => e.currentTarget.style.background = '#fffaf5'}
                     onMouseLeave={e => e.currentTarget.style.background = 'white'}
                   >
-                    Edit Profile →
+                    Edit Full Profile →
                   </button>
                 </div>
               </div>
