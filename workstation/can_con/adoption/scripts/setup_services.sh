@@ -1,13 +1,22 @@
 #!/bin/bash
+# Usage: ./setup_services.sh [frontend|dbridge|db]
+# Run this on your own VM — it installs and enables only your service.
+# No argument = install all applicable services (legacy behaviour).
+
+ROLE=${1:-all}
 USER=$(whoami)
 HOME_DIR=$(eval echo ~$USER)
 BACKEND_DIR="$HOME_DIR/Capstone-Group-01/workstation/can_con/adoption/backend"
 DATABASE_DIR="$HOME_DIR/Capstone-Group-01/workstation/database"
 HOSTNAME=$(hostname)
 
-echo "[setup] Installing systemd services for $USER on $HOSTNAME"
+echo "[setup] Role: $ROLE | User: $USER | Host: $HOSTNAME"
 
-if [ -f "$BACKEND_DIR/frontend.php" ]; then
+install_frontend() {
+    if [ ! -f "$BACKEND_DIR/frontend.php" ]; then
+        echo "[setup] ERROR: $BACKEND_DIR/frontend.php not found. Is the repo cloned?"
+        exit 1
+    fi
     sudo tee /etc/systemd/system/canine-frontend.service > /dev/null << EOF
 [Unit]
 Description=Canine Connections Frontend Worker
@@ -27,10 +36,14 @@ EOF
     sudo systemctl daemon-reload
     sudo systemctl enable canine-frontend
     sudo systemctl restart canine-frontend
-    echo "[setup] canine-frontend installed and started"
-fi
+    echo "[setup] canine-frontend installed, enabled, and started"
+}
 
-if [ -f "$BACKEND_DIR/dbridge.php" ]; then
+install_dbridge() {
+    if [ ! -f "$BACKEND_DIR/dbridge.php" ]; then
+        echo "[setup] ERROR: $BACKEND_DIR/dbridge.php not found. Is the repo cloned?"
+        exit 1
+    fi
     sudo tee /etc/systemd/system/canine-dbridge.service > /dev/null << EOF
 [Unit]
 Description=Canine Connections DBridge Worker
@@ -50,10 +63,18 @@ EOF
     sudo systemctl daemon-reload
     sudo systemctl enable canine-dbridge
     sudo systemctl restart canine-dbridge
-    echo "[setup] canine-dbridge installed and started"
-fi
+    echo "[setup] canine-dbridge installed, enabled, and started"
+}
 
-if [ -f "$DATABASE_DIR/db_worker.php" ] && systemctl is-active --quiet mysql; then
+install_db() {
+    if [ ! -f "$DATABASE_DIR/db_worker.php" ]; then
+        echo "[setup] ERROR: $DATABASE_DIR/db_worker.php not found. Is the repo cloned?"
+        exit 1
+    fi
+    if ! systemctl is-active --quiet mysql; then
+        echo "[setup] ERROR: MySQL is not running on this machine. canine-db-worker requires a local MySQL instance."
+        exit 1
+    fi
     sudo tee /etc/systemd/system/canine-db-worker.service > /dev/null << EOF
 [Unit]
 Description=Canine Connections DB Worker
@@ -74,8 +95,34 @@ EOF
     sudo systemctl daemon-reload
     sudo systemctl enable canine-db-worker
     sudo systemctl restart canine-db-worker
-    echo "[setup] canine-db-worker installed and started"
-fi
+    echo "[setup] canine-db-worker installed, enabled, and started"
+}
 
-echo "[setup] Done. Services active on $HOSTNAME:"
-sudo systemctl status canine-frontend canine-dbridge canine-db-worker --no-pager 2>/dev/null | grep -E "Active|canine"
+case "$ROLE" in
+    frontend)
+        install_frontend
+        ;;
+    dbridge)
+        install_dbridge
+        ;;
+    db)
+        install_db
+        ;;
+    all)
+        echo "[setup] No role specified — installing all applicable services"
+        [ -f "$BACKEND_DIR/frontend.php" ] && install_frontend
+        [ -f "$BACKEND_DIR/dbridge.php" ]  && install_dbridge
+        [ -f "$DATABASE_DIR/db_worker.php" ] && systemctl is-active --quiet mysql && install_db
+        ;;
+    *)
+        echo "Usage: $0 [frontend|dbridge|db]"
+        echo "  frontend  — Steven's Node1"
+        echo "  dbridge   — Derrick's LB"
+        echo "  db        — Henil's Node2 (requires local MySQL)"
+        exit 1
+        ;;
+esac
+
+echo ""
+echo "[setup] Done. Current status:"
+sudo systemctl status canine-frontend canine-dbridge canine-db-worker --no-pager 2>/dev/null | grep -E "●|Active|canine"
