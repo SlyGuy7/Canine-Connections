@@ -28,6 +28,7 @@ function getClient() {
 
       onConnect: () => {
         _connected = true;
+        console.log("[STOMP] connected to", BROKER_URL);
         resolve(client);
       },
 
@@ -45,6 +46,7 @@ function getClient() {
         _connected = false;
         _connectPromise = null;
         _client = null;
+        console.warn("[STOMP] disconnected — will reconnect");
       },
     });
 
@@ -60,6 +62,7 @@ function makeCorrelationId() {
 }
 
 export async function sendMessage(type, payload) {
+  console.log(`[STOMP] → ${type}`, payload);
   const client = await getClient();
 
   return new Promise((resolve) => {
@@ -96,8 +99,11 @@ export async function sendMessage(type, payload) {
       replyDestination,
       (message) => {
         try {
-          cleanup(JSON.parse(message.body));
+          const result = JSON.parse(message.body);
+          console.log(`[STOMP] ← ${type}`, result);
+          cleanup(result);
         } catch {
+          console.error(`[STOMP] ← ${type} invalid JSON`, message.body);
           cleanup({ success: false, error: "Invalid JSON response" });
         }
       },
