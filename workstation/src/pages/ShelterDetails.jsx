@@ -112,6 +112,13 @@ export default function ShelterDetails() {
                   {shelter.description}
                 </p>
               )}
+
+              <button
+                onClick={() => navigate("/messages", { state: { shelterId: parseInt(id), shelter } })}
+                style={{ marginTop: "16px", display: "inline-flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}
+              >
+                💬 Message Shelter
+              </button>
             </div>
           </div>
         </div>

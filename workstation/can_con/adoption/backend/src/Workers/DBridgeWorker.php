@@ -57,6 +57,7 @@ final class DBridgeWorker
         $this->mq->registerConsumer('bridge.chat.start',          [$this, 'handleChatStart']);
         $this->mq->registerConsumer('bridge.chat.message',        [$this, 'handleChatMessage']);
         $this->mq->registerConsumer('bridge.chat.history',        [$this, 'handleChatHistory']);
+        $this->mq->registerConsumer('bridge.chat.sessions',       [$this, 'handleChatSessions']);
         $this->mq->registerConsumer('bridge.meetgreet.schedule',  [$this, 'handleMeetGreetSchedule']);
         $this->mq->registerConsumer('bridge.meetgreet.list',      [$this, 'handleMeetGreetList']);
         $this->mq->registerConsumer('bridge.meetgreet.cancel',    [$this, 'handleMeetGreetCancel']);
@@ -405,6 +406,12 @@ final class DBridgeWorker
     {
         $replyTo = $this->getReplyTo($msg);
         $this->fork(fn() => $this->relay('bridge.chat.history', 'db.chat.history', $data, $corrId, $replyTo), $msg);
+    }
+
+    public function handleChatSessions(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->getReplyTo($msg);
+        $this->fork(fn() => $this->relay('bridge.chat.sessions', 'db.chat.sessions', $data, $corrId, $replyTo), $msg);
     }
 
     public function handleMeetGreetSchedule(array $data, $msg, ?string $corrId): void

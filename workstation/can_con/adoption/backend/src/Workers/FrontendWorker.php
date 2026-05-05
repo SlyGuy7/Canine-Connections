@@ -63,6 +63,7 @@ final class FrontendWorker
         $this->mq->registerConsumer('request.chat.start',          [$this, 'handleChatStart']);
         $this->mq->registerConsumer('request.chat.message',        [$this, 'handleChatMessage']);
         $this->mq->registerConsumer('request.chat.history',        [$this, 'handleChatHistory']);
+        $this->mq->registerConsumer('request.chat.sessions',       [$this, 'handleChatSessions']);
         $this->mq->registerConsumer('request.meetgreet.schedule',  [$this, 'handleMeetGreetSchedule']);
         $this->mq->registerConsumer('request.meetgreet.list',      [$this, 'handleMeetGreetList']);
         $this->mq->registerConsumer('request.meetgreet.cancel',    [$this, 'handleMeetGreetCancel']);
@@ -929,6 +930,17 @@ final class FrontendWorker
                 $result = $mq->publishAndWait('bridge.chat.history', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.chat.history', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load chat'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.chat.history', $replyTo, ['success' => false, 'error' => 'Could not load chat'], $corrId); }
+        }, $msg);
+    }
+
+    public function handleChatSessions(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            try {
+                $result = $mq->publishAndWait('bridge.chat.sessions', ['user_id' => $data['user_id'] ?? null], $corrId);
+                $this->respond($mq, 'response.chat.sessions', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load sessions'], $corrId);
+            } catch (\Throwable $e) { $this->respond($mq, 'response.chat.sessions', $replyTo, ['success' => false, 'error' => 'Could not load sessions'], $corrId); }
         }, $msg);
     }
 

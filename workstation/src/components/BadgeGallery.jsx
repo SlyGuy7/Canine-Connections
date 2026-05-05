@@ -33,7 +33,7 @@ export default function BadgeGallery() {
 
   const badgeSystem = [
     { id: "member", title: "Pack Member", goal: "Complete initial sign-up.", icon: "🆔", color: "#3b82f6" },
-    { id: "matching", title: "Soul Seeker", goal: "Find your ideal dog breeds.", icon: "🔮", color: "#8b5cf6" },
+    { id: "matching", title: "Soul Seeker", goal: "Complete the compatibility quiz.", icon: "🔮", color: "#8b5cf6" },
     { id: "seeker", title: "Window Shopper", goal: "Save your first profile.", icon: "❤️", color: "#ef4444" },
     { id: "explorer", title: "Shelter Scout", goal: "Connect with 5 local shelters.", icon: "🗺️", color: "#06b6d4" },
     { id: "talker", title: "Small Talk", goal: "Send your first direct message.", icon: "💬", color: "#10b981" },

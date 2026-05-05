@@ -107,7 +107,7 @@ $queues = [
     'db.stories.list','db.stories.submit','db.stories.approve',
     'db.badges.list','db.badges.mine',
     'db.enquiry.send',
-    'db.chat.start','db.chat.message','db.chat.history',
+    'db.chat.start','db.chat.message','db.chat.history','db.chat.sessions',
     'db.meetgreet.schedule','db.meetgreet.list','db.meetgreet.cancel',
     'db.notifications.list','db.notifications.read'
 ];
@@ -482,11 +482,22 @@ function handleQuery($queue, $data, $db) {
 
         case "db.chat.start":
             if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
-            $userId=(int)$data["user_id"]; $dogId=(int)($data["dog_id"]??0); $shelterId=(int)($data["shelter_id"]??0);
-            $existing=fetchOneAssoc($db->query("SELECT session_id FROM chat_sessions WHERE user_id={$userId} AND dog_id={$dogId} AND shelter_id={$shelterId} AND status='open' LIMIT 1"));
+            $userId=(int)$data["user_id"]; $shelterId=(int)($data["shelter_id"]??0);
+            $dogId=isset($data["dog_id"])&&$data["dog_id"]?(int)$data["dog_id"]:null;
+            $dogCond=$dogId?"dog_id={$dogId}":"dog_id IS NULL";
+            $dogVal=$dogId?$dogId:"NULL";
+            $existing=fetchOneAssoc($db->query("SELECT session_id FROM chat_sessions WHERE user_id={$userId} AND {$dogCond} AND shelter_id={$shelterId} AND status='open' LIMIT 1"));
             if ($existing) return ["success"=>true,"session_id"=>$existing["session_id"]];
-            $db->query("INSERT INTO chat_sessions (user_id,dog_id,shelter_id,status) VALUES ({$userId},{$dogId},{$shelterId},'open')");
+            $db->query("INSERT INTO chat_sessions (user_id,dog_id,shelter_id,status) VALUES ({$userId},{$dogVal},{$shelterId},'open')");
+            if ($db->error) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"session_id"=>$db->insert_id];
+
+        case "db.chat.sessions":
+            if (!isset($data["user_id"])) return ["success"=>false,"error"=>"Missing user_id"];
+            $userId=(int)$data["user_id"];
+            $result=$db->query("SELECT cs.session_id,cs.shelter_id,cs.dog_id,cs.status,cs.started_at,s.name as shelter_name,s.city,s.state,s.phone,s.email,(SELECT cm.message FROM chat_messages cm WHERE cm.session_id=cs.session_id ORDER BY cm.created_at DESC LIMIT 1) as last_message,(SELECT cm.created_at FROM chat_messages cm WHERE cm.session_id=cs.session_id ORDER BY cm.created_at DESC LIMIT 1) as last_message_at FROM chat_sessions cs JOIN shelters s ON cs.shelter_id=s.shelter_id WHERE cs.user_id={$userId} ORDER BY last_message_at DESC,cs.started_at DESC");
+            if (!$result) return ["success"=>false,"error"=>$db->error];
+            return ["success"=>true,"sessions"=>fetchAllAssoc($result)];
 
         case "db.chat.message":
             if (!isset($data["session_id"])||!isset($data["sender_id"])) return ["success"=>false,"error"=>"Missing fields"];
