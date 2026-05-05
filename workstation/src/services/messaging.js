@@ -24,7 +24,7 @@ function getClient() {
       brokerURL: BROKER_URL,
       connectHeaders: { login: MQ_LOGIN, passcode: MQ_PASSCODE, host: "/" },
       reconnectDelay: 3000,
-      debug: () => {},
+      debug: (str) => console.debug("[STOMP]", str),
 
       onConnect: () => {
         _connected = true;
