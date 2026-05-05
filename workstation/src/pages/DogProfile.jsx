@@ -9,6 +9,7 @@ export default function DogProfile() {
   const { addToast } = useToast();
 
   const [dog, setDog]             = useState(null);
+  const [shelter, setShelter]     = useState(null);
   const [loading, setLoading]     = useState(true);
   const [isSaved, setIsSaved]     = useState(false);
   const [hasApplied, setHasApplied] = useState(false);
@@ -36,6 +37,11 @@ export default function DogProfile() {
         setIsSaved(saved.some(d => d.dog_id === dogResult.dog.dog_id));
         const apps = appResult?.applications || [];
         setHasApplied(apps.some(a => String(a.dog_id) === String(id)));
+        if (dogResult.dog.shelter_id) {
+          sendMessage("request.shelters.get", { shelter_id: dogResult.dog.shelter_id })
+            .then(r => { if (r?.success && r.shelter) setShelter(r.shelter); })
+            .catch(() => {});
+        }
       } else {
         addToast("Could not load dog details.", "error");
       }
@@ -196,6 +202,29 @@ export default function DogProfile() {
               {dog.description || "No description provided. Contact the shelter for more details."}
             </p>
           </div>
+
+          {/* Shelter */}
+          {shelter && (
+            <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "16px", padding: "20px 24px", marginBottom: "24px" }}>
+              <p style={{ margin: "0 0 12px 0", fontSize: "13px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>Available from</p>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+                <div>
+                  <div style={{ fontSize: "17px", fontWeight: "700", color: "#2f241d", marginBottom: "4px" }}>{shelter.name}</div>
+                  {(shelter.city || shelter.state) && (
+                    <div style={{ fontSize: "14px", color: "#6f5848" }}>📍 {[shelter.city, shelter.state].filter(Boolean).join(", ")}</div>
+                  )}
+                  {shelter.phone && <div style={{ fontSize: "14px", color: "#6f5848", marginTop: "2px" }}>📞 {shelter.phone}</div>}
+                  {shelter.email && <div style={{ fontSize: "14px", color: "#6f5848", marginTop: "2px" }}>✉️ {shelter.email}</div>}
+                </div>
+                <button
+                  onClick={() => navigate(`/shelters/${shelter.shelter_id}`)}
+                  style={{ flexShrink: 0, padding: "9px 18px", borderRadius: "10px", border: "1px solid #efdfd1", background: "#fdf7f2", color: "#d97706", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}
+                >
+                  View Shelter →
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* CTA */}
           {hasApplied ? (
