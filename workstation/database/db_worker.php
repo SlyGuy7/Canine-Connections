@@ -286,7 +286,7 @@ function handleQuery($queue, $data, $db) {
             if($energyLevel)$where[]="d.energy_level='{$energyLevel}'"; if($shelterId)$where[]="d.shelter_id={$shelterId}";
             if($maxAge!==null)$where[]="d.age_years<={$maxAge}";
             $whereClause=implode(' AND ',$where);
-            $sql="SELECT d.*,GROUP_CONCAT(p.photo_url ORDER BY p.is_primary DESC) as photos FROM dogs d LEFT JOIN dog_photos p ON d.dog_id=p.dog_id WHERE {$whereClause} GROUP BY d.dog_id LIMIT {$limit} OFFSET {$offset}";
+            $sql="SELECT d.*,GROUP_CONCAT(p.photo_url ORDER BY p.is_primary DESC) as photos FROM dogs d LEFT JOIN dog_photos p ON d.dog_id=p.dog_id WHERE {$whereClause} GROUP BY d.dog_id ORDER BY RAND() LIMIT {$limit} OFFSET {$offset}";
             logMsg("Executing SQL: ".$sql); $result=$db->query($sql);
             if (!$result) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"dogs"=>fetchAllAssoc($result)];
