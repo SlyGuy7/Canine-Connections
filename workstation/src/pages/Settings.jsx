@@ -83,6 +83,7 @@ export default function Settings() {
       if (`${firstName} ${lastName}`.trim()) localStorage.setItem('userFullName', `${firstName} ${lastName}`.trim())
       if (phone)   localStorage.setItem('userPhone',   phone)
       if (address) localStorage.setItem('userAddress', address)
+      savedInfo.current = { firstName, lastName, phone, address }
       addToast('Account info saved!', 'success')
     } catch {
       addToast('Could not save. Try again.', 'error')
@@ -99,13 +100,15 @@ export default function Settings() {
   })
   const savedNotifs  = useRef({ applicationUpdates: true, newMatches: true, meetGreetReminders: false, newsletter: false })
   const savedPrivacy = useRef({ loginAlerts: localStorage.getItem('loginAlerts') === 'true', shareProfile: true, usageData: false })
+  const savedInfo    = useRef({ firstName: localStorage.getItem('userFirstName') || '', lastName: localStorage.getItem('userLastName') || '', phone: localStorage.getItem('userPhone') || '', address: localStorage.getItem('userAddress') || '' })
   const [pendingTab, setPendingTab] = useState(null)
 
   const isNotifsDirty  = JSON.stringify(notifs)   !== JSON.stringify(savedNotifs.current)
   const isPrivacyDirty = JSON.stringify(privacy)  !== JSON.stringify(savedPrivacy.current)
-  const isCurrentTabDirty = (activeTab === 'notifications' && isNotifsDirty) || (activeTab === 'privacy' && isPrivacyDirty)
+  const isInfoDirty    = firstName !== savedInfo.current.firstName || lastName !== savedInfo.current.lastName || phone !== savedInfo.current.phone || address !== savedInfo.current.address
+  const isCurrentTabDirty = (activeTab === 'notifications' && isNotifsDirty) || (activeTab === 'privacy' && isPrivacyDirty) || (activeTab === 'account' && isInfoDirty)
 
-  const blocker = useBlocker(isNotifsDirty || isPrivacyDirty)
+  const blocker = useBlocker(isNotifsDirty || isPrivacyDirty || isInfoDirty)
 
   function handleTabClick(tabId) {
     if (tabId === activeTab) return
@@ -116,6 +119,12 @@ export default function Settings() {
   function confirmTabSwitch() {
     if (activeTab === 'notifications') setNotifs(savedNotifs.current)
     if (activeTab === 'privacy') setPrivacy(savedPrivacy.current)
+    if (activeTab === 'account') {
+      setFirstName(savedInfo.current.firstName)
+      setLastName(savedInfo.current.lastName)
+      setPhone(savedInfo.current.phone)
+      setAddress(savedInfo.current.address)
+    }
     setActiveTab(pendingTab)
     setPendingTab(null)
   }
