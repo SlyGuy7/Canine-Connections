@@ -74,6 +74,7 @@ export default function Dashboard() {
 
   async function loadStats() {
     const saved          = JSON.parse(localStorage.getItem("savedDogs")        || "[]")
+    console.log("%c[dashboard] savedDogs raw:", "color:#b45309;font-weight:700", localStorage.getItem("savedDogs"), "count:", saved.length)
     const journalEntries = JSON.parse(localStorage.getItem("journal_entries")  || "[]")
     let applicationCount = JSON.parse(localStorage.getItem("myApplications")   || "[]").length
     try {
