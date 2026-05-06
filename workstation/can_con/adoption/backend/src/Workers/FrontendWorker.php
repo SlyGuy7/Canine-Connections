@@ -232,8 +232,12 @@ final class FrontendWorker
                     return;
                 }
                 $result = $mq->publishAndWait('bridge.auth.login', ['email' => $data['email']], $corrId);
-                if (!$result || ($result['success'] ?? false) !== true || !isset($result['user'])) {
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'User not found'], $corrId);
+                if (!$result) {
+                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Service temporarily unavailable. Please try again in a moment.'], $corrId);
+                    return;
+                }
+                if (($result['success'] ?? false) !== true || !isset($result['user'])) {
+                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'No account found with that email.'], $corrId);
                     return;
                 }
                 $user = $result['user'];
