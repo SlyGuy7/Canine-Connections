@@ -35,7 +35,12 @@ export default function Sidebar({ isMobile = false, open = true, onClose }) {
   }, [location.pathname]);
 
   const handleLogout = () => {
-    localStorage.clear();
+    const KEEP = new Set([
+      "savedDogs", "journal_entries", "quizAnswers", "quizCompleted",
+      "quizMatchedDogIds", "userProfile", "canine_theme", "loginAlerts",
+      "canine_recently_viewed", "viewedShelters",
+    ]);
+    Object.keys(localStorage).forEach(k => { if (!KEEP.has(k)) localStorage.removeItem(k); });
     sessionStorage.clear();
     navigate("/landing");
   };
