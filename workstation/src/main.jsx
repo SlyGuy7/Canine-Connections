@@ -1,39 +1,48 @@
-import React from "react"
+import React, { Suspense, lazy } from "react"
 import ReactDOM from "react-dom/client"
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import "./index.css"
-import Landing from "./pages/Landing.jsx"
-import RegisterSuccess from "./pages/RegisterSuccess.jsx"
-import Dashboard from "./pages/Dashboard.jsx"
 import ProtectedRoute from "./components/ProtectedRoute.jsx"
 import AdminGuard from "./components/AdminGuard.jsx"
-import MyDogs from "./pages/MyDogs.jsx"
-import Messages from "./pages/Messages.jsx"
-import Applications from "./pages/Applications.jsx"
-import BrowseDogs from "./pages/BrowseDogs.jsx"
-import DogProfile from "./pages/DogProfile.jsx"
-import Settings from "./pages/Settings.jsx"
 import Layout from "./components/Layout.jsx"
 import { ToastProvider } from "./context/ToastContext"
 import { DataCacheProvider } from "./context/DataCacheContext"
-import ApplicationForm from "./pages/ApplicationForm.jsx"
-import Shelters from "./pages/Shelters.jsx"
-import ShelterDetails from "./pages/ShelterDetails.jsx"
-import Journal from "./pages/Journal.jsx"
-import Quiz from "./pages/Quiz.jsx"
-import QuizResults from "./pages/Quizresults.jsx"
-import SavedDogs from "./pages/Saveddogs.jsx"
-import AdminLogin from "./pages/AdminLogin.jsx"
-import AdminDashboard from "./pages/AdminDashboard.jsx"
-import AdminUsers from "./pages/AdminUsers.jsx"
-import AdminApplications from "./pages/AdminApplications.jsx"
-import AdminStories from "./pages/AdminStories.jsx"
-import AdminDogs from "./pages/AdminDogs.jsx"
-import Profile from "./pages/Profile.jsx"
-import Resources from "./pages/Resources.jsx"
-import SuccessStories from "./pages/SuccessStories.jsx"
-import VerifyEmail from "./pages/VerifyEmail.jsx"
-import ResetPassword from "./pages/ResetPassword.jsx"
+
+const Landing         = lazy(() => import("./pages/Landing.jsx"))
+const RegisterSuccess = lazy(() => import("./pages/RegisterSuccess.jsx"))
+const VerifyEmail     = lazy(() => import("./pages/VerifyEmail.jsx"))
+const ResetPassword   = lazy(() => import("./pages/ResetPassword.jsx"))
+const Dashboard       = lazy(() => import("./pages/Dashboard.jsx"))
+const Journal         = lazy(() => import("./pages/Journal.jsx"))
+const MyDogs          = lazy(() => import("./pages/MyDogs.jsx"))
+const Messages        = lazy(() => import("./pages/Messages.jsx"))
+const Applications    = lazy(() => import("./pages/Applications.jsx"))
+const ApplicationForm = lazy(() => import("./pages/ApplicationForm.jsx"))
+const Settings        = lazy(() => import("./pages/Settings.jsx"))
+const Profile         = lazy(() => import("./pages/Profile.jsx"))
+const Quiz            = lazy(() => import("./pages/Quiz.jsx"))
+const QuizResults     = lazy(() => import("./pages/Quizresults.jsx"))
+const SavedDogs       = lazy(() => import("./pages/Saveddogs.jsx"))
+const BrowseDogs      = lazy(() => import("./pages/BrowseDogs.jsx"))
+const DogProfile      = lazy(() => import("./pages/DogProfile.jsx"))
+const Shelters        = lazy(() => import("./pages/Shelters.jsx"))
+const ShelterDetails  = lazy(() => import("./pages/ShelterDetails.jsx"))
+const Resources       = lazy(() => import("./pages/Resources.jsx"))
+const SuccessStories  = lazy(() => import("./pages/SuccessStories.jsx"))
+const AdminLogin      = lazy(() => import("./pages/AdminLogin.jsx"))
+const AdminDashboard  = lazy(() => import("./pages/AdminDashboard.jsx"))
+const AdminUsers      = lazy(() => import("./pages/AdminUsers.jsx"))
+const AdminApplications = lazy(() => import("./pages/AdminApplications.jsx"))
+const AdminStories    = lazy(() => import("./pages/AdminStories.jsx"))
+const AdminDogs       = lazy(() => import("./pages/AdminDogs.jsx"))
+
+function PageLoader() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg-primary)" }}>
+      <div style={{ width: "36px", height: "36px", border: "3px solid #f3e8de", borderTopColor: "#d97706", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+    </div>
+  )
+}
 
 const router = createBrowserRouter([
   { path: "/",               element: <Navigate to="/landing" replace /> },
@@ -74,7 +83,9 @@ const router = createBrowserRouter([
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ToastProvider>
     <DataCacheProvider>
-      <RouterProvider router={router} />
+      <Suspense fallback={<PageLoader />}>
+        <RouterProvider router={router} />
+      </Suspense>
     </DataCacheProvider>
   </ToastProvider>
 )
