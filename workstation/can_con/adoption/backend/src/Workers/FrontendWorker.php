@@ -241,14 +241,17 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Please verify your email before logging in. Check your inbox for the verification link.'], $corrId);
                     return;
                 }
+                $srcIp = $data['clientIp'] ?? 'unknown';
+                if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
+                $safeIp = preg_replace('/[^a-zA-Z0-9._:-]/', '', $srcIp);
+                $attemptsFile = '/tmp/canine-attempts-' . $safeIp;
                 if (!password_verify($data['password'], $user['password_hash'])) {
-                    // CRITICAL: Security log for Fail2Ban monitoring
-                    $srcIp = $data['clientIp'] ?? 'unknown';
-                    if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
                     echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . " src_ip=" . $srcIp . "\n";
-                    $safeIp = preg_replace('/[^a-zA-Z0-9._:-]/', '', $srcIp);
-                    $attemptsFile = '/tmp/canine-attempts-' . $safeIp;
-                    $attempts = (int)(@file_get_contents($attemptsFile) ?: 0) + 1;
+                    $rawAttempts = (int)(@file_get_contents($attemptsFile) ?: 0);
+                    if ($rawAttempts >= 5 && file_exists($attemptsFile) && (time() - filemtime($attemptsFile)) >= 3600) {
+                        $rawAttempts = 0;
+                    }
+                    $attempts = $rawAttempts + 1;
                     file_put_contents($attemptsFile, $attempts);
                     $remaining = max(0, 5 - $attempts);
                     if ($remaining > 0) {
@@ -261,6 +264,7 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => $errMsg], $corrId);
                     return;
                 }
+                @unlink($attemptsFile);
                 unset($user['password_hash']);
                 $user['first_name'] = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : '';
                 $user['last_name']  = isset($user['last_name'])  && $user['last_name']  !== '' ? $this->dec($user['last_name'])  : '';
