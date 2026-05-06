@@ -65,9 +65,6 @@ function connectDb(string $host, string $user, string $pass, string $name, int $
     $conn->query("SET SESSION wait_timeout=28800");
     $conn->query("SET SESSION interactive_timeout=28800");
     // Only connect to the active Group Replication PRIMARY (ONLINE).
-    // This handles secondaries (super_read_only=1) AND nodes that restarted MySQL
-    // standalone without rejoining the group (not in members table).
-    // Requires: GRANT SELECT ON performance_schema.replication_group_members TO 'adoption_user'@'%';
     try {
         $grResult = $conn->query(
             "SELECT MEMBER_ROLE FROM performance_schema.replication_group_members " .
@@ -79,8 +76,8 @@ function connectDb(string $host, string $user, string $pass, string $name, int $
             return null;
         }
     } catch (\Throwable $e) {
-        // performance_schema not accessible yet — fall back to super_read_only.
-        // Fix: GRANT SELECT ON performance_schema.replication_group_members TO 'adoption_user'@'%';
+    
+        // GRANT SELECT ON performance_schema.replication_group_members TO 'adoption_user'@'%';
         logMsg("[CLUSTER] WARNING: Cannot read group replication status on " . $host . " (" . $e->getMessage() . ") — falling back to super_read_only check");
         $roResult = $conn->query("SELECT @@super_read_only as ro");
         if ($roResult) {
