@@ -59,7 +59,13 @@ $dbHosts = array_values(array_filter([
 logMsg("[CLUSTER] MySQL nodes: " . implode(', ', $dbHosts));
 
 function connectDb(string $host, string $user, string $pass, string $name, int $port): ?mysqli {
-    $conn = new mysqli($host, $user, $pass, $name, $port);
+    try {
+        $conn = mysqli_init();
+        $conn->options(MYSQLI_OPT_CONNECT_TIMEOUT, 3);
+        if (!$conn->real_connect($host, $user, $pass, $name, $port)) return null;
+    } catch (\Throwable $e) {
+        return null;
+    }
     if ($conn->connect_error) return null;
     $conn->set_charset('utf8mb4');
     $conn->query("SET SESSION wait_timeout=28800");
