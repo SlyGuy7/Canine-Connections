@@ -164,11 +164,11 @@ export default function DogProfile() {
 
           {/* Energy level badge */}
           {dog.energy_level && (
-            <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "10px", background: "white", border: "1px solid #efdfd1", borderRadius: "14px", padding: "14px 18px" }}>
+            <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "10px", background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "14px", padding: "14px 18px" }}>
               <span style={{ fontSize: "20px" }}>⚡</span>
               <div>
-                <div style={{ fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>Energy level</div>
-                <div style={{ fontSize: "15px", fontWeight: "700", color: "#2f241d", textTransform: "capitalize" }}>{dog.energy_level}</div>
+                <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Energy level</div>
+                <div style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-primary)", textTransform: "capitalize" }}>{dog.energy_level}</div>
               </div>
             </div>
           )}
@@ -190,7 +190,7 @@ export default function DogProfile() {
                     addToast("Link copied to clipboard!", "success")
                   }
                 }}
-                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "12px", border: "1px solid #efdfd1", background: "white", color: "#6f5848", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
+                style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text-muted)", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
                 title="Share this dog"
               >
                 <Share2 size={15} />
@@ -198,7 +198,7 @@ export default function DogProfile() {
               </button>
               <button
                 onClick={handleSave}
-                style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "12px", border: isSaved ? "1px solid #fca5a5" : "1px solid #efdfd1", background: isSaved ? "#fff1f2" : "white", color: isSaved ? "#e11d48" : "#6f5848", fontWeight: "700", fontSize: "15px", cursor: "pointer", transition: "all 0.15s" }}
+                style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "12px", border: isSaved ? "1px solid #fca5a5" : "1px solid var(--border)", background: isSaved ? "#fff1f2" : "var(--card-bg)", color: isSaved ? "#e11d48" : "var(--text-muted)", fontWeight: "700", fontSize: "15px", cursor: "pointer", transition: "all 0.15s" }}
               >
                 <span style={{ fontSize: "18px" }}>{isSaved ? "♥" : "♡"}</span>
                 {isSaved ? "Saved" : "Save"}
@@ -235,20 +235,20 @@ export default function DogProfile() {
           )}
 
           {/* Description */}
-          <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "16px", padding: "20px 24px", marginBottom: "24px" }}>
-            <p style={{ margin: "0 0 8px 0", fontSize: "13px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>About {dog.name}</p>
-            <p style={{ margin: 0, lineHeight: "1.7", color: "#2f241d", fontSize: "15px" }}>
+          <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "20px 24px", marginBottom: "24px" }}>
+            <p style={{ margin: "0 0 8px 0", fontSize: "13px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>About {dog.name}</p>
+            <p style={{ margin: 0, lineHeight: "1.7", color: "var(--text-primary)", fontSize: "15px" }}>
               {dog.description || "No description provided. Contact the shelter for more details."}
             </p>
           </div>
 
           {/* Shelter */}
           {shelter && (
-            <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "16px", padding: "20px 24px", marginBottom: "24px" }}>
-              <p style={{ margin: "0 0 12px 0", fontSize: "13px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>Available from</p>
+            <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "20px 24px", marginBottom: "24px" }}>
+              <p style={{ margin: "0 0 12px 0", fontSize: "13px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Available from</p>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
                 <div>
-                  <div style={{ fontSize: "17px", fontWeight: "700", color: "#2f241d", marginBottom: "4px" }}>{shelter.name}</div>
+                  <div style={{ fontSize: "17px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "4px" }}>{shelter.name}</div>
                   {(shelter.city || shelter.state) && (
                     <div style={{ fontSize: "14px", color: "#6f5848" }}>📍 {[shelter.city, shelter.state].filter(Boolean).join(", ")}</div>
                   )}
@@ -257,7 +257,7 @@ export default function DogProfile() {
                 </div>
                 <button
                   onClick={() => navigate(`/shelters/${shelter.shelter_id}`)}
-                  style={{ flexShrink: 0, padding: "9px 18px", borderRadius: "10px", border: "1px solid #efdfd1", background: "#fdf7f2", color: "#d97706", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}
+                  style={{ flexShrink: 0, padding: "9px 18px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "#d97706", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}
                 >
                   View Shelter →
                 </button>
@@ -291,9 +291,9 @@ export default function DogProfile() {
 
 function StatBox({ label, value }) {
   return (
-    <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "14px", padding: "14px 16px" }}>
-      <div style={{ fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>{label}</div>
-      <div style={{ fontSize: "16px", fontWeight: "700", color: "#2f241d", textTransform: "capitalize" }}>{value}</div>
+    <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "14px", padding: "14px 16px" }}>
+      <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "4px" }}>{label}</div>
+      <div style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-primary)", textTransform: "capitalize" }}>{value}</div>
     </div>
   );
 }

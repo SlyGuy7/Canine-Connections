@@ -77,7 +77,7 @@ export default function ShelterDetails() {
   return (
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0" }}>
 
-<div style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "32px", marginBottom: "32px" }}>
+<div style={{ background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", padding: "32px", marginBottom: "32px" }}>
           <div style={{ display: "flex", gap: "24px", alignItems: "flex-start", flexWrap: "wrap" }}>
             <div style={{ width: "100px", height: "100px", background: "linear-gradient(135deg, #e8f3f1, #fdf6ef)", borderRadius: "16px", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               {shelter.logo_url ? (
@@ -88,19 +88,19 @@ export default function ShelterDetails() {
             </div>
 
             <div style={{ flex: 1 }}>
-              <h1 style={{ margin: "0 0 8px 0", color: "#2f241d", fontSize: "26px" }}>{shelter.name}</h1>
+              <h1 style={{ margin: "0 0 8px 0", color: "var(--text-primary)", fontSize: "26px" }}>{shelter.name}</h1>
 
               <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginBottom: "16px" }}>
                 {(shelter.city || shelter.state) && (
-                  <span style={{ color: "#6f5848", fontSize: "15px" }}>
+                  <span style={{ color: "var(--text-muted)", fontSize: "15px" }}>
                     📍 {[shelter.city, shelter.state, shelter.zip].filter(Boolean).join(", ")}
                   </span>
                 )}
                 {shelter.phone && (
-                  <span style={{ color: "#6f5848", fontSize: "15px" }}>📞 {shelter.phone}</span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "15px" }}>📞 {shelter.phone}</span>
                 )}
                 {shelter.email && (
-                  <span style={{ color: "#6f5848", fontSize: "15px" }}>✉️ {shelter.email}</span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "15px" }}>✉️ {shelter.email}</span>
                 )}
               </div>
 
@@ -116,7 +116,7 @@ export default function ShelterDetails() {
               )}
 
               {shelter.description && (
-                <p style={{ margin: "12px 0 0 0", color: "#6f5848", fontSize: "15px", lineHeight: "1.6" }}>
+                <p style={{ margin: "12px 0 0 0", color: "var(--text-muted)", fontSize: "15px", lineHeight: "1.6" }}>
                   {shelter.description}
                 </p>
               )}
@@ -132,7 +132,7 @@ export default function ShelterDetails() {
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <h2 style={{ margin: 0, color: "#2f241d", fontSize: "20px" }}>
+          <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: "20px" }}>
             Available Dogs {dogs.length > 0 && `(${dogs.length})`}
           </h2>
           <button
@@ -145,7 +145,7 @@ export default function ShelterDetails() {
         </div>
 
         {dogs.length === 0 ? (
-          <div style={{ background: "white", borderRadius: "16px", border: "1px solid #efdfd1", padding: "40px", textAlign: "center", color: "#6f5848" }}>
+          <div style={{ background: "var(--card-bg)", borderRadius: "16px", border: "1px solid var(--border)", padding: "40px", textAlign: "center", color: "var(--text-muted)" }}>
             No available dogs from this shelter at this time.
           </div>
         ) : (
@@ -155,7 +155,7 @@ export default function ShelterDetails() {
               return (
                 <div
                   key={dog.dog_id}
-                  style={{ background: "white", borderRadius: "16px", border: "1px solid #efdfd1", overflow: "hidden", cursor: "pointer", transition: "transform 0.15s" }}
+                  style={{ background: "var(--card-bg)", borderRadius: "16px", border: "1px solid var(--border)", overflow: "hidden", cursor: "pointer", transition: "transform 0.15s" }}
                   onClick={() => navigate(`/dogs/${dog.dog_id}`)}
                   onMouseEnter={(e) => e.currentTarget.style.transform = "translateY(-2px)"}
                   onMouseLeave={(e) => e.currentTarget.style.transform = "translateY(0)"}
@@ -168,9 +168,9 @@ export default function ShelterDetails() {
                     )}
                   </div>
                   <div style={{ padding: "14px" }}>
-                    <h4 style={{ margin: "0 0 4px 0", color: "#2f241d", fontSize: "15px" }}>{dog.name}</h4>
-                    <p style={{ margin: "0 0 4px 0", color: "#6f5848", fontSize: "13px" }}>{dog.breed}</p>
-                    <p style={{ margin: 0, color: "#9c7a6a", fontSize: "12px" }}>
+                    <h4 style={{ margin: "0 0 4px 0", color: "var(--text-primary)", fontSize: "15px" }}>{dog.name}</h4>
+                    <p style={{ margin: "0 0 4px 0", color: "var(--text-muted)", fontSize: "13px" }}>{dog.breed}</p>
+                    <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "12px" }}>
                       {dog.age_years} yr · {dog.size} · {dog.gender}
                     </p>
                   </div>

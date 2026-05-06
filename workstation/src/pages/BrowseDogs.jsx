@@ -132,7 +132,6 @@ export default function BrowseDogs() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [savedIds, setSavedIds] = useState(() => new Set(JSON.parse(localStorage.getItem("savedDogs") || "[]").map(d => d.dog_id)));
-  const hasFetched = useRef(false);
   const { getDogs, dogsLoading: cacheLoading } = useDataCache();
   const userPrefs = (() => { try { return JSON.parse(localStorage.getItem("userProfile") || "{}").prefs || {}; } catch { return {}; } })();
   const [searchParams] = useSearchParams();
@@ -157,7 +156,6 @@ export default function BrowseDogs() {
   }, []);
 
   useEffect(() => {
-    hasFetched.current = false;
     loadDogs();
   }, [shelterIdParam]);
 

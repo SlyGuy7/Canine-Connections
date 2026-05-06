@@ -160,15 +160,25 @@ export default function Shelters() {
   useEffect(() => {
     if (viewMode !== "map" || shelters.length === 0) return
     setGeocoding(true)
-    Promise.all(
-      shelters.map(async s => {
-        const coords = s.city ? await geocode(s.city, s.state || "") : null
-        return { ...s, coords }
-      })
-    ).then(results => {
-      setGeoShelters(results.filter(s => s.coords))
-      setGeocoding(false)
-    })
+    setGeoShelters([])
+    let cancelled = false
+    ;(async () => {
+      const BATCH = 5
+      const accumulated = []
+      for (let i = 0; i < shelters.length; i += BATCH) {
+        if (cancelled) break
+        const chunk = shelters.slice(i, i + BATCH)
+        const results = await Promise.all(chunk.map(async s => {
+          const coords = s.city ? await geocode(s.city, s.state || "") : null
+          return { ...s, coords }
+        }))
+        results.forEach(s => { if (s.coords) accumulated.push(s) })
+        if (!cancelled) setGeoShelters([...accumulated])
+        if (i + BATCH < shelters.length && !cancelled) await new Promise(r => setTimeout(r, 1100))
+      }
+      if (!cancelled) setGeocoding(false)
+    })()
+    return () => { cancelled = true }
   }, [viewMode, shelters])
 
   function useMyLocation() {

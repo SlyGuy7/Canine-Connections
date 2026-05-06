@@ -55,6 +55,16 @@ export default function Messages() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  useEffect(() => {
+    if (!sessionId || !activeShelter) return;
+    const interval = setInterval(() => {
+      sendMessage("request.chat.history", { session_id: parseInt(sessionId), user_id: parseInt(userId) })
+        .then(r => { if (r?.success) setMessages(r.messages || []); })
+        .catch(() => {});
+    }, 10000);
+    return () => clearInterval(interval);
+  }, [sessionId, activeShelter]);
+
   async function loadSessions() {
     setSessionsLoading(true);
     try {
@@ -153,11 +163,11 @@ export default function Messages() {
         <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>Your conversations with rescue shelters.</p>
       </div>
 
-      <div style={{ flex: 1, display: "flex", background: "white", borderRadius: "20px", border: "1px solid #efdfd1", overflow: "hidden", boxShadow: "0 4px 24px rgba(47,36,29,0.07)", minHeight: 0 }}>
+      <div style={{ flex: 1, display: "flex", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", overflow: "hidden", boxShadow: "0 4px 24px rgba(47,36,29,0.07)", minHeight: 0 }}>
 
         {/* Sidebar */}
-        <div style={{ width: "300px", borderRight: "1px solid #efdfd1", display: "flex", flexDirection: "column", flexShrink: 0 }}>
-          <div style={{ padding: "18px 20px", borderBottom: "1px solid #efdfd1", background: "#fffaf5", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ width: "300px", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+          <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h3 style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#78716c", textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Conversations {!sessionsLoading && sessions.length > 0 && `· ${sessions.length}`}
             </h3>
@@ -183,9 +193,9 @@ export default function Messages() {
                   <div
                     key={session.session_id}
                     onClick={() => handleSelectSession(session)}
-                    style={{ padding: "15px 20px", borderBottom: "1px solid #f5ede4", cursor: "pointer", background: isActive ? "#fcedda" : "white", display: "flex", alignItems: "center", gap: "12px", transition: "background 0.15s" }}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "#fffaf5"; }}
-                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "white"; }}
+                    style={{ padding: "15px 20px", borderBottom: "1px solid var(--border)", cursor: "pointer", background: isActive ? "#fcedda" : "var(--card-bg)", display: "flex", alignItems: "center", gap: "12px", transition: "background 0.15s" }}
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--bg-primary)"; }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "var(--card-bg)"; }}
                   >
                     <div style={{ width: "42px", height: "42px", borderRadius: "50%", background: isActive ? avatarColor : "#f0e8e0", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "800", color: isActive ? "white" : "#78716c", flexShrink: 0 }}>
                       {getInitials(session.shelter_name)}
@@ -210,7 +220,7 @@ export default function Messages() {
 
         {/* Chat panel */}
         {!activeShelter ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "12px", color: "#a8a29e", background: "#fffaf5" }}>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "12px", color: "#a8a29e", background: "var(--bg-secondary)" }}>
             <span style={{ fontSize: "48px" }}>💬</span>
             <p style={{ margin: 0, fontSize: "16px", fontWeight: "600", color: "#78716c" }}>Select a conversation</p>
             <p style={{ margin: 0, fontSize: "13px" }}>Or visit a shelter page to start a new one</p>
@@ -218,7 +228,7 @@ export default function Messages() {
         ) : (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
-            <div style={{ padding: "16px 24px", borderBottom: "1px solid #efdfd1", display: "flex", alignItems: "center", gap: "14px", background: "white", flexShrink: 0 }}>
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "14px", background: "var(--card-bg)", flexShrink: 0 }}>
               <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: AVATAR_COLORS[sessions.findIndex(s => s.shelter_id === activeShelter.shelter_id) % AVATAR_COLORS.length] || AVATAR_COLORS[0], display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "800", color: "white" }}>
                 {getInitials(activeShelter.name)}
               </div>
@@ -231,7 +241,7 @@ export default function Messages() {
               </div>
             </div>
 
-            <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", background: "#fffaf5" }}>
+            <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", background: "var(--bg-secondary)" }}>
               {chatLoading ? (
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, color: "#a8a29e", fontSize: "14px", gap: "10px" }}>
                   <div style={{ width: "20px", height: "20px", border: "2px solid #e2d9d0", borderTopColor: "#d97706", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
@@ -247,7 +257,8 @@ export default function Messages() {
                 messages.map((msg, idx) => {
                   const isUser     = String(msg.sender_id) === String(userId);
                   const showAvatar = !isUser && (idx === 0 || String(messages[idx - 1]?.sender_id) === String(userId));
-                  const colorIdx   = (sessions.findIndex(s => s.shelter_id === activeShelter.shelter_id) % AVATAR_COLORS.length) || 0;
+                  const _si        = sessions.findIndex(s => s.shelter_id === activeShelter.shelter_id);
+                  const colorIdx   = (_si >= 0 ? _si : 0) % AVATAR_COLORS.length;
                   return (
                     <div key={msg.message_id ?? idx} style={{ display: "flex", flexDirection: "column", alignItems: isUser ? "flex-end" : "flex-start" }}>
                       <div style={{ display: "flex", alignItems: "flex-end", gap: "8px" }}>
@@ -256,7 +267,7 @@ export default function Messages() {
                             {showAvatar ? getInitials(activeShelter.name) : ""}
                           </div>
                         )}
-                        <div style={{ maxWidth: "65%", padding: "12px 16px", borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: isUser ? "#d97706" : "white", color: isUser ? "white" : "#2f241d", fontSize: "14px", lineHeight: "1.5", border: isUser ? "none" : "1px solid #e8ddd5", boxShadow: isUser ? "0 2px 8px rgba(217,119,6,0.2)" : "0 2px 6px rgba(0,0,0,0.05)", opacity: msg._optimistic ? 0.75 : 1 }}>
+                        <div style={{ maxWidth: "65%", padding: "12px 16px", borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px", background: isUser ? "#d97706" : "var(--card-bg)", color: isUser ? "white" : "var(--text-primary)", fontSize: "14px", lineHeight: "1.5", border: isUser ? "none" : "1px solid var(--border)", boxShadow: isUser ? "0 2px 8px rgba(217,119,6,0.2)" : "0 2px 6px rgba(0,0,0,0.05)", opacity: msg._optimistic ? 0.75 : 1 }}>
                           {msg.message}
                         </div>
                       </div>
@@ -270,7 +281,7 @@ export default function Messages() {
               <div ref={messagesEndRef} />
             </div>
 
-            <form onSubmit={handleSend} style={{ padding: "16px 20px", borderTop: "1px solid #efdfd1", display: "flex", gap: "10px", background: "white", alignItems: "center", flexShrink: 0 }}>
+            <form onSubmit={handleSend} style={{ padding: "16px 20px", borderTop: "1px solid var(--border)", display: "flex", gap: "10px", background: "var(--card-bg)", alignItems: "center", flexShrink: 0 }}>
               <input
                 ref={inputRef}
                 type="text"
@@ -279,7 +290,7 @@ export default function Messages() {
                 onKeyDown={handleKeyDown}
                 placeholder="Type a message… (Enter to send)"
                 disabled={chatLoading}
-                style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: "1px solid #e2d9d0", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", color: "#2f241d", background: "#fffaf5" }}
+                style={{ flex: 1, padding: "12px 16px", borderRadius: "12px", border: "1px solid var(--border)", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", color: "var(--text-primary)", background: "var(--bg-secondary)" }}
               />
               <button
                 type="submit"
