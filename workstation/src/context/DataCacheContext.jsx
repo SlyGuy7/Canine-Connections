@@ -16,7 +16,7 @@ export function DataCacheProvider({ children }) {
 
   const getDogs = useCallback(async (force = false) => {
     if (dogs && !force) return dogs
-    if (dogsFetched.current && !force) return dogs
+    if (dogsFetched.current && !force) return dogs ?? []
     dogsFetched.current = true
     setDogsLoading(true)
     try {
@@ -30,8 +30,10 @@ export function DataCacheProvider({ children }) {
         setDogs(mapped)
         return mapped
       }
+      dogsFetched.current = false
       return []
     } catch {
+      dogsFetched.current = false
       return []
     } finally {
       setDogsLoading(false)
@@ -40,7 +42,7 @@ export function DataCacheProvider({ children }) {
 
   const getShelters = useCallback(async (force = false) => {
     if (shelters && !force) return shelters
-    if (sheltersFetched.current && !force) return shelters
+    if (sheltersFetched.current && !force) return shelters ?? []
     sheltersFetched.current = true
     setSheltersLoading(true)
     try {
@@ -49,8 +51,10 @@ export function DataCacheProvider({ children }) {
         setShelters(result.shelters || [])
         return result.shelters || []
       }
+      sheltersFetched.current = false
       return []
     } catch {
+      sheltersFetched.current = false
       return []
     } finally {
       setSheltersLoading(false)
@@ -59,7 +63,7 @@ export function DataCacheProvider({ children }) {
 
   const getQuizQuestions = useCallback(async (force = false) => {
     if (quizQuestions && !force) return quizQuestions
-    if (quizFetched.current && !force) return quizQuestions
+    if (quizFetched.current && !force) return quizQuestions ?? []
     quizFetched.current = true
     setQuizLoading(true)
     try {
@@ -68,8 +72,10 @@ export function DataCacheProvider({ children }) {
         setQuizQuestions(result.questions || [])
         return result.questions || []
       }
+      quizFetched.current = false
       return []
     } catch {
+      quizFetched.current = false
       return []
     } finally {
       setQuizLoading(false)

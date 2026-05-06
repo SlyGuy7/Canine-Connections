@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
+import { useDataCache } from "../context/DataCacheContext"
+import { useIsMobile } from "../hooks/useIsMobile"
 import { Zap } from "lucide-react"
 
 import BadgeGallery from "../components/BadgeGallery"
@@ -22,6 +24,8 @@ function calcMatchScore(dog, prefs) {
 export default function Dashboard() {
   const navigate = useNavigate()
   const location = useLocation()
+  const { getDogs } = useDataCache()
+  const isMobile = useIsMobile()
 
   const [user, setUser] = useState("Friend")
   const [featuredDog, setFeaturedDog] = useState(null)
@@ -49,14 +53,12 @@ export default function Dashboard() {
       const profile = JSON.parse(localStorage.getItem("userProfile") || "{}")
       const prefs = profile.prefs || {}
       if (!Object.keys(prefs).length) return
-      const result = await sendMessage("request.dogs.list", { limit: 30 })
-      if (result?.success && Array.isArray(result.dogs)) {
-        const scored = result.dogs
-          .map(d => ({ ...d, _score: calcMatchScore(d, prefs) }))
-          .sort((a, b) => b._score - a._score)
-          .slice(0, 3)
-        setMatchedDogs(scored)
-      }
+      const dogs = await getDogs()
+      const scored = dogs
+        .map(d => ({ ...d, _score: calcMatchScore(d, prefs) }))
+        .sort((a, b) => b._score - a._score)
+        .slice(0, 3)
+      setMatchedDogs(scored)
     } catch {}
   }
 
@@ -70,18 +72,25 @@ export default function Dashboard() {
     setUser("Friend")
   }
 
-  function loadStats() {
-    const saved        = JSON.parse(localStorage.getItem("savedDogs")       || "[]")
-    const applications = JSON.parse(localStorage.getItem("myApplications")  || "[]")
-    const journalEntries = JSON.parse(localStorage.getItem("journal_entries") || "[]")
-    setStats({ saved: saved.length, applications: applications.length, journalCount: journalEntries.length })
+  async function loadStats() {
+    const saved          = JSON.parse(localStorage.getItem("savedDogs")        || "[]")
+    const journalEntries = JSON.parse(localStorage.getItem("journal_entries")  || "[]")
+    let applicationCount = JSON.parse(localStorage.getItem("myApplications")   || "[]").length
+    try {
+      const userId = localStorage.getItem("userId")
+      if (userId) {
+        const result = await sendMessage("request.application.list", { user_id: parseInt(userId) })
+        if (result?.success) applicationCount = (result.applications || []).length
+      }
+    } catch {}
+    setStats({ saved: saved.length, applications: applicationCount, journalCount: journalEntries.length })
   }
 
   async function loadFeaturedDog() {
     setLoadingDog(true)
     try {
-      const result = await sendMessage("request.dogs.list", { limit: 1 })
-      if (result?.success && result.dogs?.length > 0) setFeaturedDog(result.dogs[0])
+      const dogs = await getDogs()
+      if (dogs.length > 0) setFeaturedDog(dogs[Math.floor(Math.random() * Math.min(dogs.length, 20))])
     } catch { setFeaturedDog(null) }
     finally  { setLoadingDog(false) }
   }
@@ -221,7 +230,7 @@ export default function Dashboard() {
             <div
               key={a.label}
               onClick={() => navigate(a.path)}
-              style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "16px", padding: "20px", cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s", display: "flex", alignItems: "center", gap: "14px" }}
+              style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "20px", cursor: "pointer", transition: "transform 0.15s, box-shadow 0.15s", display: "flex", alignItems: "center", gap: "14px" }}
               onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.08)" }}
               onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)";   e.currentTarget.style.boxShadow = "none" }}
             >
@@ -229,18 +238,18 @@ export default function Dashboard() {
                 {a.icon}
               </div>
               <div>
-                <div style={{ fontWeight: "700", color: "#2f241d", fontSize: "14px" }}>{a.label}</div>
-                <div style={{ fontSize: "12px", color: "#9a8070", marginTop: "2px" }}>{a.desc}</div>
+                <div style={{ fontWeight: "700", color: "var(--text-primary)", fontSize: "14px" }}>{a.label}</div>
+                <div style={{ fontSize: "12px", color: "var(--text-muted)", marginTop: "2px" }}>{a.desc}</div>
               </div>
             </div>
           ))}
         </div>
 
         {/* ── Featured Dog + Progress ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "28px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "20px", marginBottom: "28px" }}>
 
           {/* Featured Companion */}
-          <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "24px", overflow: "hidden" }}>
+          <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "24px", overflow: "hidden" }}>
             {loadingDog ? (
               <div>
                 <div style={{ height: "200px", background: "linear-gradient(90deg, #f5ece4 25%, #fde6cf 50%, #f5ece4 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
@@ -263,7 +272,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 <div style={{ padding: "24px" }}>
-                  <h2 style={{ margin: "0 0 4px 0", fontSize: "22px", fontWeight: "800", color: "#2f241d" }}>Meet {featuredDog.name}</h2>
+                  <h2 style={{ margin: "0 0 4px 0", fontSize: "22px", fontWeight: "800", color: "var(--text-primary)" }}>Meet {featuredDog.name}</h2>
                   <p style={{ margin: "0 0 8px 0", fontSize: "13px", color: "#d97706", fontWeight: "600" }}>
                     {featuredDog.breed} &bull; {featuredDog.age_years} {featuredDog.age_years == 1 ? "yr" : "yrs"} &bull; {featuredDog.size}
                   </p>
@@ -289,9 +298,9 @@ export default function Dashboard() {
           </div>
 
           {/* Your Progress */}
-          <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "24px", padding: "28px" }}>
+          <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "24px", padding: "28px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#2f241d" }}>Your Progress</h2>
+              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "var(--text-primary)" }}>Your Progress</h2>
               <span style={{ fontSize: "13px", fontWeight: "700", color: "#d97706" }}>{doneCount} / {nextSteps.length}</span>
             </div>
             {/* Progress bar */}
@@ -303,7 +312,7 @@ export default function Dashboard() {
                 <div
                   key={step.label}
                   onClick={() => !step.done && navigate(step.path)}
-                  style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", borderRadius: "12px", border: `1px solid ${step.done ? "#bbf7d0" : "#efdfd1"}`, background: step.done ? "#f0fdf4" : "#fffaf5", cursor: step.done ? "default" : "pointer", transition: "transform 0.15s" }}
+                  style={{ display: "flex", alignItems: "center", gap: "14px", padding: "14px 16px", borderRadius: "12px", border: `1px solid ${step.done ? "#bbf7d0" : "var(--border)"}`, background: step.done ? "#f0fdf4" : "var(--bg-secondary)", cursor: step.done ? "default" : "pointer", transition: "transform 0.15s" }}
                   onMouseEnter={e => { if (!step.done) e.currentTarget.style.transform = "translateX(4px)" }}
                   onMouseLeave={e => { e.currentTarget.style.transform = "translateX(0)" }}
                 >
@@ -311,7 +320,7 @@ export default function Dashboard() {
                     {step.done ? "✅" : step.icon}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: "600", color: "#2f241d", fontSize: "14px" }}>{step.label}</div>
+                    <div style={{ fontWeight: "600", color: "var(--text-primary)", fontSize: "14px" }}>{step.label}</div>
                     <div style={{ fontSize: "12px", color: step.done ? "#16a34a" : "#9a8070", marginTop: "2px" }}>
                       {step.done ? "Completed" : "Tap to get started"}
                     </div>
@@ -345,7 +354,7 @@ export default function Dashboard() {
                 const photo = dog.photos ? (Array.isArray(dog.photos) ? dog.photos[0] : dog.photos.split(",")[0].trim()) : null
                 return (
                   <div key={dog.dog_id} onClick={() => navigate(`/dogs/${dog.dog_id}`)}
-                    style={{ background: "white", borderRadius: "16px", overflow: "hidden", border: "1px solid #efdfd1", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s" }}
+                    style={{ background: "var(--card-bg)", borderRadius: "16px", overflow: "hidden", border: "1px solid var(--border)", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.09)" }}
                     onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none" }}
                   >
@@ -359,8 +368,8 @@ export default function Dashboard() {
                       </div>
                     </div>
                     <div style={{ padding: "14px 16px" }}>
-                      <h3 style={{ margin: "0 0 2px 0", fontSize: "16px", fontWeight: "700", color: "#2f241d" }}>{dog.name}</h3>
-                      <p style={{ margin: 0, fontSize: "12px", color: "#9a8070" }}>{dog.breed} · {dog.size}</p>
+                      <h3 style={{ margin: "0 0 2px 0", fontSize: "16px", fontWeight: "700", color: "var(--text-primary)" }}>{dog.name}</h3>
+                      <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)" }}>{dog.breed} · {dog.size}</p>
                     </div>
                   </div>
                 )
@@ -401,7 +410,7 @@ export default function Dashboard() {
             {loadingLogs ? (
               <div style={{ padding: "20px", color: "#6f5848" }}>Loading logs...</div>
             ) : logs.length === 0 ? (
-              <div style={{ textAlign: "center", padding: "48px 24px", borderRadius: "20px", border: "2px dashed #e5d5c5", background: "white" }}>
+              <div style={{ textAlign: "center", padding: "48px 24px", borderRadius: "20px", border: "2px dashed var(--border)", background: "var(--card-bg)" }}>
                 <div style={{ fontSize: "48px", marginBottom: "12px" }}>📖</div>
                 <p style={{ color: "#6f5848", margin: "0 0 16px 0" }}>No journal entries yet.</p>
                 <button className="btn btn-primary" onClick={() => navigate("/journal")}>Add First Entry</button>
@@ -411,11 +420,11 @@ export default function Dashboard() {
                 {logs.map((log, i) => {
                   const t = logTypeLabel(log.log_type)
                   return (
-                    <div key={log.log_id || i} style={{ padding: "20px 24px", borderRadius: "16px", border: "1px solid #efdfd1", background: "white", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
+                    <div key={log.log_id || i} style={{ padding: "20px 24px", borderRadius: "16px", border: "1px solid var(--border)", background: "var(--card-bg)", display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                       <div style={{ flex: 1 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
                           <span style={{ fontSize: "11px", fontWeight: "700", padding: "3px 10px", borderRadius: "20px", background: t.bg, color: t.color }}>{t.label}</span>
-                          <h4 style={{ margin: 0, color: "#2f241d", fontWeight: "600", fontSize: "15px" }}>{log.title}</h4>
+                          <h4 style={{ margin: 0, color: "var(--text-primary)", fontWeight: "600", fontSize: "15px" }}>{log.title}</h4>
                         </div>
                         {log.notes && <p style={{ margin: 0, color: "#6f5848", fontSize: "14px", lineHeight: "1.5" }}>{log.notes}</p>}
                       </div>
@@ -428,7 +437,7 @@ export default function Dashboard() {
           </section>
         ) : (
           <section style={{ marginTop: "28px" }}>
-            <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "24px", padding: "48px 24px", textAlign: "center" }}>
+            <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "24px", padding: "48px 24px", textAlign: "center" }}>
               <div style={{ fontSize: "56px", marginBottom: "16px" }}>📖</div>
               <h3 style={{ margin: "0 0 8px 0", color: "#2f241d", fontSize: "20px", fontWeight: "700" }}>Post-Adoption Journal</h3>
               <p style={{ color: "#6f5848", margin: "0 0 24px 0", maxWidth: "400px", marginLeft: "auto", marginRight: "auto", fontSize: "15px", lineHeight: "1.6" }}>
@@ -449,7 +458,7 @@ function StatCard({ value, label, icon, color, onClick }) {
       onClick={onClick}
       role="button"
       tabIndex="0"
-      style={{ cursor: "pointer", background: "white", padding: "20px 24px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "16px", border: "1px solid #efdfd1", boxShadow: "0 2px 8px rgba(47,36,29,0.04)", transition: "transform 0.15s, box-shadow 0.15s" }}
+      style={{ cursor: "pointer", background: "var(--card-bg)", padding: "20px 24px", borderRadius: "20px", display: "flex", alignItems: "center", gap: "16px", border: "1px solid var(--border)", boxShadow: "0 2px 8px rgba(47,36,29,0.04)", transition: "transform 0.15s, box-shadow 0.15s" }}
       onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 20px rgba(0,0,0,0.08)" }}
       onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)";   e.currentTarget.style.boxShadow = "0 2px 8px rgba(47,36,29,0.04)" }}
     >
@@ -457,8 +466,8 @@ function StatCard({ value, label, icon, color, onClick }) {
         {icon}
       </div>
       <div>
-        <div style={{ fontSize: "28px", fontWeight: "800", color: "#2f241d", lineHeight: 1 }}>{value}</div>
-        <div style={{ fontSize: "13px", color: "#6f5848", fontWeight: "600", marginTop: "4px" }}>{label}</div>
+        <div style={{ fontSize: "28px", fontWeight: "800", color: "var(--text-primary)", lineHeight: 1 }}>{value}</div>
+        <div style={{ fontSize: "13px", color: "var(--text-muted)", fontWeight: "600", marginTop: "4px" }}>{label}</div>
       </div>
     </div>
   )

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   User, LayoutDashboard, Search, Building2, Heart,
   FileText, MessageCircle, Brain, BookOpen, Library,
-  Settings, LogOut, PawPrint, Moon, Sun, Star,
+  Settings, LogOut, PawPrint, Moon, Sun, Star, X,
 } from "lucide-react";
 
 function useDarkMode() {
@@ -21,7 +21,7 @@ function useDarkMode() {
   return [dark, toggle];
 }
 
-export default function Sidebar() {
+export default function Sidebar({ isMobile = false, open = true, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [hoveredPath, setHoveredPath] = useState(null);
@@ -70,11 +70,25 @@ export default function Sidebar() {
         display: "flex",
         flexDirection: "column",
         padding: "32px 20px",
+        zIndex: 1000,
+        transform: isMobile ? (open ? "translateX(0)" : "translateX(-260px)") : "none",
+        transition: "transform 0.25s ease",
+        overflowY: "auto",
       }}
     >
+      {/* Mobile close button */}
+      {isMobile && (
+        <button
+          onClick={onClose}
+          style={{ position: "absolute", top: "16px", right: "16px", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "4px" }}
+        >
+          <X size={20} />
+        </button>
+      )}
+
       {/* Logo */}
       <div
-        onClick={() => navigate("/")}
+        onClick={() => { navigate("/"); onClose?.(); }}
         style={{
           display: "flex",
           alignItems: "center",
@@ -102,6 +116,7 @@ export default function Sidebar() {
             <Link
               key={path}
               to={path}
+              onClick={() => onClose?.()}
               onMouseEnter={() => setHoveredPath(path)}
               onMouseLeave={() => setHoveredPath(null)}
               style={{

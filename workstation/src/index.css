@@ -283,6 +283,8 @@
 .btn { padding: 12px 24px; border-radius: 10px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
 .btn-primary { background: #d97706; color: white; }
 .btn-primary:hover { background: #b45309; }
+.btn-secondary { background: var(--card-bg); color: var(--text-primary); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--bg-secondary); }
 .featured-grid {
   display: flex;
   gap: 20px;
