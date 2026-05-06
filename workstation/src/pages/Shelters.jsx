@@ -28,7 +28,13 @@ const BLUE_ICON = new L.Icon({
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
 })
 
-const geocodeCache = {}
+const geocodeCache = (() => {
+  try { return JSON.parse(localStorage.getItem("shelter_geocache") || "{}") } catch { return {} }
+})()
+
+function saveGeocacheToStorage() {
+  try { localStorage.setItem("shelter_geocache", JSON.stringify(geocodeCache)) } catch {}
+}
 
 async function geocode(city, state) {
   const key = `${city},${state}`
@@ -42,6 +48,7 @@ async function geocode(city, state) {
     if (data[0]) {
       const coords = { lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) }
       geocodeCache[key] = coords
+      saveGeocacheToStorage()
       return coords
     }
   } catch {}
@@ -210,24 +217,44 @@ export default function Shelters() {
   const mapCenter = userLocation ? [userLocation.lat, userLocation.lng] : [38, -97]
   const mapZoom   = userLocation ? 9 : 4
 
+  const stateCount = new Set(shelters.map(s => s.state).filter(Boolean)).size
+
   return (
     <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 60px 0" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px", flexWrap: "wrap", gap: "16px" }}>
-        <div>
-          <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>Partner Shelters</h1>
-          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>
-            {loading ? "Loading shelters…" : `${filtered.length} shelter${filtered.length !== 1 ? "s" : ""} in our network`}
-          </p>
+      <div style={{ background: "linear-gradient(135deg, #2f241d 0%, #4a3728 100%)", borderRadius: "24px", padding: "32px 36px", marginBottom: "24px", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", right: "32px", top: "-10px", fontSize: "120px", opacity: 0.06, userSelect: "none", lineHeight: 1 }}>🏡</div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "20px" }}>
+          <div>
+            <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "white" }}>Partner Shelters</h1>
+            <p style={{ margin: 0, color: "rgba(255,255,255,0.55)", fontSize: "15px" }}>
+              {loading ? "Loading shelters…" : `${shelters.length} shelters across our network`}
+            </p>
+          </div>
+          <div style={{ display: "flex", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "12px", overflow: "hidden" }}>
+            {[{ mode: "grid", Icon: List, label: "Grid" }, { mode: "map", Icon: MapPin, label: "Map" }].map(({ mode, Icon, label }) => (
+              <button key={mode} onClick={() => setViewMode(mode)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 18px", border: "none", background: viewMode === mode ? "#d97706" : "transparent", color: viewMode === mode ? "white" : "rgba(255,255,255,0.6)", fontWeight: "600", fontSize: "14px", cursor: "pointer", transition: "all 0.15s" }}>
+                <Icon size={15} />{label}
+              </button>
+            ))}
+          </div>
         </div>
-        <div style={{ display: "flex", background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "12px", overflow: "hidden" }}>
-          {[{ mode: "grid", Icon: List, label: "Grid" }, { mode: "map", Icon: MapPin, label: "Map" }].map(({ mode, Icon, label }) => (
-            <button key={mode} onClick={() => setViewMode(mode)} style={{ display: "flex", alignItems: "center", gap: "6px", padding: "10px 18px", border: "none", background: viewMode === mode ? "#d97706" : "transparent", color: viewMode === mode ? "white" : "var(--text-muted)", fontWeight: "600", fontSize: "14px", cursor: "pointer", transition: "all 0.15s" }}>
-              <Icon size={15} />{label}
-            </button>
-          ))}
-        </div>
+        {!loading && shelters.length > 0 && (
+          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+            {[
+              { icon: "🏡", label: "Shelters", value: shelters.length },
+              { icon: "🗺️", label: "States",   value: stateCount },
+              { icon: "🐾", label: "Available Dogs", value: "Browse →" },
+            ].map(stat => (
+              <div key={stat.label} style={{ padding: "10px 16px", borderRadius: "12px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: stat.label === "Available Dogs" ? "pointer" : "default" }}
+                onClick={stat.label === "Available Dogs" ? () => {} : undefined}>
+                <p style={{ margin: "0 0 2px 0", fontSize: "11px", color: "rgba(255,255,255,0.45)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>{stat.icon} {stat.label}</p>
+                <p style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "white" }}>{stat.value}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Search */}

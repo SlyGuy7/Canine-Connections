@@ -241,13 +241,23 @@ export default function Messages() {
               <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: AVATAR_COLORS[sessions.findIndex(s => s.shelter_id === activeShelter.shelter_id) % AVATAR_COLORS.length] || AVATAR_COLORS[0], display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "800", color: "white" }}>
                 {getInitials(activeShelter.name)}
               </div>
-              <div>
+              <div style={{ flex: 1, minWidth: 0 }}>
                 <h3 style={{ margin: "0 0 2px 0", fontSize: "16px", fontWeight: "700", color: "#2f241d" }}>{activeShelter.name}</h3>
                 <p style={{ margin: 0, fontSize: "12px", color: "#a8a29e" }}>
                   {[activeShelter.city, activeShelter.state].filter(Boolean).join(", ")}
                   {activeShelter.phone ? ` · ${activeShelter.phone}` : ""}
                 </p>
               </div>
+              {activeShelter.shelter_id && (
+                <button
+                  onClick={() => navigate(`/shelters/${activeShelter.shelter_id}`)}
+                  style={{ padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text-muted)", fontWeight: "600", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+                  onMouseEnter={e => e.currentTarget.style.background = "#fcedda"}
+                  onMouseLeave={e => e.currentTarget.style.background = "var(--bg-secondary)"}
+                >
+                  View Shelter →
+                </button>
+              )}
             </div>
 
             <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", background: "var(--bg-secondary)" }}>

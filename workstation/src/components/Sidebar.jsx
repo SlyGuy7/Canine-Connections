@@ -39,6 +39,8 @@ export default function Sidebar({ isMobile = false, open = true, onClose }) {
       "savedDogs", "journal_entries", "quizAnswers", "quizCompleted",
       "quizMatchedDogIds", "userProfile", "canine_theme", "loginAlerts",
       "canine_recently_viewed", "viewedShelters",
+      "userFirstName", "userLastName", "userFullName", "userPhone", "userAddress",
+      "shelter_geocache",
     ]);
     const before = localStorage.getItem("savedDogs");
     Object.keys(localStorage).forEach(k => { if (!KEEP.has(k)) localStorage.removeItem(k); });

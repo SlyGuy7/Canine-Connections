@@ -54,18 +54,20 @@ export default function Login({ switchToRegister, switchToForgot }) {
         const user = result.user || {};
         const fName = user.first_name || user.firstName || "";
         const lName = user.last_name  || user.lastName  || "";
-        if (fName) localStorage.setItem("userFirstName", fName);
-        if (lName) localStorage.setItem("userLastName", lName);
-        if (fName || lName) {
-          localStorage.setItem("userFullName", `${fName} ${lName}`.trim());
-        }
+        localStorage.setItem("userFirstName", fName);
+        localStorage.setItem("userLastName", lName);
+        const fullName = `${fName} ${lName}`.trim();
+        if (fullName) localStorage.setItem("userFullName", fullName);
+        else localStorage.removeItem("userFullName");
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("userEmail", email);
         localStorage.setItem("userPassword", password);
         localStorage.setItem("userId", user.user_id || "");
         localStorage.setItem("userRole", user.role || "adopter");
         if (user.phone)   localStorage.setItem("userPhone", user.phone);
+        else              localStorage.removeItem("userPhone");
         if (user.address) localStorage.setItem("userAddress", user.address);
+        else              localStorage.removeItem("userAddress");
         setLoading(false);
         navigate("/dashboard");
         return;
