@@ -64,18 +64,45 @@ function connectDb(string $host, string $user, string $pass, string $name, int $
     $conn->set_charset('utf8mb4');
     $conn->query("SET SESSION wait_timeout=28800");
     $conn->query("SET SESSION interactive_timeout=28800");
+    // Only connect to the active Group Replication PRIMARY (ONLINE).
+    // This handles secondaries (super_read_only=1) AND nodes that restarted MySQL
+    // standalone without rejoining the group (not in members table).
+    // Requires: GRANT SELECT ON performance_schema.replication_group_members TO 'adoption_user'@'%';
+    try {
+        $grResult = $conn->query(
+            "SELECT MEMBER_ROLE FROM performance_schema.replication_group_members " .
+            "WHERE MEMBER_ID = @@server_uuid AND MEMBER_STATE = 'ONLINE'"
+        );
+        $grRow = $grResult ? $grResult->fetch_assoc() : null;
+        if (!$grRow || $grRow['MEMBER_ROLE'] !== 'PRIMARY') {
+            $conn->close();
+            return null;
+        }
+    } catch (\Throwable $e) {
+        // performance_schema not accessible yet — fall back to super_read_only.
+        // Fix: GRANT SELECT ON performance_schema.replication_group_members TO 'adoption_user'@'%';
+        logMsg("[CLUSTER] WARNING: Cannot read group replication status on " . $host . " (" . $e->getMessage() . ") — falling back to super_read_only check");
+        $roResult = $conn->query("SELECT @@super_read_only as ro");
+        if ($roResult) {
+            $roRow = $roResult->fetch_assoc();
+            if ((int)($roRow['ro'] ?? 0) === 1) {
+                $conn->close();
+                return null;
+            }
+        }
+    }
     return $conn;
 }
 
 $db = null;
 foreach ($dbHosts as $i => $dbHost) {
-    if ($i > 0) logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . " (SECONDARY): " . $dbHost . " ...");
+    logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . ": " . $dbHost . " ...");
     $db = connectDb($dbHost, $_ENV['DB_USER'], $_ENV['DB_PASS'], $_ENV['DB_NAME'], (int)$_ENV['DB_PORT']);
     if ($db) {
-        logMsg("[CLUSTER] MySQL connected — now using node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $dbHost);
+        logMsg("[CLUSTER] MySQL connected (PRIMARY) — now using node " . ($i + 1) . ": " . $dbHost);
         break;
     }
-    logMsg("[CLUSTER] MySQL node " . ($i + 1) . " (" . $dbHost . ") is down — trying next node in cluster...");
+    logMsg("[CLUSTER] MySQL node " . ($i + 1) . " (" . $dbHost . ") is unavailable (down or secondary) — trying next node...");
 }
 
 if (!$db) {
@@ -130,13 +157,13 @@ function fetchOneAssoc($result) {
 
 function reconnectDb(array $dbHosts, string $dbUser, string $dbPass, string $dbName, int $dbPort): ?mysqli {
     foreach ($dbHosts as $i => $dbHost) {
-        logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $dbHost . " ...");
+        logMsg("[CLUSTER] Trying MySQL node " . ($i + 1) . ": " . $dbHost . " ...");
         $conn = connectDb($dbHost, $dbUser, $dbPass, $dbName, $dbPort);
         if ($conn) {
-            logMsg("[CLUSTER] MySQL reconnected — now using node " . ($i + 1) . ($i === 0 ? " (PRIMARY)" : " (SECONDARY)") . ": " . $dbHost);
+            logMsg("[CLUSTER] MySQL reconnected (PRIMARY) — now using node " . ($i + 1) . ": " . $dbHost);
             return $conn;
         }
-        logMsg("[CLUSTER] MySQL node " . ($i + 1) . " (" . $dbHost . ") is down — trying next node in cluster...");
+        logMsg("[CLUSTER] MySQL node " . ($i + 1) . " (" . $dbHost . ") is unavailable (down or secondary) — trying next node...");
     }
     logMsg("[CLUSTER] All MySQL nodes unreachable");
     return null;
