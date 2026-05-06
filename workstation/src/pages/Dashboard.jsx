@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import { useDataCache } from "../context/DataCacheContext"
+import { useIsMobile } from "../hooks/useIsMobile"
 import { Zap } from "lucide-react"
 
 import BadgeGallery from "../components/BadgeGallery"
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const location = useLocation()
   const { getDogs } = useDataCache()
+  const isMobile = useIsMobile()
 
   const [user, setUser] = useState("Friend")
   const [featuredDog, setFeaturedDog] = useState(null)
@@ -244,7 +246,7 @@ export default function Dashboard() {
         </div>
 
         {/* ── Featured Dog + Progress ── */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "28px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "1fr 1fr", gap: "20px", marginBottom: "28px" }}>
 
           {/* Featured Companion */}
           <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "24px", overflow: "hidden" }}>

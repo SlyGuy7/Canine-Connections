@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
+import { useIsMobile } from "../hooks/useIsMobile";
 
 const AVATAR_COLORS = ["#d97706", "#059669", "#7c3aed", "#db2777", "#0891b2"];
 
@@ -26,7 +27,9 @@ export default function Messages() {
   const location = useLocation();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const isMobile = useIsMobile();
 
+  const [mobileShowChat, setMobileShowChat] = useState(false);
   const [sessions, setSessions]           = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(true);
 
@@ -82,6 +85,7 @@ export default function Messages() {
     setChatLoading(true);
     setMessages([]);
     setSessionId(null);
+    if (isMobile) setMobileShowChat(true);
     try {
       const startResult = await sendMessage("request.chat.start", {
         user_id: parseInt(userId),
@@ -156,7 +160,7 @@ export default function Messages() {
   };
 
   return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 40px 0", display: "flex", flexDirection: "column", height: "calc(100vh - 80px)" }}>
+    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 40px 0", display: "flex", flexDirection: "column", height: isMobile ? "calc(100vh - 160px)" : "calc(100vh - 80px)" }}>
 
       <div style={{ marginBottom: "20px", flexShrink: 0 }}>
         <h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Messages</h1>
@@ -166,7 +170,7 @@ export default function Messages() {
       <div style={{ flex: 1, display: "flex", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", overflow: "hidden", boxShadow: "0 4px 24px rgba(47,36,29,0.07)", minHeight: 0 }}>
 
         {/* Sidebar */}
-        <div style={{ width: "300px", borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
+        {(!isMobile || !mobileShowChat) && <div style={{ width: isMobile ? "100%" : "300px", borderRight: isMobile ? "none" : "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <h3 style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#78716c", textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Conversations {!sessionsLoading && sessions.length > 0 && `· ${sessions.length}`}
@@ -216,10 +220,10 @@ export default function Messages() {
               })
             )}
           </div>
-        </div>
+        </div>}
 
         {/* Chat panel */}
-        {!activeShelter ? (
+        {(!isMobile || mobileShowChat) && (!activeShelter ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "12px", color: "#a8a29e", background: "var(--bg-secondary)" }}>
             <span style={{ fontSize: "48px" }}>💬</span>
             <p style={{ margin: 0, fontSize: "16px", fontWeight: "600", color: "#78716c" }}>Select a conversation</p>
@@ -229,6 +233,11 @@ export default function Messages() {
           <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
 
             <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: "14px", background: "var(--card-bg)", flexShrink: 0 }}>
+              {isMobile && (
+                <button onClick={() => setMobileShowChat(false)} style={{ padding: "6px 10px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text-muted)", fontSize: "16px", cursor: "pointer", flexShrink: 0 }}>
+                  ←
+                </button>
+              )}
               <div style={{ width: "40px", height: "40px", borderRadius: "50%", background: AVATAR_COLORS[sessions.findIndex(s => s.shelter_id === activeShelter.shelter_id) % AVATAR_COLORS.length] || AVATAR_COLORS[0], display: "flex", alignItems: "center", justifyContent: "center", fontSize: "14px", fontWeight: "800", color: "white" }}>
                 {getInitials(activeShelter.name)}
               </div>
@@ -301,7 +310,7 @@ export default function Messages() {
               </button>
             </form>
           </div>
-        )}
+        ))}
       </div>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>

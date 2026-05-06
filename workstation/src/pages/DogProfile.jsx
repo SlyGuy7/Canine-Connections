@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
+import { useIsMobile } from "../hooks/useIsMobile";
 import { Share2, ChevronLeft, ChevronRight } from "lucide-react";
 
 function trackRecentlyViewed(dog) {
@@ -18,6 +19,7 @@ export default function DogProfile() {
   const { id }     = useParams();
   const navigate   = useNavigate();
   const { addToast } = useToast();
+  const isMobile   = useIsMobile();
 
   const [dog, setDog]             = useState(null);
   const [shelter, setShelter]     = useState(null);
@@ -121,10 +123,10 @@ export default function DogProfile() {
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0", fontFamily: "'Inter', sans-serif" }}>
 
 
-      <div style={{ display: "flex", gap: "36px", alignItems: "flex-start" }}>
+      <div style={{ display: "flex", gap: "36px", alignItems: "flex-start", flexDirection: isMobile ? "column" : "row" }}>
 
         {/* ── Left: photos ── */}
-        <div style={{ width: "400px", flexShrink: 0 }}>
+        <div style={{ width: isMobile ? "100%" : "400px", flexShrink: 0 }}>
           <div style={{ width: "100%", height: "400px", borderRadius: "20px", overflow: "hidden", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", border: "1px solid #efdfd1", position: "relative" }}>
             {currentPhoto
               ? <img src={currentPhoto} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none"; }} />

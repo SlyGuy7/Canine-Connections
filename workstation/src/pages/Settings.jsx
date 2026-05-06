@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react'
 import { useNavigate, useBlocker } from 'react-router-dom'
 import { sendMessage } from '../services/messaging'
 import { useToast } from '../context/ToastContext'
+import { useIsMobile } from '../hooks/useIsMobile'
 
 function Toggle({ checked, onChange }) {
   return (
@@ -44,6 +45,7 @@ const TABS = [
 export default function Settings() {
   const navigate     = useNavigate()
   const { addToast } = useToast()
+  const isMobile     = useIsMobile()
   const [activeTab, setActiveTab] = useState('account')
 
   const displayEmail = localStorage.getItem('userEmail') || ''
@@ -178,10 +180,10 @@ export default function Settings() {
         <p style={{ margin: 0, color: '#78716c', fontSize: '15px' }}>Manage your account, notifications and privacy.</p>
       </div>
 
-      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexDirection: isMobile ? 'column' : 'row' }}>
 
         {/* Sidebar */}
-        <div style={{ width: '220px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ width: isMobile ? '100%' : '220px', flexShrink: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
           <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #efdfd1', padding: '12px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {TABS.map(tab => {
               const active = activeTab === tab.id
@@ -252,7 +254,7 @@ export default function Settings() {
                 <h2 style={{ margin: '0 0 4px 0', fontSize: '17px', fontWeight: '700', color: '#2f241d' }}>Account Information</h2>
                 <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#a8a29e' }}>Your registered account details.</p>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px', marginBottom: '14px' }}>
                   {[
                     { label: 'First name', value: firstName, set: setFirstName },
                     { label: 'Last name',  value: lastName,  set: setLastName  },
@@ -309,7 +311,7 @@ export default function Settings() {
               <div style={{ background: 'white', borderRadius: '20px', border: '1px solid #efdfd1', padding: '24px 28px' }}>
                 <h2 style={{ margin: '0 0 4px 0', fontSize: '17px', fontWeight: '700', color: '#2f241d' }}>Quick Actions</h2>
                 <p style={{ margin: '0 0 20px 0', fontSize: '13px', color: '#a8a29e' }}>Jump to any section of your account.</p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr', gap: '12px' }}>
                   {quickActions.map(a => (
                     <button key={a.label} onClick={() => navigate(a.path)}
                       style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '4px', padding: '16px', borderRadius: '14px', border: '1px solid #efdfd1', background: '#fffaf5', cursor: 'pointer', textAlign: 'left', transition: 'all 0.15s' }}
