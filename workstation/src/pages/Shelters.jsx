@@ -148,9 +148,11 @@ export default function Shelters() {
   const [userLocation, setUserLocation] = useState(null)
   const [locating, setLocating] = useState(false)
   const [radius, setRadius] = useState(50)
+  const [page, setPage] = useState(1)
   const { getShelters } = useDataCache()
 
   useEffect(() => { loadShelters() }, [])
+  useEffect(() => { setPage(1) }, [searchTerm])
 
   async function loadShelters() {
     setLoading(true); setError("")
@@ -224,7 +226,7 @@ export default function Shelters() {
 
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #2f241d 0%, #4a3728 100%)", borderRadius: "24px", padding: "32px 36px", marginBottom: "24px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: "32px", top: "-10px", fontSize: "120px", opacity: 0.06, userSelect: "none", lineHeight: 1 }}>🏡</div>
+        <div style={{ position: "absolute", right: "32px", top: "-10px", fontSize: "120px", opacity: 0.06, userSelect: "none", lineHeight: 1, pointerEvents: "none" }}>🏡</div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "20px" }}>
           <div>
             <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "white" }}>Partner Shelters</h1>
@@ -357,11 +359,36 @@ export default function Shelters() {
           <p style={{ margin: "0 0 24px 0", color: "var(--text-muted)" }}>{searchTerm ? "Try a different name, city, or state." : "Check back later as our network grows."}</p>
           {searchTerm && <button onClick={() => setSearchTerm("")} style={{ padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}>Clear search</button>}
         </div>
-      ) : viewMode === "grid" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
-          {filtered.map(shelter => <ShelterCard key={shelter.shelter_id} shelter={shelter} navigate={navigate} />)}
-        </div>
-      ) : null}
+      ) : viewMode === "grid" ? (() => {
+        const PAGE_SIZE  = 12
+        const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+        const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+        return (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px", marginBottom: "28px" }}>
+              {paginated.map(shelter => <ShelterCard key={shelter.shelter_id} shelter={shelter} navigate={navigate} />)}
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "6px" }}>
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                  style={{ padding: "8px 14px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: page === 1 ? "var(--text-muted)" : "var(--text-primary)", fontWeight: "600", fontSize: "14px", cursor: page === 1 ? "default" : "pointer", opacity: page === 1 ? 0.4 : 1 }}>
+                  ←
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                  <button key={p} onClick={() => setPage(p)}
+                    style={{ width: "36px", height: "36px", borderRadius: "10px", border: p === page ? "none" : "1px solid var(--border)", background: p === page ? "#d97706" : "var(--card-bg)", color: p === page ? "white" : "var(--text-primary)", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}>
+                    {p}
+                  </button>
+                ))}
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                  style={{ padding: "8px 14px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: page === totalPages ? "var(--text-muted)" : "var(--text-primary)", fontWeight: "600", fontSize: "14px", cursor: page === totalPages ? "default" : "pointer", opacity: page === totalPages ? 0.4 : 1 }}>
+                  →
+                </button>
+              </div>
+            )}
+          </>
+        )
+      })() : null}
     </div>
   )
 }

@@ -65,8 +65,13 @@ export default function Dashboard() {
   function loadUser() {
     const firstName = localStorage.getItem("userFirstName")
     const fullName  = localStorage.getItem("userFullName")
+    const email     = localStorage.getItem("userEmail")
     if (firstName) { setUser(firstName); return }
     if (fullName)  { setUser(fullName.split(' ')[0]); return }
+    if (email) {
+      const part = email.split('@')[0].split('.')[0]
+      if (part) { setUser(part.charAt(0).toUpperCase() + part.slice(1)); return }
+    }
     setUser("Friend")
   }
 
