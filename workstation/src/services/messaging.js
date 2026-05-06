@@ -24,21 +24,21 @@ function getClient() {
       brokerURL: BROKER_URL,
       connectHeaders: { login: MQ_LOGIN, passcode: MQ_PASSCODE, host: "/" },
       reconnectDelay: 3000,
-      debug: (str) => console.debug("[STOMP]", str),
+      debug: () => {},
 
       onConnect: () => {
         _connected = true;
-        console.log("[STOMP] connected to", BROKER_URL);
+        console.log("%c[MQ] connected", "color:#16a34a;font-weight:700", BROKER_URL);
         resolve(client);
       },
 
       onStompError: (frame) => {
-        console.error("[STOMP] broker error:", frame.headers["message"]);
+        console.error("[MQ] broker error:", frame.headers["message"], frame);
         if (!_connected) reject(new Error("STOMP connection failed"));
       },
 
       onWebSocketError: (evt) => {
-        console.error("[STOMP] WebSocket error", evt);
+        console.error("[MQ] WebSocket error", evt);
         if (!_connected) reject(new Error("WebSocket error"));
       },
 
@@ -46,7 +46,7 @@ function getClient() {
         _connected = false;
         _connectPromise = null;
         _client = null;
-        console.warn("[STOMP] disconnected — will reconnect");
+        console.warn("[MQ] disconnected — reconnecting…");
       },
     });
 
@@ -62,7 +62,7 @@ function makeCorrelationId() {
 }
 
 export async function sendMessage(type, payload) {
-  console.log(`[STOMP] → ${type}`, payload);
+  console.log(`%c[MQ →] ${type}`, "color:#b45309;font-weight:600", payload);
   const client = await getClient();
 
   return new Promise((resolve) => {
@@ -83,7 +83,7 @@ export async function sendMessage(type, payload) {
     }
 
     const timeoutId = setTimeout(() => {
-      console.error(`[STOMP] timeout for ${type}`);
+      console.error(`[MQ] ✖ TIMEOUT — no response for "${type}" after ${REQUEST_TIMEOUT_MS / 1000}s. Worker may be down.`);
       cleanup({ success: false, error: "Request timed out" });
     }, REQUEST_TIMEOUT_MS);
 
@@ -100,10 +100,14 @@ export async function sendMessage(type, payload) {
       (message) => {
         try {
           const result = JSON.parse(message.body);
-          console.log(`[STOMP] ← ${type}`, result);
+          if (result?.success === false) {
+            console.warn(`%c[MQ ←] ${type} FAILED`, "color:#b45309;font-weight:600", result?.error ?? result);
+          } else {
+            console.log(`%c[MQ ←] ${type}`, "color:#16a34a;font-weight:600", result);
+          }
           cleanup(result);
         } catch {
-          console.error(`[STOMP] ← ${type} invalid JSON`, message.body);
+          console.error(`[MQ] ← ${type} invalid JSON`, message.body);
           cleanup({ success: false, error: "Invalid JSON response" });
         }
       },
