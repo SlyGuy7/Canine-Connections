@@ -7,11 +7,17 @@ use PhpAmqpLib\Exception\AMQPTimeoutException;
 use PhpAmqpLib\Message\AMQPMessage;
 use PhpAmqpLib\Wire\AMQPTable;
 
+// Central RabbitMQ client used by backend workers.
+// Handles connection setup, queue declaration, message publishing, consuming, and request/response messaging.
 final class RabbitMqClient
 {
     private AMQPStreamConnection $connection;
     private $channel;
 
+    // Queue map for the backend messaging layers.
+    // request.* queues are frontend-facing.
+    // bridge.* queues are used by the bridge layer.
+    // db.* queues are database-worker facing.
     private array $queues = [
         'request.auth.register',
         'request.auth.login',
@@ -156,6 +162,7 @@ final class RabbitMqClient
         'db.notifications.read',
     ];
 
+    // Opens the RabbitMQ connection and declares queues when enabled.
     public function __construct(
         string $host = '127.0.0.1',
         int $port = 5672,
@@ -163,6 +170,7 @@ final class RabbitMqClient
         string $pass = 'guest',
         bool $declareQueues = true
     ) {
+        // Supports multiple RabbitMQ nodes for cluster or failover setups.
         $host2 = $_ENV['RABBITMQ_HOST2'] ?? $host;
         $host3 = $_ENV['RABBITMQ_HOST3'] ?? $host;
 
@@ -206,6 +214,7 @@ final class RabbitMqClient
 
         $this->channel = $this->connection->channel();
 
+        // Declares durable queues so workers can safely publish and consume from known queue names.
         if ($declareQueues) {
             foreach ($this->queues as $queue) {
                 $this->channel->queue_declare($queue, false, true, false, false);
@@ -213,6 +222,9 @@ final class RabbitMqClient
         }
     }
 
+    // Publishes a JSON message to RabbitMQ.
+    // correlation_id connects a response back to its original request.
+    // reply_to tells the consumer where to send the response.
     public function publish(
         string $queue,
         array $payload,
@@ -246,12 +258,14 @@ final class RabbitMqClient
         echo "[MQ] → {$queue}" . ($correlationId ? " (corr:{$correlationId})" : '') . "\n";
     }
 
+    // Sends a request message and waits for a response on a temporary reply queue.
     public function publishAndWait(
         string $requestQueue,
         array $payload,
         string $correlationId,
         int $timeoutSeconds = 25
     ): ?array {
+        // Unique reply queue prevents multiple requests from sharing the same response channel.
         $replyQueue = $requestQueue . '.reply.' . $correlationId;
 
         $this->channel->queue_declare(
@@ -290,9 +304,12 @@ final class RabbitMqClient
         return null;
     }
 
+    // Registers a worker callback that will run whenever a message arrives on the queue.
     public function registerConsumer(string $queue, callable $callback): void
     {
         $this->channel->queue_declare($queue, false, true, false, false);
+
+        // Allows the worker to handle one unacknowledged message at a time.
         $this->channel->basic_qos(null, 1, null);
 
         $this->channel->basic_consume(
@@ -316,6 +333,7 @@ final class RabbitMqClient
         );
     }
 
+    // Keeps the worker alive while RabbitMQ consumers are active.
     public function wait(bool &$running = true): void
     {
         echo "[MQ] Event loop running...\n";
@@ -333,6 +351,7 @@ final class RabbitMqClient
         }
     }
 
+    // Closes the inherited RabbitMQ socket after a fork to prevent shared socket issues.
     public function afterFork(): void
     {
         try {
@@ -367,6 +386,7 @@ final class RabbitMqClient
         }
     }
 
+    // Gracefully closes the RabbitMQ channel and connection during shutdown.
     public function close(): void
     {
         try {

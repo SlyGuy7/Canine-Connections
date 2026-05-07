@@ -4,23 +4,30 @@ namespace App\Workers;
 
 use App\Infrastructure\Messaging\RabbitMqClient;
 
+// DBridgeWorker is the bridge layer between frontend-facing backend logic and database-facing queues.
+// It receives bridge.* messages and relays them to matching db.* queues while preserving correlation IDs and reply queues.
 final class DBridgeWorker
 {
+    // The RabbitMqClient dependency is injected so this worker can register consumers and publish relay messages.
     public function __construct(private RabbitMqClient $mq)
     {
     }
 
+    // Registers all bridge queue consumers and starts the RabbitMQ event loop.
     public function run(bool &$running = true): void
     {
         echo "[DBridgeWorker] Registering consumers...\n";
 
+        // Authentication queues are relayed from the bridge layer to the database layer.
         $this->mq->registerConsumer('bridge.auth.register',       [$this, 'handleAuthRegister']);
         $this->mq->registerConsumer('bridge.auth.login',          [$this, 'handleAuthLogin']);
         $this->mq->registerConsumer('bridge.auth.verify',         [$this, 'handleAuthVerify']);
         $this->mq->registerConsumer('bridge.auth.resetPassword',       [$this, 'handleResetPassword']);
         $this->mq->registerConsumer('bridge.auth.refreshVerification', [$this, 'handleRefreshVerification']);
+        // Profile and account queues handle user profile changes and account removal.
         $this->mq->registerConsumer('bridge.profile.update',      [$this, 'handleProfileUpdate']);
         $this->mq->registerConsumer('bridge.account.delete',      [$this, 'handleAccountDelete']);
+        // Shelter, API, dog, application, adoption, quiz, foster, content, chat, meet and greet, and notification queues are registered below.
         $this->mq->registerConsumer('bridge.shelters.list',       [$this, 'handleSheltersList']);
         $this->mq->registerConsumer('bridge.shelters.get',        [$this, 'handleSheltersGet']);
         $this->mq->registerConsumer('bridge.api.key.get',         [$this, 'handleApiKeyGet']);
@@ -66,9 +73,11 @@ final class DBridgeWorker
 
         echo "[DBridgeWorker] All consumers registered — listening\n";
 
+        // Keeps the worker alive while RabbitMQ delivers messages to the registered consumers.
         $this->mq->wait($running);
     }
 
+    // Forks message handling into a child process so one relay operation does not block the main consumer loop.
     private function fork(callable $fn, $msg): void
     {
         $pid = pcntl_fork();
@@ -78,6 +87,7 @@ final class DBridgeWorker
             return;
         }
         if ($pid === 0) {
+            // Child processes must not reuse the parent RabbitMQ socket after a fork.
             $this->mq->afterFork();
             try {
                 $fn();
@@ -86,10 +96,12 @@ final class DBridgeWorker
             }
             exit(0);
         }
+        // The parent acknowledges the message after the child is started.
         $msg->ack();
         pcntl_waitpid(-1, $status, WNOHANG);
     }
 
+    // Extracts the reply_to property so responses can return to the original caller.
     private function getReplyTo($msg): ?string
     {
         try {
@@ -103,6 +115,7 @@ final class DBridgeWorker
         }
     }
 
+    // Creates a fresh RabbitMQ connection for relay work and tries available cluster nodes.
     private function newMq(): RabbitMqClient
     {
         $hosts = array_values(array_filter([
@@ -132,6 +145,8 @@ final class DBridgeWorker
         throw $lastErr ?? new \RuntimeException('All RabbitMQ nodes unreachable');
     }
 
+    // Publishes the bridge request to the matching database queue.
+    // The original reply_to value is forwarded so the database worker can respond directly.
     private function relay(
         string $bridgeQueue,
         string $dbQueue,
@@ -150,6 +165,7 @@ final class DBridgeWorker
         $mq->close();
     }
 
+    // Handler methods below map each bridge.* queue to its matching db.* queue.
     public function handleAccountDelete(array $data, $msg, ?string $corrId): void
     {
         $replyTo = $this->getReplyTo($msg);

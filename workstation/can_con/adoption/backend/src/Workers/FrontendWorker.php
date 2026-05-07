@@ -6,19 +6,25 @@ use App\Infrastructure\Messaging\RabbitMqClient;
 use App\Security\Encryption;
 use App\Services\Mailer;
 
+// FrontendWorker is the frontend-facing backend worker.
+// It consumes request.* queues, validates request data, performs security preparation, and forwards work to bridge.* queues.
 final class FrontendWorker
 {
+    // Encryption service is used for password hashing and personal data encryption/decryption.
     private Encryption $enc;
 
+    // The RabbitMqClient is injected so this worker can consume frontend requests and publish backend messages.
     public function __construct(private RabbitMqClient $mq)
     {
         $this->enc = new Encryption();
     }
 
+    // Registers all frontend-facing request consumers and starts the RabbitMQ event loop.
     public function run(bool &$running = true): void
     {
         echo "[FrontendWorker] Registering consumers...\n";
 
+        // Authentication request queues handle registration, login, verification, and password flows.
         $this->mq->registerConsumer('request.auth.register',       [$this, 'handleRegister']);
         $this->mq->registerConsumer('request.auth.login',          [$this, 'handleLogin']);
         $this->mq->registerConsumer('request.auth.verify',         [$this, 'handleVerifyEmail']);
@@ -26,6 +32,7 @@ final class FrontendWorker
         $this->mq->registerConsumer('request.auth.forgotPassword',         [$this, 'handleForgotPassword']);
         $this->mq->registerConsumer('request.auth.setNewPassword',         [$this, 'handleSetNewPassword']);
         $this->mq->registerConsumer('request.auth.resendVerification',     [$this, 'handleResendVerification']);
+        // Application feature queues handle profile, shelters, dogs, applications, adoption, content, chat, and notifications.
         $this->mq->registerConsumer('request.profile.update',      [$this, 'handleProfileUpdate']);
         $this->mq->registerConsumer('request.account.delete',      [$this, 'handleAccountDelete']);
         $this->mq->registerConsumer('request.shelters.list',       [$this, 'handleSheltersList']);
@@ -72,9 +79,11 @@ final class FrontendWorker
 
         echo "[FrontendWorker] All consumers registered — listening\n";
 
+        // Keeps the frontend worker alive while RabbitMQ delivers frontend request messages.
         $this->mq->wait($running);
     }
 
+    // Creates a fresh RabbitMQ connection for child processes and tries all configured broker hosts.
     private function newMq(): RabbitMqClient
     {
         $hosts = array_filter([
@@ -99,6 +108,7 @@ final class FrontendWorker
         throw $lastErr;
     }
 
+    // Forks each request into a child process so long-running work does not block the main consumer loop.
     private function fork(callable $fn, $msg): void
     {
         echo "[FrontendWorker][FORK] Attempting fork...\n";
@@ -110,6 +120,7 @@ final class FrontendWorker
         }
         if ($pid === 0) {
             echo "[FrontendWorker][FORK] Child process started (PID: " . getmypid() . ")\n";
+            // Child processes must not share the parent RabbitMQ socket.
             $this->mq->afterFork();
             try {
                 echo "[FrontendWorker][FORK] Child connecting to RabbitMQ...\n";
@@ -129,6 +140,7 @@ final class FrontendWorker
         pcntl_waitpid(-1, $status, WNOHANG);
     }
 
+    // Extracts the reply_to queue from the incoming RabbitMQ message.
     private function replyTo($msg): string
     {
         $props = $msg->get_properties();
@@ -138,6 +150,7 @@ final class FrontendWorker
         return '';
     }
 
+    // Sends a response to the reply_to queue when present, otherwise uses a fallback response queue.
     private function respond(RabbitMqClient $mq, string $fallbackQueue, string $replyTo, array $payload, ?string $corrId): void
     {
         $queue = $fallbackQueue;
@@ -149,6 +162,7 @@ final class FrontendWorker
         $mq->publish($queue, $payload, $corrId);
     }
 
+    // Handler methods below receive frontend requests, validate inputs, call bridge queues, and send responses back.
     public function handleAccountDelete(array $data, $msg, ?string $corrId): void
     {
         $replyTo = $this->replyTo($msg);
@@ -168,22 +182,26 @@ final class FrontendWorker
         }, $msg);
     }
 
+    // Handles registration by validating input, hashing the password, encrypting personal fields, and requesting account creation.
     public function handleRegister(array $data, $msg, ?string $corrId): void
     {
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
             echo "[FrontendWorker] handleRegister: " . ($data['email'] ?? 'no email') . "\n";
             try {
+                // Email and password are required before the registration request can continue.
                 if (empty($data['email']) || empty($data['password'])) {
                     $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'email and password are required'], $corrId);
                     return;
                 }
+                // Email format is validated before forwarding to the bridge layer.
                 if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
                     $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'Please enter a valid email address'], $corrId);
                     return;
                 }
                 $firstName = $data['firstName'] ?? $data['first_name'] ?? '';
                 $lastName  = $data['lastName']  ?? $data['last_name']  ?? '';
+                // Sensitive data is transformed before being sent to the bridge layer.
                 $result = $mq->publishAndWait('bridge.auth.register', [
                     'email'         => $data['email'],
                     'password_hash' => $this->enc->hashPassword($data['password']),
@@ -221,6 +239,7 @@ final class FrontendWorker
         }, $msg);
     }
 
+    // Handles login by validating input, loading the user through the bridge layer, and verifying the password hash.
     public function handleLogin(array $data, $msg, ?string $corrId): void
     {
         $replyTo = $this->replyTo($msg);
@@ -231,6 +250,7 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'email and password are required'], $corrId);
                     return;
                 }
+                // Retrieves the user record through the bridge layer before local password verification.
                 $result = $mq->publishAndWait('bridge.auth.login', ['email' => $data['email']], $corrId);
                 if (!$result) {
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Service temporarily unavailable. Please try again in a moment.'], $corrId);
@@ -249,6 +269,7 @@ final class FrontendWorker
                 if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
                 $safeIp = preg_replace('/[^a-zA-Z0-9._:-]/', '', $srcIp);
                 $attemptsFile = '/tmp/canine-attempts-' . $safeIp;
+                // Failed login attempts are tracked by source IP and can trigger a temporary lockout.
                 if (!password_verify($data['password'], $user['password_hash'])) {
                     echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . " src_ip=" . $srcIp . "\n";
                     $rawAttempts = (int)(@file_get_contents($attemptsFile) ?: 0);
@@ -584,6 +605,7 @@ final class FrontendWorker
         }, $msg);
     }
 
+    // Handles adoption application submission and triggers notifications when submission succeeds.
     public function handleApplicationSubmit(array $data, $msg, ?string $corrId): void
     {
         $replyTo = $this->replyTo($msg);
@@ -1011,6 +1033,7 @@ final class FrontendWorker
         }, $msg);
     }
 
+    // Helper methods below wrap encryption and decryption behavior for personal fields.
     private function enc(string $value): string
     {
         return $value !== '' ? $this->enc->encrypt($value) : '';
