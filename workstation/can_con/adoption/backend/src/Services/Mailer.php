@@ -9,30 +9,38 @@ final class Mailer
 {
     public static function send(string $to, string $subject, string $body): bool
     {
-        try {
-            $mail = new PHPMailer(true);
-            $mail->isSMTP();
-            $mail->Host       = $_ENV['SMTP_HOST'] ?? 'smtp.gmail.com';
-            $mail->SMTPAuth   = true;
-            $mail->Username   = $_ENV['SMTP_USER'] ?? '';
-            $mail->Password   = $_ENV['SMTP_PASS'] ?? '';
-            $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
-            $mail->Port       = (int)($_ENV['SMTP_PORT'] ?? 587);
-            $mail->setFrom(
-                $_ENV['SMTP_USER'] ?? '',
-                $_ENV['MAIL_FROM_NAME'] ?? 'Canine Connections'
-            );
-            $mail->addAddress($to);
-            $mail->isHTML(true);
-            $mail->Subject = $subject;
-            $mail->Body    = $body;
-            $mail->send();
-            echo "[Mailer] Email sent to {$to}\n";
-            return true;
-        } catch (\Throwable $e) {
-            echo "[Mailer][ERROR] {$e->getMessage()}\n";
-            return false;
+        $attempts = 3;
+        $lastError = '';
+        for ($i = 1; $i <= $attempts; $i++) {
+            try {
+                $mail = new PHPMailer(true);
+                $mail->isSMTP();
+                $mail->Host       = $_ENV['SMTP_HOST'] ?? 'smtp.gmail.com';
+                $mail->SMTPAuth   = true;
+                $mail->Username   = $_ENV['SMTP_USER'] ?? '';
+                $mail->Password   = $_ENV['SMTP_PASS'] ?? '';
+                $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
+                $mail->Port       = (int)($_ENV['SMTP_PORT'] ?? 587);
+                $mail->Timeout    = 60;
+                $mail->setFrom(
+                    $_ENV['SMTP_USER'] ?? '',
+                    $_ENV['MAIL_FROM_NAME'] ?? 'Canine Connections'
+                );
+                $mail->addAddress($to);
+                $mail->isHTML(true);
+                $mail->Subject = $subject;
+                $mail->Body    = $body;
+                $mail->send();
+                echo "[Mailer] Email sent to {$to}\n";
+                return true;
+            } catch (\Throwable $e) {
+                $lastError = $e->getMessage();
+                echo "[Mailer][WARN] Attempt {$i}/{$attempts} failed: {$lastError}\n";
+                if ($i < $attempts) sleep(3);
+            }
         }
+        echo "[Mailer][ERROR] All {$attempts} attempts failed for {$to}: {$lastError}\n";
+        return false;
     }
 
     public static function welcome(string $to, string $firstName): bool
