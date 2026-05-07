@@ -5,12 +5,15 @@ import AdminSidebar from "../components/AdminSidebar"
 const A = {
   bg:     '#0a0a0a',
   card:   '#111111',
+  card2:  '#141414',
   border: '#1a1a1a',
   red:    '#dc2626',
   text:   '#f0f0f0',
   muted:  '#777777',
   subtle: '#444444',
 }
+
+const PAGE_SIZE = 20
 
 const EMPTY = {
   name:'', breed:'', age_years:'', size:'medium', gender:'male',
@@ -28,6 +31,68 @@ const dogStatusStyle = (s) => {
   }
 }
 
+const traitPills = (dog) => {
+  const traits = []
+  if (dog.is_vaccinated == 1)      traits.push({ label:'Vaccinated', color:'#4ade80', bg:'#052e16' })
+  if (dog.is_spayed_neutered == 1) traits.push({ label:'Neutered',   color:'#60a5fa', bg:'#0c1a4a' })
+  if (dog.good_with_kids == 1)     traits.push({ label:'Kids OK',    color:'#fbbf24', bg:'#1c1917' })
+  if (dog.apartment_friendly == 1) traits.push({ label:'Apt. OK',    color:'#a78bfa', bg:'#1e1b4b' })
+  return traits.slice(0, 3)
+}
+
+function Paginator({ page, total, pageSize, onChange }) {
+  const totalPages = Math.ceil(total / pageSize)
+  if (totalPages <= 1) return null
+
+  const pages = []
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {
+      pages.push(i)
+    } else if (pages[pages.length - 1] !== '…') {
+      pages.push('…')
+    }
+  }
+
+  const btn = (label, target, disabled = false, active = false) => (
+    <button
+      key={label + target}
+      onClick={() => !disabled && target && onChange(target)}
+      disabled={disabled}
+      style={{
+        background: active ? A.red : 'transparent',
+        border: `1px solid ${active ? A.red : A.border}`,
+        borderRadius: '6px',
+        padding: '5px 10px',
+        color: active ? 'white' : disabled ? A.subtle : A.muted,
+        fontSize: '12px',
+        fontWeight: active ? '700' : '400',
+        cursor: disabled ? 'default' : 'pointer',
+        minWidth: '32px',
+        transition: 'all 0.15s',
+      }}
+    >
+      {label}
+    </button>
+  )
+
+  return (
+    <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', padding:'14px 20px', borderTop:`1px solid ${A.border}` }}>
+      <p style={{ margin:0, color: A.subtle, fontSize:'12px' }}>
+        {(page - 1) * pageSize + 1}–{Math.min(page * pageSize, total)} of {total} dogs
+      </p>
+      <div style={{ display:'flex', gap:'4px', flexWrap:'wrap' }}>
+        {btn('‹ Prev', page - 1, page === 1)}
+        {pages.map((p, i) =>
+          p === '…'
+            ? <span key={'ellipsis' + i} style={{ padding:'5px 4px', color: A.subtle, fontSize:'12px' }}>…</span>
+            : btn(p, p, false, p === page)
+        )}
+        {btn('Next ›', page + 1, page === totalPages)}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDogs() {
   const [dogs, setDogs]                 = useState([])
   const [loading, setLoading]           = useState(true)
@@ -39,8 +104,11 @@ export default function AdminDogs() {
   const [filterStatus, setFilterStatus] = useState("all")
   const [successMsg, setSuccessMsg]     = useState("")
   const [hoveredRow, setHoveredRow]     = useState(null)
+  const [page, setPage]                 = useState(1)
+  const [savingStatus, setSavingStatus] = useState(null)
 
   useEffect(() => { loadDogs() }, [])
+  useEffect(() => { setPage(1) }, [search, filterStatus])
 
   async function loadDogs() {
     setLoading(true)
@@ -55,7 +123,7 @@ export default function AdminDogs() {
     setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
   }
 
-  const openAdd = () => { setEditing(null); setFormData(EMPTY); setShowForm(true) }
+  const openAdd = () => { setEditing(null); setFormData(EMPTY); setShowForm(true); window.scrollTo(0,0) }
   const openEdit = (dog) => {
     setEditing(dog.dog_id)
     setFormData({
@@ -77,6 +145,7 @@ export default function AdminDogs() {
       external_id:        dog.external_id      || '',
     })
     setShowForm(true)
+    window.scrollTo(0, 0)
   }
 
   const handleSave = async (e) => {
@@ -92,7 +161,7 @@ export default function AdminDogs() {
         source: 'admin',
       })
       if (result?.success) {
-        setSuccessMsg(editing ? 'Dog updated successfully.' : 'Dog added successfully.')
+        setSuccessMsg(editing ? 'Dog updated.' : 'Dog added.')
         setShowForm(false); setEditing(null); setFormData(EMPTY)
         loadDogs()
         setTimeout(() => setSuccessMsg(''), 4000)
@@ -101,15 +170,18 @@ export default function AdminDogs() {
   }
 
   const handleStatusChange = async (dog, newStatus) => {
+    setSavingStatus(dog.dog_id)
     try {
-      await sendMessage("request.api.dog.upsert", {
-        ...dog, status: newStatus,
+      const result = await sendMessage("request.api.dog.upsert", {
+        dog_id: dog.dog_id, ...dog, status: newStatus,
         external_id: dog.external_id || '',
         shelter_id: dog.shelter_id || 1,
         source: 'admin',
       })
-      setDogs(prev => prev.map(d => d.dog_id === dog.dog_id ? { ...d, status: newStatus } : d))
-    } catch { }
+      if (result?.success) {
+        setDogs(prev => prev.map(d => d.dog_id === dog.dog_id ? { ...d, status: newStatus } : d))
+      }
+    } catch { } finally { setSavingStatus(null) }
   }
 
   const counts = {
@@ -125,17 +197,10 @@ export default function AdminDogs() {
     return matchSearch && matchStatus
   })
 
+  const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+
   const inputStyle  = { background:'#0d0d0d', border:`1px solid ${A.border}`, borderRadius:'8px', padding:'9px 14px', color: A.text, fontSize:'13px', outline:'none', width:'100%', boxSizing:'border-box' }
   const labelStyle  = { fontSize:'11px', fontWeight:'700', color: A.subtle, textTransform:'uppercase', letterSpacing:'0.06em', display:'block', marginBottom:'6px' }
-
-  const traitPills = (dog) => {
-    const traits = []
-    if (dog.is_vaccinated == 1)      traits.push({ label:'Vaccinated',  color:'#4ade80', bg:'#052e16' })
-    if (dog.is_spayed_neutered == 1) traits.push({ label:'Neutered',    color:'#60a5fa', bg:'#0c1a4a' })
-    if (dog.good_with_kids == 1)     traits.push({ label:'Kids OK',     color:'#fbbf24', bg:'#1c1917' })
-    if (dog.apartment_friendly == 1) traits.push({ label:'Apt. OK',     color:'#a78bfa', bg:'#1e1b4b' })
-    return traits.slice(0, 3)
-  }
 
   const tabs = [
     { key:'all',       label:'All',       count: counts.all },
@@ -169,7 +234,7 @@ export default function AdminDogs() {
         {/* Success toast */}
         {successMsg && (
           <div style={{ background:'#052e16', border:'1px solid #166534', borderRadius:'10px', padding:'12px 18px', marginBottom:'20px', color:'#4ade80', fontSize:'13px', display:'flex', alignItems:'center', gap:'8px' }}>
-            <span>✓</span> {successMsg}
+            <span style={{ fontWeight:'700' }}>✓</span> {successMsg}
           </div>
         )}
 
@@ -236,7 +301,7 @@ export default function AdminDogs() {
 
               <div style={{ display:'flex', gap:'10px' }}>
                 <button type="submit" disabled={saving} style={{ background: A.red, border:'none', borderRadius:'8px', padding:'10px 26px', color:'white', fontWeight:'600', fontSize:'13px', cursor:'pointer' }}>
-                  {saving ? 'Saving...' : editing ? 'Save Changes' : 'Add Dog'}
+                  {saving ? 'Saving…' : editing ? 'Save Changes' : 'Add Dog'}
                 </button>
                 <button type="button" onClick={() => { setShowForm(false); setEditing(null) }} style={{ background:'transparent', border:`1px solid ${A.border}`, borderRadius:'8px', padding:'10px 20px', color: A.muted, fontSize:'13px', cursor:'pointer' }}>
                   Cancel
@@ -274,93 +339,105 @@ export default function AdminDogs() {
           </div>
           <input
             style={{ background:'#0d0d0d', border:`1px solid ${A.border}`, borderRadius:'8px', padding:'8px 14px', color: A.text, fontSize:'13px', outline:'none', width:'220px' }}
-            placeholder="Search name or breed..."
+            placeholder="Search name or breed…"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
         </div>
 
         {/* Table */}
-        {loading ? (
-          <div style={{ display:'flex', flexDirection:'column', gap:'8px' }}>
-            {[1,2,3,4].map(i => <div key={i} style={{ background: A.card, borderRadius:'10px', padding:'18px', border:`1px solid ${A.border}`, height:'52px' }} />)}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div style={{ textAlign:'center', padding:'80px', color: A.muted }}>
-            <div style={{ fontSize:'36px', marginBottom:'12px', opacity:0.3 }}>🐾</div>
-            <p style={{ margin:0, fontSize:'14px' }}>No dogs found.</p>
-          </div>
-        ) : (
-          <div style={{ background: A.card, borderRadius:'12px', border:`1px solid ${A.border}`, overflow:'hidden' }}>
-            <table style={{ width:'100%', borderCollapse:'collapse' }}>
-              <thead>
-                <tr style={{ background:'#0d0d0d' }}>
-                  {['Name & Breed','Age / Size','Traits','Status','Change Status',''].map(h => (
-                    <th key={h} style={{ padding:'10px 20px', textAlign:'left', fontSize:'10px', fontWeight:'700', color: A.subtle, textTransform:'uppercase', letterSpacing:'0.08em' }}>{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((dog) => {
-                  const ss = dogStatusStyle(dog.status)
-                  const traits = traitPills(dog)
-                  const hovered = hoveredRow === dog.dog_id
-                  return (
-                    <tr
-                      key={dog.dog_id}
-                      style={{ borderTop:`1px solid ${A.border}`, background: hovered ? '#141414' : 'transparent', transition:'background 0.1s' }}
-                      onMouseEnter={() => setHoveredRow(dog.dog_id)}
-                      onMouseLeave={() => setHoveredRow(null)}
-                    >
-                      <td style={{ padding:'13px 20px' }}>
-                        <p style={{ margin:'0 0 2px 0', color: A.text, fontWeight:'600', fontSize:'13px' }}>{dog.name}</p>
-                        <p style={{ margin:0, color: A.muted, fontSize:'11px' }}>{dog.breed}</p>
-                      </td>
-                      <td style={{ padding:'13px 20px', color: A.muted, fontSize:'12px' }}>
-                        <p style={{ margin:'0 0 2px 0' }}>{dog.age_years} yr</p>
-                        <p style={{ margin:0, textTransform:'capitalize' }}>{dog.size}</p>
-                      </td>
-                      <td style={{ padding:'13px 20px' }}>
-                        <div style={{ display:'flex', gap:'4px', flexWrap:'wrap' }}>
-                          {traits.length === 0
-                            ? <span style={{ color: A.subtle, fontSize:'11px' }}>—</span>
-                            : traits.map(t => (
-                                <span key={t.label} style={{ background: t.bg, color: t.color, padding:'2px 8px', borderRadius:'12px', fontSize:'10px', fontWeight:'600' }}>{t.label}</span>
-                              ))
-                          }
-                        </div>
-                      </td>
-                      <td style={{ padding:'13px 20px' }}>
-                        <span style={{ background: ss.bg, color: ss.color, padding:'3px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600' }}>{ss.label}</span>
-                      </td>
-                      <td style={{ padding:'13px 20px' }}>
-                        <select
-                          value={dog.status}
-                          onChange={e => handleStatusChange(dog, e.target.value)}
-                          style={{ background:'#0d0d0d', border:`1px solid ${A.border}`, borderRadius:'6px', padding:'5px 10px', color: A.text, fontSize:'12px', outline:'none' }}
-                        >
-                          <option value="available">Available</option>
-                          <option value="pending">Pending</option>
-                          <option value="adopted">Adopted</option>
-                        </select>
-                      </td>
-                      <td style={{ padding:'13px 20px' }}>
-                        <button
-                          onClick={() => openEdit(dog)}
-                          style={{ background:'transparent', border:`1px solid ${A.border}`, borderRadius:'6px', padding:'5px 12px', color: A.muted, fontSize:'11px', cursor:'pointer', transition:'all 0.15s' }}
-                          onMouseEnter={e => { e.currentTarget.style.borderColor = '#333'; e.currentTarget.style.color = A.text }}
-                          onMouseLeave={e => { e.currentTarget.style.borderColor = A.border; e.currentTarget.style.color = A.muted }}
-                        >
-                          Edit
-                        </button>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div style={{ background: A.card, borderRadius:'12px', border:`1px solid ${A.border}`, overflow:'hidden' }}>
+          {loading ? (
+            <div style={{ display:'flex', flexDirection:'column', gap:'0' }}>
+              {[1,2,3,4,5].map(i => (
+                <div key={i} style={{ padding:'16px 20px', borderBottom:`1px solid ${A.border}`, display:'flex', gap:'20px', alignItems:'center' }}>
+                  <div style={{ height:'13px', background:'#1a1a1a', borderRadius:'4px', width:'140px' }} />
+                  <div style={{ height:'13px', background:'#1a1a1a', borderRadius:'4px', width:'60px' }} />
+                  <div style={{ height:'20px', background:'#1a1a1a', borderRadius:'10px', width:'80px' }} />
+                </div>
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'80px', color: A.muted }}>
+              <div style={{ fontSize:'36px', marginBottom:'12px', opacity:0.3 }}>🐾</div>
+              <p style={{ margin:0, fontSize:'14px' }}>No dogs found.</p>
+            </div>
+          ) : (
+            <>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead>
+                  <tr style={{ background:'#0d0d0d' }}>
+                    {['Name & Breed', 'Age / Size', 'Traits', 'Status', 'Change Status', ''].map(h => (
+                      <th key={h} style={{ padding:'11px 20px', textAlign:'left', fontSize:'10px', fontWeight:'700', color: A.subtle, textTransform:'uppercase', letterSpacing:'0.08em', whiteSpace:'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginated.map((dog) => {
+                    const ss = dogStatusStyle(dog.status)
+                    const traits = traitPills(dog)
+                    const hovered = hoveredRow === dog.dog_id
+                    const isSaving = savingStatus === dog.dog_id
+                    return (
+                      <tr
+                        key={dog.dog_id}
+                        style={{ borderTop:`1px solid ${A.border}`, background: hovered ? A.card2 : 'transparent', transition:'background 0.1s' }}
+                        onMouseEnter={() => setHoveredRow(dog.dog_id)}
+                        onMouseLeave={() => setHoveredRow(null)}
+                      >
+                        <td style={{ padding:'13px 20px', maxWidth:'220px' }}>
+                          <p style={{ margin:'0 0 2px 0', color: A.text, fontWeight:'600', fontSize:'13px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{dog.name}</p>
+                          <p style={{ margin:0, color: A.muted, fontSize:'11px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{dog.breed}</p>
+                        </td>
+                        <td style={{ padding:'13px 20px', whiteSpace:'nowrap' }}>
+                          <p style={{ margin:'0 0 2px 0', color: A.muted, fontSize:'12px' }}>{dog.age_years} yr</p>
+                          <p style={{ margin:0, color: A.subtle, fontSize:'11px', textTransform:'capitalize' }}>{dog.size}</p>
+                        </td>
+                        <td style={{ padding:'13px 20px', minWidth:'160px' }}>
+                          <div style={{ display:'flex', gap:'4px', flexWrap:'wrap' }}>
+                            {traits.length === 0
+                              ? <span style={{ color: A.subtle, fontSize:'11px' }}>—</span>
+                              : traits.map(t => (
+                                  <span key={t.label} style={{ background: t.bg, color: t.color, padding:'2px 8px', borderRadius:'12px', fontSize:'10px', fontWeight:'600', whiteSpace:'nowrap' }}>{t.label}</span>
+                                ))
+                            }
+                          </div>
+                        </td>
+                        <td style={{ padding:'13px 20px', whiteSpace:'nowrap' }}>
+                          <span style={{ background: ss.bg, color: ss.color, padding:'3px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600' }}>{ss.label}</span>
+                        </td>
+                        <td style={{ padding:'13px 20px', whiteSpace:'nowrap' }}>
+                          <select
+                            value={dog.status}
+                            disabled={isSaving}
+                            onChange={e => handleStatusChange(dog, e.target.value)}
+                            style={{ background:'#0d0d0d', border:`1px solid ${A.border}`, borderRadius:'6px', padding:'5px 10px', color: isSaving ? A.subtle : A.text, fontSize:'12px', outline:'none', cursor:'pointer', opacity: isSaving ? 0.5 : 1 }}
+                          >
+                            <option value="available">Available</option>
+                            <option value="pending">Pending</option>
+                            <option value="adopted">Adopted</option>
+                          </select>
+                        </td>
+                        <td style={{ padding:'13px 20px', whiteSpace:'nowrap' }}>
+                          <button
+                            onClick={() => openEdit(dog)}
+                            style={{ background:'transparent', border:`1px solid ${A.border}`, borderRadius:'6px', padding:'5px 12px', color: A.muted, fontSize:'11px', cursor:'pointer', transition:'all 0.15s' }}
+                            onMouseEnter={e => { e.currentTarget.style.borderColor='#333'; e.currentTarget.style.color=A.text }}
+                            onMouseLeave={e => { e.currentTarget.style.borderColor=A.border; e.currentTarget.style.color=A.muted }}
+                          >
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+              <Paginator page={page} total={filtered.length} pageSize={PAGE_SIZE} onChange={setPage} />
+            </>
+          )}
+        </div>
+
       </div>
     </div>
   )
