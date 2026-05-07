@@ -170,18 +170,22 @@ export default function Shelters() {
     setGeoShelters([])
     let cancelled = false
     ;(async () => {
-      const BATCH = 5
       const accumulated = []
-      for (let i = 0; i < shelters.length; i += BATCH) {
+      for (let i = 0; i < shelters.length; i++) {
         if (cancelled) break
-        const chunk = shelters.slice(i, i + BATCH)
-        const results = await Promise.all(chunk.map(async s => {
-          const coords = s.city ? await geocode(s.city, s.state || "") : null
-          return { ...s, coords }
-        }))
-        results.forEach(s => { if (s.coords) accumulated.push(s) })
-        if (!cancelled) setGeoShelters([...accumulated])
-        if (i + BATCH < shelters.length && !cancelled) await new Promise(r => setTimeout(r, 1100))
+        const s = shelters[i]
+        // Skip geocoding if already cached — no delay needed for cache hits
+        const cacheKey = `${s.city},${s.state || ""}`
+        const isCached = !!geocodeCache[cacheKey]
+        const coords = s.city ? await geocode(s.city, s.state || "") : null
+        if (coords) {
+          accumulated.push({ ...s, coords })
+          if (!cancelled) setGeoShelters([...accumulated])
+        }
+        // Only wait between uncached requests to respect Nominatim's 1 req/s limit
+        if (!isCached && i < shelters.length - 1 && !cancelled) {
+          await new Promise(r => setTimeout(r, 1200))
+        }
       }
       if (!cancelled) setGeocoding(false)
     })()
