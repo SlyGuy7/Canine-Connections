@@ -26,7 +26,7 @@ export default function BadgeGallery() {
     if (messages.length > 0) earned.push("talker");
     if (viewedShelters.length >= 5) earned.push("explorer");
     if (apps.length >= 3) earned.push("determined");
-    if (entries.some(e => e.content.length > 200)) earned.push("detailed");
+    if (entries.some(e => (e.notes || e.content || "").length > 200)) earned.push("detailed");
 
     setUnlockedBadges(earned);
   }, []);
