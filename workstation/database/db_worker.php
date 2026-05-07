@@ -68,7 +68,6 @@ function connectDb(string $host, string $user, string $pass, string $name, int $
     }
     if ($conn->connect_error) return null;
     $conn->set_charset('utf8mb4');
-    $conn->query("SET time_zone = 'America/New_York'");
     $conn->query("SET SESSION wait_timeout=28800");
     $conn->query("SET SESSION interactive_timeout=28800");
     // Only connect to the active Group Replication PRIMARY (ONLINE).
