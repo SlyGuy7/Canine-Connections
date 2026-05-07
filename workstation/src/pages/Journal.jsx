@@ -25,8 +25,8 @@ function getTypeStyle(type) {
 
 function formatDate(dateStr) {
   if (!dateStr) return ""
-  const d = new Date(dateStr)
-  return isNaN(d) ? dateStr : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
+  const d = new Date(dateStr.replace(" ", "T"))
+  return isNaN(d) ? dateStr : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" })
 }
 
 const BLANK = { log_id: null, title: "", log_type: "Note", notes: "", hint: "", log_date: new Date().toISOString().split("T")[0] }

@@ -162,7 +162,7 @@ export default function Dashboard() {
 
   const formatDate = (dateStr) => {
     if (!dateStr) return ""
-    try { return new Date(dateStr).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) }
+    try { return new Date(dateStr.replace(" ", "T")).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" }) }
     catch { return dateStr }
   }
 
