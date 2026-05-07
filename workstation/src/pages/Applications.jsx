@@ -25,7 +25,8 @@ function progressStep(status) {
 
 function formatDate(dateStr) {
   if (!dateStr) return "Unknown date";
-  const d = new Date(dateStr.replace(" ", "T"));
+  const iso = dateStr.replace(" ", "T");
+  const d = new Date(iso.includes("T") ? iso + "Z" : iso + "T12:00:00Z");
   return isNaN(d) ? dateStr : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" });
 }
 

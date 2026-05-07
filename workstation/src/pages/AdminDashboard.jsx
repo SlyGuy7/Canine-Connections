@@ -52,7 +52,7 @@ export default function AdminDashboard() {
     }
   }
 
-  const fmt = (d) => { try { return new Date(d.replace(" ","T")).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'America/New_York'}) } catch { return d||'' } }
+  const fmt = (d) => { try { const iso = d.replace(" ","T"); return new Date(iso.includes("T") ? iso+"Z" : iso+"T12:00:00Z").toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'America/New_York'}) } catch { return d||'' } }
 
   return (
     <div style={{ display:'flex', minHeight:'100vh', background: A.bg }}>
