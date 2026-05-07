@@ -149,7 +149,7 @@ export default function Applications() {
                       Application #{applications.indexOf(app) + 1}
                     </h2>
                     <p style={{ margin: 0, fontSize: "13px", color: "#a8a29e" }}>
-                      Dog #{app.dog_id} &nbsp;·&nbsp; Submitted {formatDate(app.created_at || app.submitted_at)}
+                      Dog #{app.dog_id}
                     </p>
                   </div>
                   <span style={{ padding: "6px 14px", borderRadius: "20px", background: cfg.bg, color: cfg.color, fontSize: "12px", fontWeight: "700", display: "flex", alignItems: "center", gap: "5px", whiteSpace: "nowrap" }}>
@@ -229,7 +229,6 @@ export default function Applications() {
                   {[
                     ["Application ID", `#${viewApp.application_id}`],
                     ["Dog ID", `#${viewApp.dog_id}`],
-                    ["Submitted", formatDate(viewApp.created_at || viewApp.submitted_at)],
                   ].map(([label, val]) => (
                     <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
                       <span style={{ color: "#78716c" }}>{label}</span>
