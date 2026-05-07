@@ -26,6 +26,7 @@ final class MysqlClient
                 PDO::ATTR_EMULATE_PREPARES   => false,
             ]
         );
+        $this->pdo->exec("SET time_zone = 'America/New_York'");
     }
 
     public function pdo(): PDO

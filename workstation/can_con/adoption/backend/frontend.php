@@ -8,6 +8,8 @@ use App\Workers\FrontendWorker;
 
 Config::loadEnv(__DIR__ . '/.env');
 
+date_default_timezone_set('America/New_York');
+
 echo " Canine Connections — Frontend Worker\n";
 
 pcntl_async_signals(true);

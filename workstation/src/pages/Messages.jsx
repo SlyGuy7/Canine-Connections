@@ -12,7 +12,7 @@ function getInitials(name = "") {
 
 function formatTime(dateStr) {
   if (!dateStr) return "";
-  const d = new Date(dateStr);
+  const d = new Date(dateStr.replace(" ", "T"));
   if (isNaN(d)) return dateStr;
   const now = new Date();
   const diffDays = Math.floor((now - d) / 86400000);

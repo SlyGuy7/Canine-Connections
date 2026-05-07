@@ -10,6 +10,8 @@ use App\Workers\DBridgeWorker;
 // Loads environment variables needed for RabbitMQ connection settings.
 Config::loadEnv(__DIR__ . '/.env');
 
+date_default_timezone_set('America/New_York');
+
 echo " Canine Connections — DBridge Worker\n";
 
 // Enables asynchronous signal handling so the worker can shut down cleanly.
