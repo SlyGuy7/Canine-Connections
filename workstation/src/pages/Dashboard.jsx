@@ -77,7 +77,6 @@ export default function Dashboard() {
 
   async function loadStats() {
     const saved          = JSON.parse(localStorage.getItem("savedDogs")        || "[]")
-    console.log("%c[dashboard] savedDogs raw:", "color:#b45309;font-weight:700", localStorage.getItem("savedDogs"), "count:", saved.length)
     const journalEntries = JSON.parse(localStorage.getItem("journal_entries")  || "[]")
     let applicationCount = JSON.parse(localStorage.getItem("myApplications")   || "[]").length
     try {
@@ -224,7 +223,7 @@ export default function Dashboard() {
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "16px", marginBottom: "28px" }}>
           <StatCard value={stats.saved}        label="Saved Dogs"      icon="❤️"  color="#ef4444" onClick={() => navigate("/my-dogs")}      />
           <StatCard value={stats.applications} label="Applications"    icon="📩"  color="#3b82f6" onClick={() => navigate("/applications")} />
-          <StatCard value={adoptedDogs.length} label="Adopted Dogs"    icon="🏡"  color="#10b981" onClick={() => {}}                        />
+          <StatCard value={adoptedDogs.length} label="Adopted Dogs"    icon="🏡"  color="#10b981" onClick={() => navigate("/my-dogs")}           />
           <StatCard value={stats.journalCount} label="Journal Entries" icon="📖"  color="#d97706" onClick={() => navigate("/journal")}      />
         </div>
 

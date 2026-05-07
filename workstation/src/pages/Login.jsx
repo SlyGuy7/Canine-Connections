@@ -85,7 +85,6 @@ export default function Login({ switchToRegister, switchToForgot }) {
     } catch (err) {
       setLoading(false);
       setError("Login failed. Backend or database may be offline.");
-      console.log("Login error", err);
     }
   }
   const handleForgotPassword = (e) => {

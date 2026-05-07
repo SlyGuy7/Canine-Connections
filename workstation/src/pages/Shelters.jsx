@@ -247,7 +247,7 @@ export default function Shelters() {
               { icon: "🐾", label: "Available Dogs", value: "Browse →" },
             ].map(stat => (
               <div key={stat.label} style={{ padding: "10px 16px", borderRadius: "12px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: stat.label === "Available Dogs" ? "pointer" : "default" }}
-                onClick={stat.label === "Available Dogs" ? () => {} : undefined}>
+                onClick={stat.label === "Available Dogs" ? () => navigate("/browse-dogs") : undefined}>
                 <p style={{ margin: "0 0 2px 0", fontSize: "11px", color: "rgba(255,255,255,0.45)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>{stat.icon} {stat.label}</p>
                 <p style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "white" }}>{stat.value}</p>
               </div>

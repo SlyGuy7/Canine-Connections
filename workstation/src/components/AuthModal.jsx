@@ -76,6 +76,8 @@ padding: "20px",
 modal: {
 width: "440px",
 maxWidth: "100%",
+maxHeight: "90vh",
+overflowY: "auto",
 background: "#fffaf5",
 color: "#2f241d",
 borderRadius: "22px",
