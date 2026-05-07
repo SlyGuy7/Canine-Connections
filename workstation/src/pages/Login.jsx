@@ -52,6 +52,8 @@ export default function Login({ switchToRegister, switchToForgot }) {
       });
       if (result.success) {
         const user = result.user || {};
+        const KEEP = new Set(["canine_theme", "shelter_geocache"]);
+        Object.keys(localStorage).forEach(k => { if (!KEEP.has(k)) localStorage.removeItem(k); });
         const fName = user.first_name || user.firstName || "";
         const lName = user.last_name  || user.lastName  || "";
         localStorage.setItem("userFirstName", fName);
