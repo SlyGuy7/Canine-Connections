@@ -139,7 +139,6 @@ function ShelterCard({ shelter, navigate }) {
 export default function Shelters() {
   const navigate = useNavigate()
   const [shelters, setShelters] = useState([])
-  const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [viewMode, setViewMode] = useState("grid")
@@ -152,7 +151,6 @@ export default function Shelters() {
   const { getShelters } = useDataCache()
 
   useEffect(() => { loadShelters() }, [])
-  useEffect(() => { setPage(1) }, [searchTerm])
 
   async function loadShelters() {
     setLoading(true); setError("")
@@ -211,10 +209,7 @@ export default function Shelters() {
         .sort((a, b) => a._distanceMiles - b._distanceMiles)
     : geoShelters
 
-  const filtered = shelters.filter(s => {
-    const term = searchTerm.toLowerCase()
-    return s.name?.toLowerCase().includes(term) || s.city?.toLowerCase().includes(term) || s.state?.toLowerCase().includes(term)
-  })
+  const filtered = shelters
 
   const mapLat  = userLocation ? userLocation.lat : 38
   const mapLng  = userLocation ? userLocation.lng : -97
@@ -230,10 +225,7 @@ export default function Shelters() {
         <div style={{ position: "absolute", right: "32px", top: "-10px", fontSize: "120px", opacity: 0.06, userSelect: "none", lineHeight: 1, pointerEvents: "none" }}>🏡</div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "20px" }}>
           <div>
-            <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "white" }}>Partner Shelters</h1>
-            <p style={{ margin: 0, color: "rgba(255,255,255,0.55)", fontSize: "15px" }}>
-              {loading ? "Loading shelters…" : `${shelters.length} shelters across our network`}
-            </p>
+            <h1 style={{ margin: 0, fontSize: "28px", fontWeight: "800", color: "white" }}>Partner Shelters</h1>
           </div>
           <div style={{ display: "flex", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "12px", overflow: "hidden" }}>
             {[{ mode: "grid", Icon: List, label: "Grid" }, { mode: "map", Icon: MapPin, label: "Map" }].map(({ mode, Icon, label }) => (
@@ -263,7 +255,6 @@ export default function Shelters() {
       {/* How it works */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "24px" }}>
         {[
-          { icon: "🔍", title: "Search", desc: "Find shelters by name, city, or state to narrow down options near you." },
           { icon: "🗺️", title: "Explore the Map", desc: "Switch to Map view and use your location to see shelters within a chosen radius." },
           { icon: "🐾", title: "Meet the Dogs", desc: "Visit any shelter's page to browse their available dogs and send a message." },
         ].map(({ icon, title, desc }) => (
@@ -273,18 +264,6 @@ export default function Shelters() {
             <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.55" }}>{desc}</p>
           </div>
         ))}
-      </div>
-
-      {/* Search */}
-      <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", padding: "20px 24px", marginBottom: "28px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
-          <span style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", fontSize: "16px", pointerEvents: "none" }}>🔍</span>
-          <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search by shelter name, city, or state…"
-            style={{ width: "100%", padding: "10px 14px 10px 40px", borderRadius: "10px", border: "1px solid var(--border)", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", boxSizing: "border-box", color: "var(--text-primary)", background: "var(--bg-primary)" }} />
-        </div>
-        {searchTerm && (
-          <button onClick={() => setSearchTerm("")} style={{ padding: "10px 16px", borderRadius: "10px", border: "1px solid #fca5a5", background: "#fff1f2", color: "#dc2626", fontWeight: "600", fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap" }}>Clear</button>
-        )}
       </div>
 
       {/* Map controls */}
@@ -372,9 +351,8 @@ export default function Shelters() {
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 40px", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)" }}>
           <div style={{ fontSize: "64px", marginBottom: "16px" }}>🏡</div>
-          <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "700", color: "var(--text-primary)" }}>{searchTerm ? "No shelters match your search" : "No shelters found"}</h2>
-          <p style={{ margin: "0 0 24px 0", color: "var(--text-muted)" }}>{searchTerm ? "Try a different name, city, or state." : "Check back later as our network grows."}</p>
-          {searchTerm && <button onClick={() => setSearchTerm("")} style={{ padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}>Clear search</button>}
+          <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "700", color: "var(--text-primary)" }}>No shelters found</h2>
+          <p style={{ margin: "0 0 24px 0", color: "var(--text-muted)" }}>Check back later as our network grows.</p>
         </div>
       ) : viewMode === "grid" ? (() => {
         const PAGE_SIZE  = 12
