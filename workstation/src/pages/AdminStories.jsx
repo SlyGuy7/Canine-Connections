@@ -33,7 +33,7 @@ export default function AdminStories() {
     } catch { } finally { setProcessing(null) }
   }
 
-  const fmt = (d) => { try { const iso = d.replace(" ","T"); return new Date(iso.includes("T") ? iso+"Z" : iso+"T12:00:00Z").toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'America/New_York'}) } catch { return d||'' } }
+  const fmt = (d) => { try { return new Date(d.replace(" ","T")).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'America/New_York'}) } catch { return d||'' } }
 
   const pending  = stories.filter(s => s.status !== 'approved')
   const approved = stories.filter(s => s.status === 'approved')
