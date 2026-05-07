@@ -35,13 +35,7 @@ export default function Sidebar({ isMobile = false, open = true, onClose }) {
   }, [location.pathname]);
 
   const handleLogout = () => {
-    const KEEP = new Set([
-      "savedDogs", "journal_entries", "quizAnswers", "quizCompleted",
-      "quizMatchedDogIds", "userProfile", "canine_theme", "loginAlerts",
-      "canine_recently_viewed", "viewedShelters",
-      "userFirstName", "userLastName", "userFullName", "userPhone", "userAddress",
-      "shelter_geocache",
-    ]);
+    const KEEP = new Set(["canine_theme", "shelter_geocache"]);
     Object.keys(localStorage).forEach(k => { if (!KEEP.has(k)) localStorage.removeItem(k); });
     sessionStorage.clear();
     navigate("/landing");
