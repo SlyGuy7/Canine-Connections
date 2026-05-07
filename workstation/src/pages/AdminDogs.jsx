@@ -67,12 +67,12 @@ export default function AdminDogs() {
       energy_level:       dog.energy_level     || 'medium',
       description:        dog.description      || '',
       status:             dog.status           || 'available',
-      good_with_kids:     !!dog.good_with_kids,
-      good_with_dogs:     !!dog.good_with_dogs,
-      good_with_cats:     !!dog.good_with_cats,
-      apartment_friendly: !!dog.apartment_friendly,
-      is_vaccinated:      !!dog.is_vaccinated,
-      is_spayed_neutered: !!dog.is_spayed_neutered,
+      good_with_kids:     dog.good_with_kids == 1,
+      good_with_dogs:     dog.good_with_dogs == 1,
+      good_with_cats:     dog.good_with_cats == 1,
+      apartment_friendly: dog.apartment_friendly == 1,
+      is_vaccinated:      dog.is_vaccinated == 1,
+      is_spayed_neutered: dog.is_spayed_neutered == 1,
       shelter_id:         dog.shelter_id       || 1,
       external_id:        dog.external_id      || '',
     })
@@ -84,6 +84,7 @@ export default function AdminDogs() {
     setSaving(true)
     try {
       const result = await sendMessage("request.api.dog.upsert", {
+        ...(editing ? { dog_id: editing } : {}),
         ...formData,
         age_years:   parseInt(formData.age_years) || 0,
         shelter_id:  parseInt(formData.shelter_id) || 1,
@@ -129,10 +130,10 @@ export default function AdminDogs() {
 
   const traitPills = (dog) => {
     const traits = []
-    if (dog.is_vaccinated)      traits.push({ label:'Vaccinated',  color:'#4ade80', bg:'#052e16' })
-    if (dog.is_spayed_neutered) traits.push({ label:'Neutered',    color:'#60a5fa', bg:'#0c1a4a' })
-    if (dog.good_with_kids)     traits.push({ label:'Kids OK',     color:'#fbbf24', bg:'#1c1917' })
-    if (dog.apartment_friendly) traits.push({ label:'Apt. OK',     color:'#a78bfa', bg:'#1e1b4b' })
+    if (dog.is_vaccinated == 1)      traits.push({ label:'Vaccinated',  color:'#4ade80', bg:'#052e16' })
+    if (dog.is_spayed_neutered == 1) traits.push({ label:'Neutered',    color:'#60a5fa', bg:'#0c1a4a' })
+    if (dog.good_with_kids == 1)     traits.push({ label:'Kids OK',     color:'#fbbf24', bg:'#1c1917' })
+    if (dog.apartment_friendly == 1) traits.push({ label:'Apt. OK',     color:'#a78bfa', bg:'#1e1b4b' })
     return traits.slice(0, 3)
   }
 

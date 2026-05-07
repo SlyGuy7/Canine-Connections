@@ -35,6 +35,7 @@ final class DBridgeWorker
         $this->mq->registerConsumer('bridge.api.logs',            [$this, 'handleApiLogs']);
         $this->mq->registerConsumer('bridge.dogs.list',           [$this, 'handleDogsList']);
         $this->mq->registerConsumer('bridge.dogs.get',            [$this, 'handleDogsGet']);
+        $this->mq->registerConsumer('bridge.api.dog.upsert',      [$this, 'handleApiDogUpsert']);
         $this->mq->registerConsumer('bridge.application.submit',  [$this, 'handleApplicationSubmit']);
         $this->mq->registerConsumer('bridge.application.status',  [$this, 'handleApplicationStatus']);
         $this->mq->registerConsumer('bridge.application.list',    [$this, 'handleApplicationList']);
@@ -236,6 +237,12 @@ final class DBridgeWorker
     {
         $replyTo = $this->getReplyTo($msg);
         $this->fork(fn() => $this->relay('bridge.api.logs', 'db.api.logs', $data, $corrId, $replyTo), $msg);
+    }
+
+    public function handleApiDogUpsert(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->getReplyTo($msg);
+        $this->fork(fn() => $this->relay('bridge.api.dog.upsert', 'db.api.dog.upsert', $data, $corrId, $replyTo), $msg);
     }
 
     public function handleDogsList(array $data, $msg, ?string $corrId): void

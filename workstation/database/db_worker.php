@@ -699,6 +699,7 @@ function handleQuery($queue, $data, $db) {
             $status=$db->real_escape_string($data['status']??'available'); $source=$db->real_escape_string($data['source']??'api');
             $dogId=null; $action='inserted';
             if ($externalId) { $check=$db->query("SELECT dog_id FROM dogs WHERE external_id='{$externalId}' LIMIT 1"); if($check&&$check->num_rows>0){$dogId=(int)$check->fetch_assoc()['dog_id'];$action='updated';} }
+            if (!$dogId && isset($data['dog_id']) && (int)$data['dog_id']>0) { $dogId=(int)$data['dog_id']; $action='updated'; }
             if ($dogId) {
                 $sql="UPDATE dogs SET name='{$name}',breed='{$breed}',age_years={$ageYears},size='{$size}',gender='{$gender}',description='{$description}',energy_level='{$energy}',training_level='{$training}',ideal_owner_activity='{$activity}',good_with_kids={$goodKids},good_with_dogs={$goodDogs},good_with_cats={$goodCats},apartment_friendly={$apartment},requires_yard={$yard},is_vaccinated={$vaccinated},is_spayed_neutered={$spayed},status='{$status}',source='{$source}',last_synced_at=NOW() WHERE dog_id={$dogId}";
             } else {

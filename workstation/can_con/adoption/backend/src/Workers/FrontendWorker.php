@@ -42,6 +42,7 @@ final class FrontendWorker
         $this->mq->registerConsumer('request.api.logs',            [$this, 'handleApiLogs']);
         $this->mq->registerConsumer('request.dogs.list',           [$this, 'handleDogsList']);
         $this->mq->registerConsumer('request.dogs.get',            [$this, 'handleDogsGet']);
+        $this->mq->registerConsumer('request.api.dog.upsert',      [$this, 'handleApiDogUpsert']);
         $this->mq->registerConsumer('request.application.submit',  [$this, 'handleApplicationSubmit']);
         $this->mq->registerConsumer('request.application.status',  [$this, 'handleApplicationStatus']);
         $this->mq->registerConsumer('request.application.list',    [$this, 'handleApplicationList']);
@@ -564,6 +565,17 @@ final class FrontendWorker
                 $result = $mq->publishAndWait('bridge.api.logs', ['shelter_id' => $data['shelter_id'] ?? null, 'limit' => $data['limit'] ?? 50, 'offset' => $data['offset'] ?? 0], $corrId);
                 $this->respond($mq, 'response.api.logs', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.api.logs', $replyTo, ['success' => false, 'error' => 'Could not load logs'], $corrId); }
+        }, $msg);
+    }
+
+    public function handleApiDogUpsert(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            try {
+                $result = $mq->publishAndWait('bridge.api.dog.upsert', $data, $corrId);
+                $this->respond($mq, 'response.api.dog.upsert', $replyTo, $result ?? ['success' => false, 'error' => 'Could not update dog'], $corrId);
+            } catch (\Throwable $e) { $this->respond($mq, 'response.api.dog.upsert', $replyTo, ['success' => false, 'error' => 'Could not update dog'], $corrId); }
         }, $msg);
     }
 
