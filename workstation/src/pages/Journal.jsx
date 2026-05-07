@@ -4,11 +4,11 @@ import { useToast } from "../context/ToastContext"
 import { Sparkles } from "lucide-react"
 
 const MILESTONES = [
-  { title: "First Week Home",      type: "Milestone", notes: "How did the first week go? Any settling-in moments worth remembering?" },
-  { title: "First Vet Visit",      type: "Vet Visit", notes: "Record the vet's name, clinic, vaccinations given, and any health notes." },
-  { title: "First Walk",           type: "Walk",      notes: "Where did you go? How did they do on the leash?" },
-  { title: "First Training Session",type: "Training", notes: "What commands did you work on? Any breakthroughs?" },
-  { title: "One Month Milestone",  type: "Milestone", notes: "How have things changed since adoption day? What's your dog's personality like?" },
+  { title: "First Week Home",       type: "Milestone", hint: "How did the first week go? Any settling-in moments worth remembering?" },
+  { title: "First Vet Visit",       type: "Vet Visit", hint: "Record the vet's name, clinic, vaccinations given, and any health notes." },
+  { title: "First Walk",            type: "Walk",      hint: "Where did you go? How did they do on the leash?" },
+  { title: "First Training Session", type: "Training", hint: "What commands did you work on? Any breakthroughs?" },
+  { title: "One Month Milestone",   type: "Milestone", hint: "How have things changed since adoption day? What's your dog's personality like?" },
 ]
 
 const LOG_TYPES = [
@@ -29,7 +29,7 @@ function formatDate(dateStr) {
   return isNaN(d) ? dateStr : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })
 }
 
-const BLANK = { log_id: null, title: "", log_type: "Note", notes: "", log_date: new Date().toISOString().split("T")[0] }
+const BLANK = { log_id: null, title: "", log_type: "Note", notes: "", hint: "", log_date: new Date().toISOString().split("T")[0] }
 
 export default function Journal() {
   const [entries, setEntries]     = useState([])
@@ -160,7 +160,7 @@ export default function Journal() {
               return (
                 <button
                   key={m.title}
-                  onClick={() => { setForm({ ...BLANK, title: m.title, log_type: m.type, notes: m.notes }); setIsModalOpen(true); }}
+                  onClick={() => { setForm({ ...BLANK, title: m.title, log_type: m.type, hint: m.hint }); setIsModalOpen(true); }}
                   style={{ padding: "8px 14px", borderRadius: "20px", border: `1px solid ${ts.color}30`, background: ts.bg, color: ts.color, fontSize: "13px", fontWeight: "600", cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
                 >
                   + {m.title}
@@ -281,7 +281,7 @@ export default function Journal() {
 
               <div>
                 <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "#6f5848" }}>Notes</label>
-                <textarea rows="4" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder="Write your memory here..." required style={{ ...inputStyle, resize: "vertical", lineHeight: "1.6" }} />
+                <textarea rows="4" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder={form.hint || "Write your memory here…"} required style={{ ...inputStyle, resize: "vertical", lineHeight: "1.6", color: "#2f241d" }} />
               </div>
 
               <div>

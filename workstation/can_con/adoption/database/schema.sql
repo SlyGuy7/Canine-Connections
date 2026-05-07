@@ -233,14 +233,16 @@ CREATE TABLE adoptions (
 
 CREATE TABLE post_adoption_logs (
   log_id INT PRIMARY KEY AUTO_INCREMENT,
-  adoption_id INT NOT NULL,
-  log_type ENUM('vet_visit', 'feeding', 'training', 'milestone', 'note'),
+  user_id INT NOT NULL DEFAULT 0,
+  dog_id INT NOT NULL DEFAULT 0,
+  adoption_id INT NULL,
+  log_type VARCHAR(50),
   title VARCHAR(255),
   description TEXT,
+  notes TEXT,
   log_date DATE,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (adoption_id) REFERENCES adoptions(adoption_id),
-  INDEX idx_adoption (adoption_id),
+  INDEX idx_user (user_id),
   INDEX idx_log_type (log_type),
   INDEX idx_log_date (log_date)
 );

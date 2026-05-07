@@ -67,9 +67,9 @@ function kmToMiles(km) { return km * 0.621371 }
 
 const RADIUS_OPTIONS = [5, 10, 15, 25, 50]
 
-function RecenterMap({ center, zoom }) {
+function RecenterMap({ lat, lng, zoom }) {
   const map = useMap()
-  useEffect(() => { map.setView(center, zoom) }, [center, zoom])
+  useEffect(() => { map.setView([lat, lng], zoom) }, [lat, lng, zoom])
   return null
 }
 
@@ -139,7 +139,6 @@ function ShelterCard({ shelter, navigate }) {
 export default function Shelters() {
   const navigate = useNavigate()
   const [shelters, setShelters] = useState([])
-  const [searchTerm, setSearchTerm] = useState("")
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [viewMode, setViewMode] = useState("grid")
@@ -148,6 +147,7 @@ export default function Shelters() {
   const [userLocation, setUserLocation] = useState(null)
   const [locating, setLocating] = useState(false)
   const [radius, setRadius] = useState(50)
+  const [page, setPage] = useState(1)
   const { getShelters } = useDataCache()
 
   useEffect(() => { loadShelters() }, [])
@@ -170,18 +170,22 @@ export default function Shelters() {
     setGeoShelters([])
     let cancelled = false
     ;(async () => {
-      const BATCH = 5
       const accumulated = []
-      for (let i = 0; i < shelters.length; i += BATCH) {
+      for (let i = 0; i < shelters.length; i++) {
         if (cancelled) break
-        const chunk = shelters.slice(i, i + BATCH)
-        const results = await Promise.all(chunk.map(async s => {
-          const coords = s.city ? await geocode(s.city, s.state || "") : null
-          return { ...s, coords }
-        }))
-        results.forEach(s => { if (s.coords) accumulated.push(s) })
-        if (!cancelled) setGeoShelters([...accumulated])
-        if (i + BATCH < shelters.length && !cancelled) await new Promise(r => setTimeout(r, 1100))
+        const s = shelters[i]
+        // Skip geocoding if already cached — no delay needed for cache hits
+        const cacheKey = `${s.city},${s.state || ""}`
+        const isCached = !!geocodeCache[cacheKey]
+        const coords = s.city ? await geocode(s.city, s.state || "") : null
+        if (coords) {
+          accumulated.push({ ...s, coords })
+          if (!cancelled) setGeoShelters([...accumulated])
+        }
+        // Only wait between uncached requests to respect Nominatim's 1 req/s limit
+        if (!isCached && i < shelters.length - 1 && !cancelled) {
+          await new Promise(r => setTimeout(r, 1200))
+        }
       }
       if (!cancelled) setGeocoding(false)
     })()
@@ -209,13 +213,11 @@ export default function Shelters() {
         .sort((a, b) => a._distanceMiles - b._distanceMiles)
     : geoShelters
 
-  const filtered = shelters.filter(s => {
-    const term = searchTerm.toLowerCase()
-    return s.name?.toLowerCase().includes(term) || s.city?.toLowerCase().includes(term) || s.state?.toLowerCase().includes(term)
-  })
+  const filtered = shelters
 
-  const mapCenter = userLocation ? [userLocation.lat, userLocation.lng] : [38, -97]
-  const mapZoom   = userLocation ? 9 : 4
+  const mapLat  = userLocation ? userLocation.lat : 38
+  const mapLng  = userLocation ? userLocation.lng : -97
+  const mapZoom = userLocation ? 9 : 4
 
   const stateCount = new Set(shelters.map(s => s.state).filter(Boolean)).size
 
@@ -224,13 +226,10 @@ export default function Shelters() {
 
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #2f241d 0%, #4a3728 100%)", borderRadius: "24px", padding: "32px 36px", marginBottom: "24px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: "32px", top: "-10px", fontSize: "120px", opacity: 0.06, userSelect: "none", lineHeight: 1 }}>🏡</div>
+        <div style={{ position: "absolute", right: "32px", top: "-10px", fontSize: "120px", opacity: 0.06, userSelect: "none", lineHeight: 1, pointerEvents: "none" }}>🏡</div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "20px" }}>
           <div>
-            <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "white" }}>Partner Shelters</h1>
-            <p style={{ margin: 0, color: "rgba(255,255,255,0.55)", fontSize: "15px" }}>
-              {loading ? "Loading shelters…" : `${shelters.length} shelters across our network`}
-            </p>
+            <h1 style={{ margin: 0, fontSize: "28px", fontWeight: "800", color: "white" }}>Partner Shelters</h1>
           </div>
           <div style={{ display: "flex", background: "rgba(255,255,255,0.1)", border: "1px solid rgba(255,255,255,0.15)", borderRadius: "12px", overflow: "hidden" }}>
             {[{ mode: "grid", Icon: List, label: "Grid" }, { mode: "map", Icon: MapPin, label: "Map" }].map(({ mode, Icon, label }) => (
@@ -248,7 +247,7 @@ export default function Shelters() {
               { icon: "🐾", label: "Available Dogs", value: "Browse →" },
             ].map(stat => (
               <div key={stat.label} style={{ padding: "10px 16px", borderRadius: "12px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: stat.label === "Available Dogs" ? "pointer" : "default" }}
-                onClick={stat.label === "Available Dogs" ? () => {} : undefined}>
+                onClick={stat.label === "Available Dogs" ? () => navigate("/browse-dogs") : undefined}>
                 <p style={{ margin: "0 0 2px 0", fontSize: "11px", color: "rgba(255,255,255,0.45)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em" }}>{stat.icon} {stat.label}</p>
                 <p style={{ margin: 0, fontSize: "18px", fontWeight: "800", color: "white" }}>{stat.value}</p>
               </div>
@@ -257,16 +256,18 @@ export default function Shelters() {
         )}
       </div>
 
-      {/* Search */}
-      <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", padding: "20px 24px", marginBottom: "28px", display: "flex", gap: "12px", alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ position: "relative", flex: 1, minWidth: "200px" }}>
-          <span style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", fontSize: "16px", pointerEvents: "none" }}>🔍</span>
-          <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search by shelter name, city, or state…"
-            style={{ width: "100%", padding: "10px 14px 10px 40px", borderRadius: "10px", border: "1px solid var(--border)", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", boxSizing: "border-box", color: "var(--text-primary)", background: "var(--bg-primary)" }} />
-        </div>
-        {searchTerm && (
-          <button onClick={() => setSearchTerm("")} style={{ padding: "10px 16px", borderRadius: "10px", border: "1px solid #fca5a5", background: "#fff1f2", color: "#dc2626", fontWeight: "600", fontSize: "13px", cursor: "pointer", whiteSpace: "nowrap" }}>Clear</button>
-        )}
+      {/* How it works */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "24px" }}>
+        {[
+          { icon: "🗺️", title: "Explore the Map", desc: "Switch to Map view and use your location to see shelters within a chosen radius." },
+          { icon: "🐾", title: "Meet the Dogs", desc: "Visit any shelter's page to browse their available dogs and send a message." },
+        ].map(({ icon, title, desc }) => (
+          <div key={title} style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "18px 20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <span style={{ fontSize: "26px", lineHeight: 1 }}>{icon}</span>
+            <h3 style={{ margin: "4px 0 0 0", fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>{title}</h3>
+            <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.55" }}>{desc}</p>
+          </div>
+        ))}
       </div>
 
       {/* Map controls */}
@@ -317,12 +318,13 @@ export default function Shelters() {
       {viewMode === "map" && !loading && (
         <div style={{ borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)", marginBottom: "28px", height: "480px", position: "relative" }}>
           {geocoding && (
-            <div style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "white", padding: "8px 20px", borderRadius: "20px", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", fontSize: "13px", fontWeight: "600", color: "#6f5848" }}>
-              Locating shelters…
+            <div style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "white", padding: "8px 20px", borderRadius: "20px", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", fontSize: "13px", fontWeight: "600", color: "#6f5848", display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "12px", height: "12px", border: "2px solid #f3e8de", borderTopColor: "#d97706", borderRadius: "50%", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
+              {geoShelters.length > 0 ? `Placed ${geoShelters.length} of ${shelters.length} shelters…` : "Locating shelters…"}
             </div>
           )}
-          <MapContainer center={mapCenter} zoom={mapZoom} style={{ width: "100%", height: "100%" }}>
-            <RecenterMap center={mapCenter} zoom={mapZoom} />
+          <MapContainer center={[mapLat, mapLng]} zoom={mapZoom} style={{ width: "100%", height: "100%" }}>
+            <RecenterMap lat={mapLat} lng={mapLng} zoom={mapZoom} />
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors' />
             {userLocation && (
               <Marker position={[userLocation.lat, userLocation.lng]} icon={BLUE_ICON}>
@@ -353,15 +355,39 @@ export default function Shelters() {
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 40px", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)" }}>
           <div style={{ fontSize: "64px", marginBottom: "16px" }}>🏡</div>
-          <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "700", color: "var(--text-primary)" }}>{searchTerm ? "No shelters match your search" : "No shelters found"}</h2>
-          <p style={{ margin: "0 0 24px 0", color: "var(--text-muted)" }}>{searchTerm ? "Try a different name, city, or state." : "Check back later as our network grows."}</p>
-          {searchTerm && <button onClick={() => setSearchTerm("")} style={{ padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}>Clear search</button>}
+          <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "700", color: "var(--text-primary)" }}>No shelters found</h2>
+          <p style={{ margin: "0 0 24px 0", color: "var(--text-muted)" }}>Check back later as our network grows.</p>
         </div>
-      ) : viewMode === "grid" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px" }}>
-          {filtered.map(shelter => <ShelterCard key={shelter.shelter_id} shelter={shelter} navigate={navigate} />)}
-        </div>
-      ) : null}
+      ) : viewMode === "grid" ? (() => {
+        const PAGE_SIZE  = 12
+        const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+        const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+        return (
+          <>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "20px", marginBottom: "28px" }}>
+              {paginated.map(shelter => <ShelterCard key={shelter.shelter_id} shelter={shelter} navigate={navigate} />)}
+            </div>
+            {totalPages > 1 && (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "6px" }}>
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
+                  style={{ padding: "8px 14px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: page === 1 ? "var(--text-muted)" : "var(--text-primary)", fontWeight: "600", fontSize: "14px", cursor: page === 1 ? "default" : "pointer", opacity: page === 1 ? 0.4 : 1 }}>
+                  ←
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(p => (
+                  <button key={p} onClick={() => setPage(p)}
+                    style={{ width: "36px", height: "36px", borderRadius: "10px", border: p === page ? "none" : "1px solid var(--border)", background: p === page ? "#d97706" : "var(--card-bg)", color: p === page ? "white" : "var(--text-primary)", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}>
+                    {p}
+                  </button>
+                ))}
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
+                  style={{ padding: "8px 14px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: page === totalPages ? "var(--text-muted)" : "var(--text-primary)", fontWeight: "600", fontSize: "14px", cursor: page === totalPages ? "default" : "pointer", opacity: page === totalPages ? 0.4 : 1 }}>
+                  →
+                </button>
+              </div>
+            )}
+          </>
+        )
+      })() : null}
     </div>
   )
 }

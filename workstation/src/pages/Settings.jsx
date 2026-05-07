@@ -51,8 +51,17 @@ export default function Settings() {
   const displayEmail = localStorage.getItem('userEmail') || ''
   const userRole     = localStorage.getItem('userRole') || 'adopter'
 
-  const [firstName, setFirstName] = useState(localStorage.getItem('userFirstName') || '')
-  const [lastName,  setLastName]  = useState(localStorage.getItem('userLastName')  || '')
+  function deriveFromEmail(email) {
+    const parts = (email || '').split('@')[0].split('.')
+    return {
+      first: parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : '',
+      last:  parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' '),
+    }
+  }
+  const derived = deriveFromEmail(displayEmail)
+
+  const [firstName, setFirstName] = useState(localStorage.getItem('userFirstName') || derived.first)
+  const [lastName,  setLastName]  = useState(localStorage.getItem('userLastName')  || derived.last)
   const [phone,     setPhone]     = useState(localStorage.getItem('userPhone')     || '')
   const [address,   setAddress]   = useState(localStorage.getItem('userAddress')   || '')
   const [savingInfo, setSavingInfo] = useState(false)

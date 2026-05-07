@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { useIsMobile } from "../hooks/useIsMobile"
 import { sendMessage } from "../services/messaging"
 import AuthModal from "../components/AuthModal"
 
@@ -203,6 +204,7 @@ const SHIMMER = {
 
 export default function Landing() {
   const navigate = useNavigate()
+  const isMobile = useIsMobile()
   const [modalMode, setModalMode] = useState(null)
   const [selectedDog, setSelectedDog] = useState(null)
   const [previewCategory, setPreviewCategory] = useState(null)
@@ -259,7 +261,7 @@ export default function Landing() {
     <div className="landing-page" id="home">
 
       {/* ── Navbar ── */}
-      <nav style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: "24px 48px", zIndex: 100 }}>
+      <nav className="landing-nav" style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: isMobile ? "16px 20px" : "24px 48px", zIndex: 100 }}>
         <div style={{ color: "white", fontSize: "20px", fontWeight: "800", letterSpacing: "-0.3px", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
           🐾 Canine Connections
         </div>
@@ -292,7 +294,7 @@ export default function Landing() {
 
       {/* ── Hero ── */}
       <header className="hero-banner" style={{ height: "100vh", justifyContent: "center" }}>
-        <h1 style={{ fontSize: "62px", margin: "0 0 16px 0", fontWeight: "800", lineHeight: 1.1 }}>Find your New Best Friend</h1>
+        <h1 style={{ fontSize: isMobile ? "34px" : "62px", margin: "0 0 16px 0", fontWeight: "800", lineHeight: 1.1 }}>Find your New Best Friend</h1>
         <p style={{ fontSize: "20px", margin: "0 0 36px 0", opacity: 0.9, maxWidth: "520px" }}>
           Connect with local shelters and give a rescue dog the forever home they deserve.
         </p>

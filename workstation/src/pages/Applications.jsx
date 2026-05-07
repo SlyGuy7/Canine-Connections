@@ -146,7 +146,7 @@ export default function Applications() {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px", gap: "12px", flexWrap: "wrap" }}>
                   <div>
                     <h2 style={{ margin: "0 0 4px 0", fontSize: "18px", fontWeight: "700", color: "#2f241d" }}>
-                      Application #{app.application_id}
+                      Application #{applications.indexOf(app) + 1}
                     </h2>
                     <p style={{ margin: 0, fontSize: "13px", color: "#a8a29e" }}>
                       Dog #{app.dog_id} &nbsp;·&nbsp; Submitted {formatDate(app.created_at || app.submitted_at)}

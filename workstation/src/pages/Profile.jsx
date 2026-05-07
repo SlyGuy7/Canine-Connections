@@ -68,10 +68,18 @@ const allFieldKeys = sections.flatMap(s => Object.keys(s.fields))
 export default function Profile() {
   const { addToast } = useToast()
 
-  const firstName    = localStorage.getItem("userFirstName") || ""
-  const lastName     = localStorage.getItem("userLastName")  || ""
-  const displayName  = `${firstName} ${lastName}`.trim() || localStorage.getItem("userEmail")?.split("@")[0] || "User"
   const displayEmail = localStorage.getItem("userEmail") || ""
+  function deriveFromEmail(email) {
+    const parts = (email || '').split('@')[0].split('.')
+    return {
+      first: parts[0] ? parts[0].charAt(0).toUpperCase() + parts[0].slice(1) : '',
+      last:  parts.slice(1).map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' '),
+    }
+  }
+  const derived      = deriveFromEmail(displayEmail)
+  const firstName    = localStorage.getItem("userFirstName") || derived.first
+  const lastName     = localStorage.getItem("userLastName")  || derived.last
+  const displayName  = `${firstName} ${lastName}`.trim() || displayEmail || "User"
   const initials     = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
 
   const phone   = localStorage.getItem("userPhone")   || ""

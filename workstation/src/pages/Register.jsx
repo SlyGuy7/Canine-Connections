@@ -153,7 +153,7 @@ export default function Register() {
       {error && <p style={styles.error}>{error}</p>}
 
       <div style={styles.row}>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: "140px" }}>
           <label style={styles.label}>First Name</label>
           <input
             style={styles.input}
@@ -162,7 +162,7 @@ export default function Register() {
             onChange={(e) => setFirstName(e.target.value)}
           />
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: "140px" }}>
           <label style={styles.label}>Last Name</label>
           <input
             style={styles.input}
@@ -205,7 +205,7 @@ export default function Register() {
       </div>
 
       <div style={styles.row}>
-        <div style={{ flex: 1, position: "relative" }}>
+        <div style={{ flex: 1, minWidth: "140px", position: "relative" }}>
           <label style={styles.label}>Password</label>
           <div style={{ position: "relative" }}>
             <input
@@ -243,7 +243,7 @@ export default function Register() {
             </p>
           )}
         </div>
-        <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, minWidth: "140px" }}>
           <label style={styles.label}>Confirm</label>
           <input
             style={styles.input}
@@ -303,6 +303,7 @@ const styles = {
   row: {
     display: "flex",
     gap: "10px",
+    flexWrap: "wrap",
   },
   label: {
     display: "block",

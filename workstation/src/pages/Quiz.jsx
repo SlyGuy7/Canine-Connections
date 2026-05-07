@@ -147,6 +147,9 @@ export default function Quiz() {
   const [loading, setLoading]             = useState(true);
   const [submitting, setSubmitting]       = useState(false);
   const [error, setError]                 = useState("");
+  const [alreadyCompleted, setAlreadyCompleted] = useState(
+    () => localStorage.getItem("quizCompleted") === "true"
+  );
 
   // Stores the originally pre-filled answers so we can restore the badge
   // if the user goes back to the profile-suggested option.
@@ -238,6 +241,48 @@ export default function Quiz() {
       setSubmitting(false);
     }
   };
+
+  const handleRetake = () => {
+    localStorage.removeItem("quizCompleted");
+    localStorage.removeItem("quizAnswers");
+    localStorage.removeItem("quizMatchedDogIds");
+    hasFetched.current = false;
+    setAlreadyCompleted(false);
+    loadQuestions();
+  };
+
+  if (alreadyCompleted) {
+    return (
+      <div style={{ maxWidth: "720px", margin: "0 auto", padding: "0 0 60px 0" }}>
+        <div style={{ marginBottom: "28px" }}>
+          <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Compatibility Quiz</h1>
+        </div>
+        <div style={{ background: "white", borderRadius: "24px", border: "1px solid #efdfd1", padding: "56px 40px", textAlign: "center" }}>
+          <div style={{ fontSize: "64px", marginBottom: "20px" }}>🐾</div>
+          <h2 style={{ margin: "0 0 10px 0", fontSize: "22px", fontWeight: "800", color: "#2f241d" }}>
+            You've already taken the quiz!
+          </h2>
+          <p style={{ margin: "0 0 36px 0", color: "#78716c", fontSize: "15px", lineHeight: "1.6" }}>
+            Your matches are saved. Would you like to view them, or start fresh with a new quiz?
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "320px", margin: "0 auto" }}>
+            <button
+              onClick={() => navigate("/quiz-results")}
+              style={{ padding: "15px 28px", borderRadius: "14px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer", boxShadow: "0 4px 16px rgba(217,119,6,0.3)" }}
+            >
+              View My Matches →
+            </button>
+            <button
+              onClick={handleRetake}
+              style={{ padding: "14px 28px", borderRadius: "14px", border: "2px solid #e2d9d0", background: "white", color: "#78716c", fontWeight: "600", fontSize: "15px", cursor: "pointer" }}
+            >
+              Take It Again
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ maxWidth: "720px", margin: "0 auto", padding: "0 0 60px 0" }}>

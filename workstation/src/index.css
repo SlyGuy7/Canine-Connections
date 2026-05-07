@@ -515,3 +515,20 @@
 [data-theme="dark"] .featured-card { background: var(--card-bg); border-color: var(--border); }
 [data-theme="dark"] .pet-card   { background: var(--card-bg); border-color: var(--border); }
 [data-theme="dark"] .modal-close { background: var(--card-bg); color: var(--text-primary); }
+
+/* Base */
+html, body { overflow-x: hidden; }
+
+/* Responsive */
+@media (max-width: 768px) {
+  .hero-banner { height: 55vh; padding: 0 16px; }
+  .hero-banner h1 { font-size: 36px !important; }
+  .hero-banner p  { font-size: 16px !important; }
+  .login-btn-top, .register-btn-top { padding: 9px 16px; font-size: 14px; }
+  .landing-nav { padding: 16px 20px !important; }
+}
+
+@media (max-width: 480px) {
+  .hero-banner h1 { font-size: 28px !important; }
+  .login-btn-top, .register-btn-top { padding: 8px 12px; font-size: 13px; }
+}

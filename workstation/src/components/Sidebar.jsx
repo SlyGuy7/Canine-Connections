@@ -42,10 +42,7 @@ export default function Sidebar({ isMobile = false, open = true, onClose }) {
       "userFirstName", "userLastName", "userFullName", "userPhone", "userAddress",
       "shelter_geocache",
     ]);
-    const before = localStorage.getItem("savedDogs");
     Object.keys(localStorage).forEach(k => { if (!KEEP.has(k)) localStorage.removeItem(k); });
-    console.log("%c[logout] savedDogs before:", "color:#b45309;font-weight:700", before);
-    console.log("%c[logout] savedDogs after:", "color:#16a34a;font-weight:700", localStorage.getItem("savedDogs"));
     sessionStorage.clear();
     navigate("/landing");
   };
