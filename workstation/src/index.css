@@ -526,6 +526,18 @@ html, body { overflow-x: hidden; }
   .hero-banner p  { font-size: 16px !important; }
   .login-btn-top, .register-btn-top { padding: 9px 16px; font-size: 14px; }
   .landing-nav { padding: 16px 20px !important; }
+
+  /* Auth modal: start from top so logo isn't clipped by browser chrome */
+  .auth-modal-overlay {
+    align-items: flex-start !important;
+    overflow-y: auto !important;
+    padding: 16px !important;
+  }
+  .auth-modal {
+    max-height: none !important;
+    overflow-y: visible !important;
+    margin: 0 auto;
+  }
 }
 
 @media (max-width: 480px) {
