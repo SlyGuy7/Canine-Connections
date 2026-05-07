@@ -144,7 +144,7 @@ export default function Dashboard() {
   }
 
   const nextSteps = useMemo(() => [
-    { label: "Complete your profile",         icon: "👤", done: (() => { try { const p = JSON.parse(localStorage.getItem("userProfile") || "{}"); const keys = ["homeType","ownership","household","otherPets","activityLevel","hoursHome","experience","allergies"]; return keys.every(k => p.prefs?.[k]) && p.bio?.trim().length > 0; } catch { return false; } })(), path: "/profile" },
+    { label: "Complete your profile",         icon: "👤", done: (() => { try { const p = JSON.parse(localStorage.getItem("userProfile") || "{}"); const keys = ["homeType","ownership","household","otherPets","activityLevel","hoursHome","experience","allergies"]; return keys.every(k => p.prefs?.[k]) && (p.bio?.trim()?.length ?? 0) > 0; } catch { return false; } })(), path: "/profile" },
     { label: "Save a dog you like",           icon: "❤️", done: stats.saved > 0,                              path: "/browse-dogs" },
     { label: "Submit your first application", icon: "📋", done: stats.applications > 0,                       path: "/browse-dogs" },
     { label: "Take the compatibility quiz",   icon: "🧩", done: !!localStorage.getItem("quizMatchedDogIds"), path: "/quiz"        },
