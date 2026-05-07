@@ -1,7 +1,11 @@
+// Admin CRUD interface for managing dog listings.
+// Displays a paginated, filterable table of all dogs with inline status editing
+// and a slide-in form for adding or editing individual dog records.
 import React, { useEffect, useState } from "react"
 import { sendMessage } from "../services/messaging"
 import AdminSidebar from "../components/AdminSidebar"
 
+// Shared dark-theme color tokens used throughout this page.
 const A = {
   bg:     '#0a0a0a',
   card:   '#111111',
@@ -13,8 +17,10 @@ const A = {
   subtle: '#444444',
 }
 
+// Number of dog rows shown per page in the paginated table.
 const PAGE_SIZE = 20
 
+// Default values for the Add Dog form — reset to these when the form is cleared.
 const EMPTY = {
   name:'', breed:'', age_years:'', size:'medium', gender:'male',
   energy_level:'medium', description:'', status:'available',
@@ -23,6 +29,7 @@ const EMPTY = {
   shelter_id:1,
 }
 
+// Returns background/text color and display label for a dog's status value.
 const dogStatusStyle = (s) => {
   switch (s) {
     case 'available': return { bg:'#052e16', color:'#4ade80', label:'Available' }
@@ -31,6 +38,8 @@ const dogStatusStyle = (s) => {
   }
 }
 
+// Builds up to 3 colored trait pills for a dog based on its boolean fields.
+// MySQL stores booleans as "0"/"1" strings, so == 1 (loose equality) is used instead of ===.
 const traitPills = (dog) => {
   const traits = []
   if (dog.is_vaccinated == 1)      traits.push({ label:'Vaccinated', color:'#4ade80', bg:'#052e16' })
@@ -40,10 +49,14 @@ const traitPills = (dog) => {
   return traits.slice(0, 3)
 }
 
+// Pagination control component — renders Prev, windowed page numbers with ellipsis, and Next.
+// Shows nothing when the total number of items fits on a single page.
 function Paginator({ page, total, pageSize, onChange }) {
   const totalPages = Math.ceil(total / pageSize)
   if (totalPages <= 1) return null
 
+  // Build a condensed page list: always include page 1, last page, and current ±2.
+  // Insert '…' wherever there is a gap to avoid a row of 25 individual page buttons.
   const pages = []
   for (let i = 1; i <= totalPages; i++) {
     if (i === 1 || i === totalPages || (i >= page - 2 && i <= page + 2)) {

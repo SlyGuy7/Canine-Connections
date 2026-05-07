@@ -1,8 +1,16 @@
+// Modal that wraps the Login, Register, and ForgotPassword forms into a single overlay.
+// The parent controls which form is active via the `mode` prop and `switchMode` callback.
 import Login from "../pages/Login"
 import Register from "../pages/Register"
 import ForgotPassword from "../pages/ForgotPassword"
 
+// Props:
+//   mode       — "login" | "register" | "forgot-password" — which form to render
+//   close      — called when the X button is clicked to dismiss the modal
+//   switchMode — called with a new mode string when the user clicks a switch link
 export default function AuthModal({ mode, close, switchMode }) {
+
+// Returns the title and subtitle shown at the top of the modal based on the active mode.
 const getHeaderContent = () => {
 if (mode === "login") return { title: "Welcome Back", sub: "Log in to continue your adoption journey." }
 if (mode === "register") return { title: "Join Canine Connections", sub: "Create an account to meet your future best friend." }
@@ -12,16 +20,20 @@ return { title: "Reset Password", sub: "Enter your email to receive instructions
 const content = getHeaderContent()
 
 return (
+// Semi-transparent dark overlay that covers the full viewport behind the modal.
 <div style={styles.overlay} className="auth-modal-overlay">
-<div style={styles.modal} className="auth-modal" onClick={(e) => e.stopPropagation()}>
-<button style={styles.close} onClick={close}>x</button>
+  {/* stopPropagation prevents a click inside the modal from bubbling up and closing it. */}
+  <div style={styles.modal} className="auth-modal" onClick={(e) => e.stopPropagation()}>
+    <button style={styles.close} onClick={close}>x</button>
 
+    {/* Header section with paw icon, dynamic title, and subtitle */}
     <div style={styles.header}>
       <div style={styles.paw}>🐾</div>
       <h2 style={styles.title}>{content.title}</h2>
       <p style={styles.subtitle}>{content.sub}</p>
     </div>
 
+    {/* Render the Login form with a link to switch to Register or Forgot Password */}
     {mode === "login" && (
       <>
         <Login switchToForgot={() => switchMode("forgot-password")} />
@@ -34,6 +46,7 @@ return (
       </>
     )}
 
+    {/* Render the Register form with a link to switch back to Login */}
     {mode === "register" && (
       <>
         <Register />
@@ -46,6 +59,7 @@ return (
       </>
     )}
 
+    {/* Render the ForgotPassword form with a link to return to Login */}
     {mode === "forgot-password" && (
       <>
         <ForgotPassword />

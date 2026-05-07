@@ -1,7 +1,12 @@
+// User lifestyle profile — a multi-section preference form (home type, household, activity level,
+// allergies, bio) that is saved to localStorage under "userProfile". The Dashboard and BrowseDogs
+// pages read these prefs to compute dog match scores. A React Router blocker and beforeunload
+// handler both warn the user if they try to leave with unsaved changes.
 import React, { useState, useEffect, useRef } from "react"
 import { useBlocker } from "react-router-dom"
 import { useToast } from "../context/ToastContext"
 
+// localStorage key for persisting the user's bio and preference selections.
 const PROFILE_KEY = "userProfile"
 
 const sections = [
@@ -88,11 +93,13 @@ export default function Profile() {
   const [bio, setBio]     = useState("")
   const [prefs, setPrefs] = useState({})
   const [focusedField, setFocusedField] = useState(null)
+  // Mirror of the last-saved state used to detect unsaved changes without an extra fetch.
   const savedState = useRef({ bio: "", prefs: {} })
   const isDirty = () =>
     bio !== savedState.current.bio ||
     JSON.stringify(prefs) !== JSON.stringify(savedState.current.prefs)
 
+  // Intercepts React Router navigations when there are unsaved changes; shows a confirm modal.
   const blocker = useBlocker(isDirty)
 
   useEffect(() => {
@@ -122,6 +129,7 @@ export default function Profile() {
     addToast("Profile saved!", "success")
   }
 
+  // Completion percentage: each preference field counts as 1 slot, the bio counts as 1 extra.
   const completedFields = allFieldKeys.filter(k => prefs[k]).length
   const bioFilled       = bio.trim().length > 0
   const progress        = Math.round(((completedFields + (bioFilled ? 1 : 0)) / (allFieldKeys.length + 1)) * 100)

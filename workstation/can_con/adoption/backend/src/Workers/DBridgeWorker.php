@@ -71,6 +71,9 @@ final class DBridgeWorker
         $this->mq->registerConsumer('bridge.meetgreet.cancel',    [$this, 'handleMeetGreetCancel']);
         $this->mq->registerConsumer('bridge.notifications.list',  [$this, 'handleNotificationsList']);
         $this->mq->registerConsumer('bridge.notifications.read',  [$this, 'handleNotificationsRead']);
+        $this->mq->registerConsumer('bridge.saved_dogs.list',     [$this, 'handleSavedDogsList']);
+        $this->mq->registerConsumer('bridge.saved_dogs.add',      [$this, 'handleSavedDogsAdd']);
+        $this->mq->registerConsumer('bridge.saved_dogs.remove',   [$this, 'handleSavedDogsRemove']);
 
         echo "[DBridgeWorker] All consumers registered — listening\n";
 
@@ -465,5 +468,23 @@ final class DBridgeWorker
     {
         $replyTo = $this->getReplyTo($msg);
         $this->fork(fn() => $this->relay('bridge.notifications.read', 'db.notifications.read', $data, $corrId, $replyTo), $msg);
+    }
+
+    public function handleSavedDogsList(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->getReplyTo($msg);
+        $this->fork(fn() => $this->relay('bridge.saved_dogs.list', 'db.saved_dogs.list', $data, $corrId, $replyTo), $msg);
+    }
+
+    public function handleSavedDogsAdd(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->getReplyTo($msg);
+        $this->fork(fn() => $this->relay('bridge.saved_dogs.add', 'db.saved_dogs.add', $data, $corrId, $replyTo), $msg);
+    }
+
+    public function handleSavedDogsRemove(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->getReplyTo($msg);
+        $this->fork(fn() => $this->relay('bridge.saved_dogs.remove', 'db.saved_dogs.remove', $data, $corrId, $replyTo), $msg);
     }
 }

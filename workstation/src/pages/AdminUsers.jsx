@@ -1,7 +1,11 @@
+// Admin read-only view of users who have adoption activity.
+// Because there is no dedicated user-list endpoint, users are derived from the application list
+// by de-duplicating on user_id and aggregating per-user stats.
 import React, { useEffect, useState } from "react"
 import { sendMessage } from "../services/messaging"
 import AdminSidebar from "../components/AdminSidebar"
 
+// Shared dark-theme color tokens used throughout this page.
 const A = {
   bg:     '#0a0a0a',
   card:   '#111111',
@@ -12,10 +16,13 @@ const A = {
   subtle: '#444444',
 }
 
+// Deterministic palette for avatar chips — cycles by user_id so each user gets a consistent color.
 const AVATAR_COLORS = ['#7c3aed','#0369a1','#047857','#b45309','#be123c','#0e7490']
 
+// Maps a user_id to one of the six avatar colors using modulo.
 const avatarColor = (id) => AVATAR_COLORS[(id || 0) % AVATAR_COLORS.length]
 
+// Returns background/text color and display label for a user's role.
 const roleStyle = (role) => {
   switch (role) {
     case 'admin':         return { bg:'#450a0a', color:'#f87171', label:'Admin' }
@@ -25,9 +32,10 @@ const roleStyle = (role) => {
 }
 
 export default function AdminUsers() {
-  const [users, setUsers]         = useState([])
-  const [loading, setLoading]     = useState(true)
-  const [search, setSearch]       = useState("")
+  const [users, setUsers]           = useState([])
+  const [loading, setLoading]       = useState(true)
+  const [search, setSearch]         = useState("")
+  // Tracks the hovered row ID to apply a subtle hover background.
   const [hoveredRow, setHoveredRow] = useState(null)
 
   useEffect(() => { loadUsers() }, [])
@@ -35,10 +43,13 @@ export default function AdminUsers() {
   async function loadUsers() {
     setLoading(true)
     try {
+      // Fetch all applications — user identity fields come along for free in the JOIN.
       const result = await sendMessage("request.application.list", {})
       const apps = result?.applications || []
       const seen = new Set()
       const extracted = []
+      // Walk the application list once; the first time we see a user_id, build a user summary
+      // by scanning all their applications for counts.
       apps.forEach(a => {
         if (a.user_id && !seen.has(a.user_id)) {
           seen.add(a.user_id)

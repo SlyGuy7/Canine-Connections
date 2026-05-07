@@ -1,21 +1,33 @@
+// Core messaging service — all backend communication goes through this file.
+// Uses STOMP over WebSocket to talk to RabbitMQ. Every call is request/reply:
+// sendMessage publishes to a named queue and waits on a unique per-request reply queue.
 import { Client } from "@stomp/stompjs";
 
+// Derive the WebSocket URL automatically from the current page origin.
+// In dev, Vite proxies /ws to the live RabbitMQ broker (see vite.config.js).
 const BROKER_URL =
   import.meta.env.VITE_MESSAGING_URL ||
   `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}/ws`;
 
+// RabbitMQ STOMP credentials from .env.
 const MQ_LOGIN    = import.meta.env.VITE_MQ_LOGIN    || "admin";
 const MQ_PASSCODE = import.meta.env.VITE_MQ_PASSCODE || "REDACTED";
 
+// How long to wait for a reply before giving up and returning an error.
 const REQUEST_TIMEOUT_MS = 60000;
 
 // ── Persistent singleton client ──────────────────────────────────────────────
+// A single STOMP client is shared across the entire app lifetime.
+// This avoids re-connecting on every sendMessage call and lets the broker
+// automatically reconnect if the WebSocket drops.
 
 let _client = null;
 let _connected = false;
-let _connectPromise = null;
-const _pendingCallbacks = new Map(); // correlationId → { resolve, timeoutId }
+let _connectPromise = null; // Cached so concurrent callers share the same connect attempt.
 
+// Returns a promise that resolves to the connected STOMP client.
+// If a connection is already in progress, the existing promise is returned
+// so multiple callers don't open duplicate connections.
 function getClient() {
   if (_connectPromise) return _connectPromise;
 
@@ -23,8 +35,8 @@ function getClient() {
     const client = new Client({
       brokerURL: BROKER_URL,
       connectHeaders: { login: MQ_LOGIN, passcode: MQ_PASSCODE, host: "/" },
-      reconnectDelay: 3000,
-      debug: () => {},
+      reconnectDelay: 3000, // Automatically retry connection every 3 seconds after a drop.
+      debug: () => {},      // Suppress verbose STOMP debug output.
 
       onConnect: () => {
         _connected = true;
@@ -42,6 +54,7 @@ function getClient() {
         if (!_connected) reject(new Error("WebSocket error"));
       },
 
+      // Reset singleton state so the next sendMessage call triggers a fresh connect.
       onDisconnect: () => {
         _connected = false;
         _connectPromise = null;
@@ -57,10 +70,18 @@ function getClient() {
   return _connectPromise;
 }
 
+// Generates a unique correlation ID used to match each reply to its originating request.
 function makeCorrelationId() {
   return `req_${Date.now()}_${Math.random().toString(16).slice(2)}`;
 }
 
+// Publishes a message to the given queue and returns a promise that resolves with the response.
+// Flow:
+//   1. Subscribe to a unique reply queue (type.reply.<correlationId>).
+//   2. Publish the message with correlation-id and reply-to headers.
+//   3. The backend worker reads the message, processes it, and publishes the result to replyQueue.
+//   4. Our subscription receives it and resolves the promise.
+//   5. A 60-second timeout resolves with an error if no reply arrives.
 export async function sendMessage(type, payload) {
   console.log(`%c[MQ →] ${type}`, "color:#b45309;font-weight:600", payload);
   const client = await getClient();
@@ -69,11 +90,12 @@ export async function sendMessage(type, payload) {
     const correlationId    = makeCorrelationId();
     const replyQueue       = `${type}.reply.${correlationId}`;
     const replyDestination = `/queue/${replyQueue}`;
-    const receiptId        = `sub-${correlationId}`;
+    const receiptId        = `sub-${correlationId}`; // Used to confirm the subscription is active before publishing.
 
     let finished = false;
     let subscription = null;
 
+    // Centralised cleanup — unsubscribes, clears the timeout, and resolves exactly once.
     function cleanup(result) {
       if (finished) return;
       finished = true;
@@ -82,11 +104,14 @@ export async function sendMessage(type, payload) {
       resolve(result);
     }
 
+    // If no reply arrives within the timeout, the worker is likely down or the queue name is wrong.
     const timeoutId = setTimeout(() => {
       console.error(`[MQ] ✖ TIMEOUT — no response for "${type}" after ${REQUEST_TIMEOUT_MS / 1000}s. Worker may be down.`);
       cleanup({ success: false, error: "Request timed out" });
     }, REQUEST_TIMEOUT_MS);
 
+    // watchForReceipt ensures the reply subscription is confirmed by the broker before we publish,
+    // eliminating the race condition where the reply arrives before we are subscribed.
     client.watchForReceipt(receiptId, () => {
       client.publish({
         destination: `/queue/${type}`,
@@ -95,6 +120,7 @@ export async function sendMessage(type, payload) {
       });
     });
 
+    // Subscribe to the unique reply queue. x-expires auto-deletes the queue after the timeout.
     subscription = client.subscribe(
       replyDestination,
       (message) => {

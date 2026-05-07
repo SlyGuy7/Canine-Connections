@@ -1,3 +1,4 @@
+// Application entry point. Sets up routing, global context providers, and lazy-loads all pages.
 import React, { Suspense, lazy } from "react"
 import ReactDOM from "react-dom/client"
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
@@ -8,6 +9,8 @@ import Layout from "./components/Layout.jsx"
 import { ToastProvider } from "./context/ToastContext"
 import { DataCacheProvider } from "./context/DataCacheContext"
 
+// Every page is lazy-loaded so the browser only downloads the code for the page the user visits,
+// keeping the initial bundle small and the first load fast.
 const Landing         = lazy(() => import("./pages/Landing.jsx"))
 const RegisterSuccess = lazy(() => import("./pages/RegisterSuccess.jsx"))
 const VerifyEmail     = lazy(() => import("./pages/VerifyEmail.jsx"))
@@ -36,6 +39,7 @@ const AdminApplications = lazy(() => import("./pages/AdminApplications.jsx"))
 const AdminStories    = lazy(() => import("./pages/AdminStories.jsx"))
 const AdminDogs       = lazy(() => import("./pages/AdminDogs.jsx"))
 
+// Shown as a full-screen spinner while a lazy page chunk is being downloaded.
 function PageLoader() {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "var(--bg-primary)" }}>
@@ -44,6 +48,12 @@ function PageLoader() {
   )
 }
 
+// Defines all URL routes for the application.
+// Routes are grouped by access level:
+//   - Public: no guard (Landing, VerifyEmail, etc.)
+//   - Protected user: wrapped in ProtectedRoute + Layout (checks localStorage for userId)
+//   - Semi-public user: wrapped in Layout only (BrowseDogs, DogProfile, Shelters)
+//   - Admin: wrapped in AdminGuard (checks for admin role in localStorage)
 const router = createBrowserRouter([
   { path: "/",               element: <Navigate to="/landing" replace /> },
   { path: "/landing",        element: <Landing /> },
@@ -77,9 +87,14 @@ const router = createBrowserRouter([
 
   { path: "/resources",       element: <Layout><Resources /></Layout> },
   { path: "/success-stories", element: <Layout><SuccessStories /></Layout> },
+  // Catch-all: any unknown URL redirects to the landing page.
   { path: "*",          element: <Navigate to="/landing" replace /> },
 ])
 
+// Mounts React into the #root div. The provider order matters:
+//   ToastProvider — must be outermost so toasts can be triggered from anywhere.
+//   DataCacheProvider — caches dogs/shelters/quiz data globally to prevent duplicate fetches.
+//   Suspense — shows PageLoader while a lazy page chunk loads.
 ReactDOM.createRoot(document.getElementById("root")).render(
   <ToastProvider>
     <DataCacheProvider>

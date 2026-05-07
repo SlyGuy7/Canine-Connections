@@ -1,8 +1,13 @@
+// Forgot password form — sends the user's email to request.auth.forgotPassword along with
+// the current app origin so the backend can build a valid reset link. The status state
+// drives whether to show the form or a success/error banner. The optional switchToLogin
+// prop is provided when this component renders inside AuthModal, adding a "Back to Login" link.
 import React, { useState } from "react";
 import { sendMessage } from "../services/messaging";
 
 export default function ForgotPassword({ switchToLogin }) {
   const [email, setEmail]   = useState("");
+  // status is null while idle, or { type: "success"|"error", message } after a submission attempt.
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(false);
 

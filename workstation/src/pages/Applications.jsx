@@ -1,21 +1,27 @@
+// User-facing application tracker. Shows all of the logged-in user's adoption applications
+// with a visual progress trail (Submitted → In Review → Decision) and status details.
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
 
+// Maps each status string to the colors, icon, label, and descriptive message shown on the card.
 const STATUS_CONFIG = {
-  approved:  { bg: "#dcfce7", color: "#166534", icon: "✓", label: "Approved",  message: "Congratulations! Next steps have been emailed to you." },
-  rejected:  { bg: "#fee2e2", color: "#991b1b", icon: "✕", label: "Rejected",  message: "Unfortunately this application was not approved." },
+  approved:    { bg: "#dcfce7", color: "#166534", icon: "✓",  label: "Approved",  message: "Congratulations! Next steps have been emailed to you." },
+  rejected:    { bg: "#fee2e2", color: "#991b1b", icon: "✕",  label: "Rejected",  message: "Unfortunately this application was not approved." },
   "in review": { bg: "#dbeafe", color: "#1e40af", icon: "⏳", label: "In Review", message: "The shelter is currently reviewing your application." },
-  pending:   { bg: "#fef9c3", color: "#854d0e", icon: "🕐", label: "Pending",   message: "Your application is awaiting shelter review." },
+  pending:     { bg: "#fef9c3", color: "#854d0e", icon: "🕐", label: "Pending",   message: "Your application is awaiting shelter review." },
 };
 
+// Returns the STATUS_CONFIG entry for a raw status string, defaulting to pending.
 function getStatus(raw) {
   return STATUS_CONFIG[(raw || "pending").toLowerCase()] || STATUS_CONFIG.pending;
 }
 
+// The three stages shown in the visual progress trail on each application card.
 const STEPS = ["Submitted", "In Review", "Decision"];
 
+// Maps a status string to the active step index (0, 1, or 2) for the progress trail.
 function progressStep(status) {
   const s = (status || "").toLowerCase();
   if (s === "approved" || s === "rejected") return 2;
@@ -23,12 +29,14 @@ function progressStep(status) {
   return 0;
 }
 
+// Formats a MySQL datetime string into a short US-style date.
 function formatDate(dateStr) {
   if (!dateStr) return "Unknown date";
   const d = new Date(dateStr.replace(" ", "T"));
   return isNaN(d) ? dateStr : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" });
 }
 
+// Placeholder card with animated shimmer bars shown while applications are loading.
 function AppSkeleton() {
   return (
     <div style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "28px", display: "flex", flexDirection: "column", gap: "14px" }}>
@@ -41,10 +49,12 @@ function AppSkeleton() {
 
 export default function Applications() {
   const [applications, setApplications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [viewApp, setViewApp] = useState(null);
-  const navigate = useNavigate();
+  const [loading, setLoading]           = useState(true);
+  // The application currently shown in the details modal (null = modal closed).
+  const [viewApp, setViewApp]           = useState(null);
+  const navigate    = useNavigate();
   const { addToast } = useToast();
+  // Prevents double-fetching when React StrictMode mounts the component twice in dev.
   const hasFetched = useRef(false);
 
   useEffect(() => {
@@ -59,8 +69,10 @@ export default function Applications() {
     try {
       const result = await sendMessage("request.application.list", { user_id: userId });
       if (result?.success && Array.isArray(result.applications)) {
+        // Filter to only this user's applications in case the backend returns all.
         const mine = result.applications.filter(a => String(a.user_id) === String(userId));
         setApplications(mine);
+        // Cache in localStorage so BadgeGallery can read application counts without another fetch.
         localStorage.setItem("myApplications", JSON.stringify(mine));
       }
     } catch {
@@ -70,6 +82,7 @@ export default function Applications() {
     }
   }
 
+  // Build a per-status count map for the summary strip at the top of the page.
   const statusCounts = applications.reduce((acc, a) => {
     const key = (a.status || "pending").toLowerCase();
     acc[key] = (acc[key] || 0) + 1;

@@ -1,3 +1,8 @@
+/* App.css — legacy global styles. Most newer components use inline styles instead.
+   This file is still imported but many of these classes are only used on the Landing page
+   and the older dashboard layout. */
+
+/* Global CSS custom properties (design tokens) used by older CSS-class-based components. */
 :root {
   --primary: #4f46e5;
   --secondary: #6366f1;

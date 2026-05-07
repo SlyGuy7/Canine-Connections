@@ -1,6 +1,9 @@
+// Fixed left-hand navigation sidebar rendered on every admin page.
+// Reads admin identity from localStorage and provides nav links + sign-out.
 import React, { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 
+// All five admin sections — rendered as nav buttons in order.
 const links = [
   { label: "Overview",        path: "/admin/dashboard",     icon: "▦" },
   { label: "Dogs",            path: "/admin/dogs",          icon: "🐾" },
@@ -12,15 +15,19 @@ const links = [
 export default function AdminSidebar() {
   const navigate  = useNavigate()
   const location  = useLocation()
+  // Tracks which nav button is hovered so we can apply a hover background without CSS.
   const [hovered, setHovered] = useState(null)
 
+  // Clears all admin session keys from localStorage and redirects to the admin login page.
   const handleLogout = () => {
     ["adminToken","adminRole","adminUserId","adminEmail","adminFirstName"].forEach(k => localStorage.removeItem(k))
     navigate("/admin")
   }
 
+  // Pull identity info stored by AdminLogin.jsx; used in the bottom user card.
   const adminName  = localStorage.getItem("adminFirstName") || ""
   const adminEmail = localStorage.getItem("adminEmail")     || "Admin"
+  // Build a single-character initial for the avatar chip.
   const initials   = adminName ? adminName[0].toUpperCase() : adminEmail[0].toUpperCase()
 
   return (

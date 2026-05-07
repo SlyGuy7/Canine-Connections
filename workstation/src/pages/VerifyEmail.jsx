@@ -1,3 +1,7 @@
+// Email verification landing page — the user arrives here after clicking the link in their
+// registration email. Reads the token from the URL query string and sends it to
+// request.auth.verify. The status state drives which of three panels is shown:
+// "verifying" (loading spinner), "success" (link to login), or "error" (expired/invalid token).
 import React, { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
@@ -5,6 +9,7 @@ import { sendMessage } from "../services/messaging"
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  // "verifying" → "success" | "error" after the backend responds.
   const [status, setStatus] = useState("verifying")
   const [error, setError] = useState("")
 

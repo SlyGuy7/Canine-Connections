@@ -1,3 +1,6 @@
+// Password reset form — reads the one-time token from the URL query string and sends it with
+// the new password to request.auth.setNewPassword. If the token is missing the page shows an
+// error immediately. On success the "done" state replaces the form with a confirmation screen.
 import React, { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
@@ -5,6 +8,7 @@ import { sendMessage } from "../services/messaging";
 export default function ResetPassword() {
   const [searchParams]    = useSearchParams();
   const navigate          = useNavigate();
+  // Token is embedded in the email link as ?token=<value> by the backend forgot-password handler.
   const token             = searchParams.get("token") || "";
 
   const [newPassword, setNewPassword]     = useState("");

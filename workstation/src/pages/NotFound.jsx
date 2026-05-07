@@ -1,3 +1,5 @@
+// 404 fallback page — renders when no route matches. Reuses the .success-container and
+// .success-card CSS classes from index.css rather than defining its own layout.
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import "../index.css";

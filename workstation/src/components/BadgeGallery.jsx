@@ -1,12 +1,18 @@
+// Achievement badge gallery shown on the user's Dashboard and Profile pages.
+// Reads localStorage to determine which of the 12 badges have been earned.
 import React, { useState, useEffect } from "react";
 
 export default function BadgeGallery() {
+  // Array of badge IDs the current user has unlocked (e.g. ["member", "seeker"]).
   const [unlockedBadges, setUnlockedBadges] = useState([]);
+  // The badge the user clicked — drives the detail modal.
   const [selectedBadge, setSelectedBadge] = useState(null);
 
   useEffect(() => {
+    // Check each badge condition against localStorage data on mount.
+    // No backend call needed — all signals are stored locally after user actions.
     const earned = [];
-    
+
     const userEmail = localStorage.getItem("userEmail");
     const quizDone = localStorage.getItem("quizCompleted") === "true";
     const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
@@ -15,6 +21,7 @@ export default function BadgeGallery() {
     const messages = JSON.parse(localStorage.getItem("messages") || "[]");
     const viewedShelters = JSON.parse(localStorage.getItem("viewedShelters") || "[]");
 
+    // Each push corresponds to one of the 12 badge definitions in badgeSystem below.
     if (userEmail) earned.push("member");
     if (quizDone) earned.push("matching");
     if (saved.length >= 1) earned.push("seeker");

@@ -1,18 +1,24 @@
+// Shared page shell wrapping all authenticated user-facing pages.
+// Handles the sidebar (desktop fixed / mobile drawer), Back button, and page-enter animation.
 import React, { useState, useEffect } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import Sidebar from "./Sidebar"
 import { useIsMobile } from "../hooks/useIsMobile"
 import { PawPrint, Menu } from "lucide-react"
 
+// These are "top-level" pages — navigating back from them would leave the app, so we hide the Back button.
 const NO_BACK = ["/dashboard", "/browse-dogs", "/shelters", "/resources"]
 
 export default function Layout({ children }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  // Only show the Back button on pages that are not top-level destinations.
   const showBack = !NO_BACK.includes(pathname)
   const isMobile = useIsMobile()
+  // Controls whether the mobile drawer sidebar is slid in or out.
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
+  // Auto-close the mobile sidebar whenever the user navigates to a new page.
   useEffect(() => { setSidebarOpen(false) }, [pathname])
 
   return (

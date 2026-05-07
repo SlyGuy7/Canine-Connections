@@ -1,18 +1,21 @@
+// Main authenticated home screen. Greets the user by name and shows stats, quick actions,
+// a featured dog, quiz matches, the badge gallery, and a post-adoption journal panel.
 import React, { useEffect, useMemo, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import { useDataCache } from "../context/DataCacheContext"
 import { useIsMobile } from "../hooks/useIsMobile"
 import { Zap } from "lucide-react"
-
 import BadgeGallery from "../components/BadgeGallery"
 
+// Calculates a rough compatibility score (60–99) between a dog and the user's quiz preferences.
+// Used to rank the "Your Top Matches" section without making an additional backend request.
 function calcMatchScore(dog, prefs) {
   let score = 60
   const size = (dog.size || "").toLowerCase()
   if (prefs.homeType === "Apartment" && (size === "small" || size === "medium")) score += 10
   if (prefs.activityLevel === "High — runs, hikes, very active" && dog.energy_level === "high") score += 10
-  if (prefs.activityLevel === "Low — mostly indoors" && dog.energy_level === "low") score += 10
+  if (prefs.activityLevel === "Low — mostly indoors"            && dog.energy_level === "low")  score += 10
   if (prefs.otherPets && prefs.otherPets !== "None" && dog.good_with_dogs == "1") score += 8
   if (prefs.household?.includes("children") && dog.good_with_kids == "1") score += 8
   if (prefs.allergies === "Yes — hypoallergenic only" && (dog.breed || "").toLowerCase().includes("poodle")) score += 4
@@ -27,19 +30,20 @@ export default function Dashboard() {
   const { getDogs } = useDataCache()
   const isMobile = useIsMobile()
 
-  const [user, setUser] = useState("Friend")
-  const [featuredDog, setFeaturedDog] = useState(null)
-  const [loadingDog, setLoadingDog] = useState(true)
-  const [adoptedDogs, setAdoptedDogs] = useState([])
-  const [selectedDogId, setSelectedDogId] = useState(null)
-  const [logs, setLogs] = useState([])
+  const [user, setUser]           = useState("Friend")         // Display name shown in the greeting.
+  const [featuredDog, setFeaturedDog] = useState(null)         // A randomly selected available dog to highlight.
+  const [loadingDog, setLoadingDog]   = useState(true)
+  const [adoptedDogs, setAdoptedDogs] = useState([])           // Dogs with finalized adoption applications.
+  const [selectedDogId, setSelectedDogId] = useState(null)     // Which adopted dog's journal is being viewed.
+  const [logs, setLogs]           = useState([])               // Journal entries for the selected adopted dog.
   const [loadingLogs, setLoadingLogs] = useState(false)
-  const [logForm, setLogForm] = useState({ log_type: "general", title: "", notes: "", log_date: new Date().toISOString().split("T")[0] })
+  const [logForm, setLogForm]     = useState({ log_type: "general", title: "", notes: "", log_date: new Date().toISOString().split("T")[0] })
   const [savingLog, setSavingLog] = useState(false)
   const [showLogForm, setShowLogForm] = useState(false)
-  const [stats, setStats] = useState({ saved: 0, applications: 0, journalCount: 0 })
-  const [matchedDogs, setMatchedDogs] = useState([])
+  const [stats, setStats]         = useState({ saved: 0, applications: 0, journalCount: 0 })
+  const [matchedDogs, setMatchedDogs] = useState([])           // Top 3 quiz-scored dogs.
 
+  // Reload everything on each navigation so stats stay fresh when returning from other pages.
   useEffect(() => { loadAll() }, [location])
 
   async function loadAll() {
@@ -48,6 +52,8 @@ export default function Dashboard() {
     await Promise.all([loadFeaturedDog(), loadAdoptions(), loadMatchedDogs()])
   }
 
+  // Scores all cached dogs against the user's profile prefs and picks the top 3.
+  // Skipped entirely if the user has not set any preferences.
   async function loadMatchedDogs() {
     try {
       const profile = JSON.parse(localStorage.getItem("userProfile") || "{}")
@@ -62,6 +68,8 @@ export default function Dashboard() {
     } catch {}
   }
 
+  // Resolves the user's first name from localStorage in order of preference.
+  // Falls back through full name, email prefix, and finally "Friend".
   function loadUser() {
     const firstName = localStorage.getItem("userFirstName")
     const fullName  = localStorage.getItem("userFullName")

@@ -1,11 +1,15 @@
+// Compatibility quiz — loads questions from the DB via DataCacheContext, optionally pre-fills
+// answers from the user's saved Profile preferences, and submits answers to request.quiz.submit.
+// On success the backend returns matched dog IDs which are cached in localStorage and the user
+// is sent to QuizResults. If the user has already completed the quiz they see a "retake" screen.
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useDataCache } from "../context/DataCacheContext";
 import { useToast } from "../context/ToastContext";
 
-// ─── Professional text overrides ────────────────────────────────────────────
-// Keys are the exact strings returned by the DB (case-insensitive match).
+// Friendlier display text for question strings returned by the database.
+// Keys are lowercase versions of the original DB strings.
 const QUESTION_LABELS = {
   "how active is your lifestyle?":          "What best describes your activity level?",
   "what size dog are you looking for?":     "What size of dog are you looking to adopt?",
@@ -55,8 +59,8 @@ function displayOption(text) {
   return OPTION_LABELS[text.toLowerCase()] ?? text;
 }
 
-// ─── Profile pre-fill ────────────────────────────────────────────────────────
-// Matches questions and options by partial text so DB wording doesn't matter.
+// Converts the user's Profile preference selections into quiz answer rules using partial-text
+// matching, so the quiz remains compatible even if the DB wording changes slightly.
 function buildRules(prefs) {
   const rules = [];
 
@@ -125,7 +129,7 @@ function buildPreFill(questions, prefs) {
   return prefilled;
 }
 
-// ─── Skeleton ────────────────────────────────────────────────────────────────
+// Placeholder shimmer card shown while questions are loading.
 function QuestionSkeleton() {
   return (
     <div style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "28px", display: "flex", flexDirection: "column", gap: "14px" }}>
@@ -151,8 +155,8 @@ export default function Quiz() {
     () => localStorage.getItem("quizCompleted") === "true"
   );
 
-  // Stores the originally pre-filled answers so we can restore the badge
-  // if the user goes back to the profile-suggested option.
+  // Stores the original profile-derived answers so we can restore the "from profile" badge
+  // if the user picks a different option and then switches back.
   const originalPrefilled = useRef({});
 
   const hasFetched = useRef(false);

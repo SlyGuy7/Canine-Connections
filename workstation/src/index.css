@@ -1,10 +1,15 @@
-/* Page transition */
+/* index.css — primary global stylesheet loaded by main.jsx.
+   Defines CSS variables for theming, animations, component base styles,
+   and responsive overrides used across the entire application. */
+
+/* Fade-in + slide-up animation applied to page content by the Layout component on route change. */
 @keyframes page-enter {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* Dark mode */
+/* CSS custom properties for the light theme (default). Switching to dark mode swaps these values
+   by setting data-theme="dark" on the <html> element in Sidebar.jsx. */
 :root {
   --bg-primary:   #fffaf5;
   --bg-secondary: #f7efe7;

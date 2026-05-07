@@ -1,3 +1,7 @@
+// Single shelter detail page — loads shelter info via request.shelters.get and falls back to the
+// DataCacheContext shelter list if the direct fetch fails. Tracks viewed shelter IDs in localStorage.
+// Loads up to 50 available dogs from this shelter in parallel and shows the first 12, with a
+// "Message Shelter" button that navigates to /messages with router state so chat opens immediately.
 import React, { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"

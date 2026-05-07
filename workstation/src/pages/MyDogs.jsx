@@ -1,5 +1,10 @@
-import React, { useEffect, useState } from "react";
+// "Your Vault" — displays the dogs the user has saved while browsing. Fetches the authoritative
+// list from the backend (request.saved_dogs.list) on mount and syncs localStorage as a cache.
+// Removing a dog does an optimistic local update first, then fires request.saved_dogs.remove
+// to keep the database in sync. A shimmer skeleton is shown while the fetch is in flight.
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
 
 const SIZE_LABELS = { small: "Small", medium: "Medium", large: "Large", extra_large: "XL" };
@@ -20,23 +25,78 @@ function getAgeLabel(ageYears) {
 
 export default function MyDogs() {
   const [savedDogs, setSavedDogs] = useState([]);
+  const [loading, setLoading]     = useState(true);
   const [removingId, setRemovingId] = useState(null);
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const hasFetched = useRef(false);
 
+  // hasFetched prevents a double-fetch when React StrictMode mounts the component twice in dev.
   useEffect(() => {
-    setSavedDogs(JSON.parse(localStorage.getItem("savedDogs") || "[]"));
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    loadSavedDogs();
   }, []);
 
+  async function loadSavedDogs() {
+    const userId = localStorage.getItem("userId");
+    if (!userId) { setLoading(false); return; }
+    try {
+      const result = await sendMessage("request.saved_dogs.list", { user_id: parseInt(userId) });
+      if (result?.success && Array.isArray(result.dogs)) {
+        // Build the photo fields the card UI expects (same shape as dogs from BrowseDogs).
+        const dogs = result.dogs.map(dog => ({
+          ...dog,
+          photoList: dog.photos ? dog.photos.split(",").map(p => p.trim()).filter(Boolean) : [],
+          image: dog.photos ? dog.photos.split(",")[0].trim() : null,
+        }));
+        setSavedDogs(dogs);
+        localStorage.setItem("savedDogs", JSON.stringify(dogs));
+      } else {
+        addToast("Could not load saved dogs.", "error");
+      }
+    } catch {
+      addToast("Could not connect to server.", "error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function handleRemoveDog(dog) {
+    const userId = localStorage.getItem("userId");
     setRemovingId(dog.dog_id);
+    // Optimistic update: fade out and remove locally after 250ms animation, then sync to backend.
     setTimeout(() => {
       const updated = savedDogs.filter(d => d.dog_id !== dog.dog_id);
-      localStorage.setItem("savedDogs", JSON.stringify(updated));
       setSavedDogs(updated);
+      localStorage.setItem("savedDogs", JSON.stringify(updated));
       setRemovingId(null);
       addToast(`${dog.name} removed from your Vault`, "success");
+      if (userId) sendMessage("request.saved_dogs.remove", { user_id: parseInt(userId), dog_id: dog.dog_id })
+        .then(r => { if (!r?.success) addToast("Could not sync removal.", "error"); })
+        .catch(() => addToast("Could not connect to server.", "error"));
     }, 250);
+  }
+
+  if (loading) {
+    return (
+      <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 60px 0" }}>
+        <div style={{ marginBottom: "28px" }}>
+          <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Your Vault</h1>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "20px" }}>
+          {[1, 2, 3].map(i => (
+            <div key={i} style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
+              <div style={{ height: "220px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+              <div style={{ padding: "18px 20px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                <div style={{ height: "18px", width: "50%", borderRadius: "8px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+                <div style={{ height: "14px", width: "70%", borderRadius: "8px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (

@@ -1,7 +1,12 @@
+// Login form — authenticates via request.auth.login, enforces a client-side lockout timer
+// when the backend returns locked_until, and writes all user profile fields to localStorage
+// on success. Accepts switchToRegister and switchToForgot props so it can be embedded inside
+// AuthModal without triggering a page navigation.
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { Eye, EyeOff } from "lucide-react";
+// localStorage key that stores the Unix timestamp (seconds) when the lockout expires.
 const LOCKOUT_KEY = "canine_lockout_until";
 function formatCountdown(secs) {
   const m = Math.floor(secs / 60).toString().padStart(2, "0");
@@ -16,13 +21,17 @@ export default function Login({ switchToRegister, switchToForgot }) {
   const [loading, setLoading] = useState(false);
   const [resendSent, setResendSent] = useState(false);
   const [resending, setResending] = useState(false);
+  // Lazy initialiser reads the lockout timestamp saved from a previous failed-login response
+  // and converts it to a remaining-seconds countdown so the timer resumes across page refreshes.
   const [lockoutRemaining, setLockoutRemaining] = useState(() => {
     const until = parseInt(localStorage.getItem(LOCKOUT_KEY) || "0", 10);
     const remaining = until - Math.floor(Date.now() / 1000);
     return remaining > 0 ? remaining : 0;
   });
   const navigate = useNavigate();
+  // Detect the specific "verify your email" error so we can show the resend link inline.
   const isVerifyError = error.toLowerCase().includes("verify your email");
+  // Ticks the countdown once per second and removes the key from localStorage when it reaches 0.
   useEffect(() => {
     if (lockoutRemaining <= 0) return;
     const timer = setInterval(() => {
@@ -52,6 +61,8 @@ export default function Login({ switchToRegister, switchToForgot }) {
       });
       if (result.success) {
         const user = result.user || {};
+        // Clear any stale session data from a previous user, but keep theme preference and
+        // geocache so the UI doesn't flicker and the shelter map doesn't need to re-geocode.
         const KEEP = new Set(["canine_theme", "shelter_geocache"]);
         Object.keys(localStorage).forEach(k => { if (!KEEP.has(k)) localStorage.removeItem(k); });
         const fName = user.first_name || user.firstName || "";

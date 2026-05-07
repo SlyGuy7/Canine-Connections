@@ -1,3 +1,8 @@
+// Shelter directory page — supports both a card grid (paginated, 12 per page) and an interactive
+// Leaflet map view. In map mode, shelters are geocoded one at a time via Nominatim (1.2 s delay
+// between uncached requests to respect the rate limit). The user can enable the browser geolocation
+// API to filter the map to shelters within a chosen radius and see distances on each card.
+// Geocode results are persisted in localStorage under "shelter_geocache" to survive page refreshes.
 import React, { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
@@ -7,6 +12,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
 
+// Remove Leaflet's default icon URL resolver so our explicit CDN URLs take effect.
 delete L.Icon.Default.prototype._getIconUrl
 L.Icon.Default.mergeOptions({
   iconRetinaUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
@@ -28,6 +34,7 @@ const BLUE_ICON = new L.Icon({
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34],
 })
 
+// In-memory geocache pre-populated from localStorage; written back after every new geocode result.
 const geocodeCache = (() => {
   try { return JSON.parse(localStorage.getItem("shelter_geocache") || "{}") } catch { return {} }
 })()
@@ -55,6 +62,7 @@ async function geocode(city, state) {
   return null
 }
 
+// Haversine formula — returns the great-circle distance in kilometres between two lat/lng points.
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371
   const dLat = (lat2 - lat1) * Math.PI / 180
@@ -67,6 +75,7 @@ function kmToMiles(km) { return km * 0.621371 }
 
 const RADIUS_OPTIONS = [5, 10, 15, 25, 50]
 
+// Invisible Leaflet component that moves the map view whenever lat/lng/zoom props change.
 function RecenterMap({ lat, lng, zoom }) {
   const map = useMap()
   useEffect(() => { map.setView([lat, lng], zoom) }, [lat, lng, zoom])

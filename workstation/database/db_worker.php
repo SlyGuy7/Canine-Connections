@@ -139,7 +139,8 @@ $queues = [
     'db.enquiry.send',
     'db.chat.start','db.chat.message','db.chat.history','db.chat.sessions',
     'db.meetgreet.schedule','db.meetgreet.list','db.meetgreet.cancel',
-    'db.notifications.list','db.notifications.read'
+    'db.notifications.list','db.notifications.read',
+    'db.saved_dogs.list','db.saved_dogs.add','db.saved_dogs.remove'
 ];
 
 logMsg("Declaring " . count($queues) . " queues...");
@@ -713,6 +714,26 @@ function handleQuery($queue, $data, $db) {
             }
             logMsg("Dog {$action}: dog_id={$dogId} breed={$breed}");
             return ["success"=>true,"dog_id"=>$dogId,"action"=>$action];
+
+        case "db.saved_dogs.list":
+            if (!isset($data['user_id'])) return ["success"=>false,"error"=>"Missing user_id"];
+            $userId=(int)$data['user_id'];
+            $sql="SELECT d.*,GROUP_CONCAT(p.photo_url ORDER BY p.is_primary DESC) as photos FROM saved_dogs sd JOIN dogs d ON sd.dog_id=d.dog_id LEFT JOIN dog_photos p ON d.dog_id=p.dog_id WHERE sd.user_id={$userId} GROUP BY d.dog_id ORDER BY sd.created_at DESC";
+            $result=$db->query($sql);
+            if (!$result) return ["success"=>false,"error"=>$db->error];
+            return ["success"=>true,"dogs"=>fetchAllAssoc($result)];
+
+        case "db.saved_dogs.add":
+            if (!isset($data['user_id'])||!isset($data['dog_id'])) return ["success"=>false,"error"=>"Missing user_id or dog_id"];
+            $userId=(int)$data['user_id']; $dogId=(int)$data['dog_id'];
+            $db->query("INSERT IGNORE INTO saved_dogs (user_id,dog_id) VALUES ({$userId},{$dogId})");
+            return ["success"=>true];
+
+        case "db.saved_dogs.remove":
+            if (!isset($data['user_id'])||!isset($data['dog_id'])) return ["success"=>false,"error"=>"Missing user_id or dog_id"];
+            $userId=(int)$data['user_id']; $dogId=(int)$data['dog_id'];
+            $db->query("DELETE FROM saved_dogs WHERE user_id={$userId} AND dog_id={$dogId}");
+            return ["success"=>true];
 
         default:
             logMsg("No SQL handler defined for ".$queue);

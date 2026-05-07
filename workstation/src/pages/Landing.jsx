@@ -1,9 +1,15 @@
+// Public marketing landing page — visible to both logged-in and anonymous users.
+// Fetches up to 200 available dogs on mount and uses the first 6 as "featured" cards.
+// Logged-in visitors see their name in the navbar and go straight to /browse-dogs;
+// anonymous visitors are prompted to register via AuthModal when they interact with CTAs.
 import React, { useEffect, useMemo, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useIsMobile } from "../hooks/useIsMobile"
 import { sendMessage } from "../services/messaging"
 import AuthModal from "../components/AuthModal"
 
+// Modal that fetches up to 4 dogs matching a clicked category (Small, Large, Puppies) and
+// displays them as a preview grid before offering a "See All" link to /browse-dogs.
 function CategoryPreviewModal({ category, close, navigate }) {
   if (!category) return null
 
@@ -91,6 +97,8 @@ function CategoryPreviewModal({ category, close, navigate }) {
   )
 }
 
+// Quick-view modal shown when a user clicks a featured dog card. Save and Apply buttons
+// call requireAuth() instead of navigating so anonymous users are nudged to register.
 function DogModal({ dog, close, requireAuth }) {
   if (!dog) return null
   return (
@@ -213,13 +221,16 @@ export default function Landing() {
 
   const isLoggedIn = !!localStorage.getItem("userId")
   const displayName = localStorage.getItem("userFullName") || localStorage.getItem("userFirstName") || "User"
+  // Derive two-letter initials for the avatar chip shown in the navbar when logged in.
   const initials = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
 
+  // Main call-to-action: sends logged-in users to /browse-dogs, prompts anonymous users to register.
   function handleCTA() {
     if (isLoggedIn) navigate("/browse-dogs")
     else setModalMode("register")
   }
 
+  // Load up to 200 available dogs on mount; the first 6 become the "featured" row via useMemo below.
   useEffect(() => {
     sendMessage("request.dogs.list", { limit: 200 })
       .then((result) => {
@@ -237,13 +248,16 @@ export default function Landing() {
       .finally(() => setDogsLoading(false))
   }, [])
 
+  // Slice once so re-renders that don't change the dogs array don't recreate the featured list.
   const featuredDogs = useMemo(() => dogs.slice(0, 6), [dogs])
 
+  // Closes any open dog modal and forces the register flow — called by DogModal action buttons.
   function requireAuth() {
     setSelectedDog(null)
     setModalMode("register")
   }
 
+  // "Shelters" category routes directly to /shelters instead of opening a preview modal.
   const categories = [
     { label: "Small Dogs", icon: <IconSmallDog />, key: "Small Dogs" },
     { label: "Large Dogs", icon: <IconLargeDog />, key: "Large Dogs" },
@@ -369,6 +383,8 @@ export default function Landing() {
       </section>
 
       {/* ── Dog of the Week ── */}
+      {/* Picks a dog deterministically by using the current weekday index mod the total dog count,
+          so every visitor sees the same dog on a given day without any extra backend logic. */}
       {dogs.length > 0 && (() => {
         const dotw = dogs[new Date().getDay() % dogs.length]
         const dotwPhoto = dotw?.photos ? dotw.photos.split(",")[0].trim() : null

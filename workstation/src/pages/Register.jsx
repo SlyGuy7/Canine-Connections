@@ -1,3 +1,7 @@
+// Registration form — collects name, phone, address, email, password, and two Dexter's Law ID
+// documents (image or PDF, max 5 MB each, must be different files). ID files are base64-encoded
+// in the browser and sent with the registration payload to request.auth.register. On success the
+// user lands on /register-success to confirm their email before they can log in.
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
@@ -21,6 +25,8 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
+  // Scores password strength on four criteria (length ≥8, uppercase, digit, special char),
+  // each worth 1 point; the strength bar and text label reflect the total score (0–4).
   const handlePasswordChange = (e) => {
     const val = e.target.value;
     setPassword(val);

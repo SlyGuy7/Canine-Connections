@@ -1,3 +1,6 @@
+// Legacy "Saved Dogs" page — an older version of the saved-dogs list that renders with the
+// classic Sidebar component. The newer MyDogs.jsx (reachable from the Dashboard sidebar)
+// supersedes this page but both read from the same "savedDogs" localStorage key.
 import React, { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { useToast } from "../context/ToastContext"

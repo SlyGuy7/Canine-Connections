@@ -1,3 +1,5 @@
+// Standalone login page for the admin portal (/admin).
+// Uses the same auth endpoint as the user login but requires super_admin or shelter_admin role.
 import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
@@ -8,6 +10,7 @@ export default function AdminLogin() {
   const [error, setError]       = useState("")
   const [loading, setLoading]   = useState(false)
 
+  // Generic field change handler — updates the formData state using the input's name attribute.
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }))
   }
@@ -17,17 +20,20 @@ export default function AdminLogin() {
     setError("")
     setLoading(true)
     try {
+      // The same login queue is used by the regular user login; the role check below distinguishes admins.
       const result = await sendMessage("request.auth.login", {
         email:    formData.email,
         password: formData.password,
       })
       if (result?.success && result.user) {
         const role = result.user.role
+        // Reject users who successfully authenticated but do not have an admin role.
         if (role !== "super_admin" && role !== "shelter_admin") {
           setError("Access denied. Admin privileges required.")
           setLoading(false)
           return
         }
+        // Store the admin session keys read by AdminGuard.jsx and AdminSidebar.jsx.
         localStorage.setItem("adminToken",     "true")
         localStorage.setItem("adminRole",      role)
         localStorage.setItem("adminUserId",    result.user.user_id)

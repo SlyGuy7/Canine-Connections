@@ -1,6 +1,10 @@
+// Educational resources page — fetches up to 100 articles, videos, and links from the backend
+// and renders them either grouped by category (in the "All" view) or as a flat grid (when a
+// specific category is active). A search bar filters results by title or description client-side.
 import React, { useState, useEffect } from "react"
 import { sendMessage } from "../services/messaging"
 
+// Available filter tabs. "all" shows all resources grouped by section; others filter to one category.
 const CATEGORIES = [
   { value: "all",       label: "All Resources" },
   { value: "training",  label: "Training" },
@@ -52,6 +56,8 @@ export default function Resources() {
     return matchCat && matchSearch
   })
 
+  // Build a category → items map used when "All" is active to render each section as a group.
+  // Empty categories are omitted so the layout doesn't show headings with no cards.
   const grouped = CATEGORIES.slice(1).reduce((acc, cat) => {
     const items = filtered.filter(r => r.category === cat.value)
     if (items.length > 0) acc[cat.value] = items

@@ -1,9 +1,13 @@
+// Quiz results page — reads the matched dog IDs saved by Quiz.jsx in localStorage, fetches each
+// dog individually via request.dogs.get in parallel, and renders the results as a card grid.
+// If no IDs were matched, it shows the user's selected preferences and offers suggestions for
+// broadening their criteria. Dogs can be saved/unsaved directly from this page.
 import React, { useState, useEffect, useRef } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import { useToast } from "../context/ToastContext"
 
-
+// Maps quiz answer option IDs to human-readable labels and icons for the "no matches" preferences display.
 const TRAIT_LABELS = {
   "1":  { label: "Very active lifestyle",          icon: "🏃" },
   "2":  { label: "Moderately active lifestyle",    icon: "🚶" },
@@ -78,16 +82,21 @@ export default function QuizResults() {
     }
   }
 
+  // Optimistic save/unsave: updates localStorage and the heart icon immediately, then fires
+  // the backend call in the background so the change persists across devices.
   const handleToggleSave = (dog) => {
+    const userId = parseInt(localStorage.getItem("userId") || "0")
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]")
     const isSaved = savedIds.has(dog.dog_id)
     let updated
     if (isSaved) {
       updated = savedDogs.filter(d => d.dog_id !== dog.dog_id)
       addToast(`${dog.name} removed from saved dogs.`, "success")
+      if (userId) sendMessage("request.saved_dogs.remove", { user_id: userId, dog_id: dog.dog_id }).catch(() => {})
     } else {
       updated = [...savedDogs, dog]
       addToast(`${dog.name} saved!`, "success")
+      if (userId) sendMessage("request.saved_dogs.add", { user_id: userId, dog_id: dog.dog_id }).catch(() => {})
     }
     localStorage.setItem("savedDogs", JSON.stringify(updated))
     setSavedIds(new Set(updated.map(d => d.dog_id)))

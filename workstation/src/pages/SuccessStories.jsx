@@ -1,7 +1,10 @@
+// Static success stories page — all content is hard-coded in the STORIES array (no backend fetch).
+// Shows adoption testimonials as photo cards, a stats bar, and a CTA to /browse-dogs.
 import React from "react"
 import { useNavigate } from "react-router-dom"
 import { Heart } from "lucide-react"
 
+// Hard-coded adoption story data — photos are from Unsplash.
 const STORIES = [
   {
     id: 1,

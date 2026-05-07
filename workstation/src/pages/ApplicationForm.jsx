@@ -1,24 +1,30 @@
+// Multi-section adoption application form for a specific dog.
+// Pre-fills fields from the user's saved profile preferences and shows a review modal before final submission.
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
 import confetti from "canvas-confetti";
 
+// Reads the user's saved profile preferences from localStorage and maps them to application form defaults.
+// This avoids making users re-answer questions they've already set in their profile.
 function profileToFormDefaults() {
   const prefs = JSON.parse(localStorage.getItem("userProfile") || "{}").prefs || {};
 
+  // Map profile home types to the terminology used in the application form.
   let residenceType = "Single Family Home";
   let yardType      = "No yard";
-  if (prefs.homeType === "Apartment")          { residenceType = "Apartment";           yardType = "No yard"; }
-  else if (prefs.homeType === "House with yard") { residenceType = "Single Family Home"; yardType = "Fenced yard"; }
-  else if (prefs.homeType === "Farm / Rural")    { residenceType = "Single Family Home"; yardType = "Fenced yard"; }
+  if (prefs.homeType === "Apartment")              { residenceType = "Apartment";           yardType = "No yard"; }
+  else if (prefs.homeType === "House with yard")   { residenceType = "Single Family Home"; yardType = "Fenced yard"; }
+  else if (prefs.homeType === "Farm / Rural")      { residenceType = "Single Family Home"; yardType = "Fenced yard"; }
   else if (prefs.homeType === "House without yard") { residenceType = "Single Family Home"; yardType = "No yard"; }
 
+  // Map profile hours-home values to the more descriptive labels used in the form dropdown.
   const hoursMap = {
-    "Less than 4 hours":     "Less than 4 hours per day",
-    "4–8 hours":             "4–8 hours per day",
-    "8–12 hours":            "8–12 hours per day",
-    "Mostly home all day":   "Rarely alone — home most of the day",
+    "Less than 4 hours":   "Less than 4 hours per day",
+    "4–8 hours":           "4–8 hours per day",
+    "8–12 hours":          "8–12 hours per day",
+    "Mostly home all day": "Rarely alone — home most of the day",
   };
 
   const currentAnimals  = prefs.otherPets === "None" ? "None" : "";
@@ -29,14 +35,16 @@ function profileToFormDefaults() {
   return { residenceType, yardType, currentAnimals, hoursAlone, allergies, priorExperience };
 }
 
+// Reusable inline style objects for form inputs to avoid repeating the same style object.
 const INPUT = {
   width: "100%", padding: "12px 14px", borderRadius: "10px",
   border: "1px solid #e5ddd6", fontSize: "15px", fontFamily: "'Inter', sans-serif",
   color: "#2f241d", outline: "none", boxSizing: "border-box", background: "white",
 };
-const SELECT = { ...INPUT, cursor: "pointer" };
+const SELECT   = { ...INPUT, cursor: "pointer" };
 const TEXTAREA = { ...INPUT, resize: "vertical" };
 
+// Wraps a form input with a labelled block. The required prop appends a red asterisk.
 function Field({ label, required, children }) {
   return (
     <div>
@@ -48,6 +56,8 @@ function Field({ label, required, children }) {
   );
 }
 
+// Renders a numbered section card with a header and scrollable content area.
+// Used for the four application sections (Contact, Household, Care & Lifestyle, Agreements).
 function SectionCard({ number, title, children }) {
   return (
     <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", overflow: "hidden" }}>

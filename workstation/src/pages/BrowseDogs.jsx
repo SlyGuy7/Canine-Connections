@@ -1,3 +1,5 @@
+// Main dog discovery and search page.
+// Loads up to 500 dogs from the cache and lets users search, filter, and paginate through them.
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
@@ -5,11 +7,14 @@ import { useDataCache } from "../context/DataCacheContext";
 import { useToast } from "../context/ToastContext";
 import { History } from "lucide-react";
 
+// Dogs shown per page in the paginated grid.
 const PAGE_SIZE = 24;
 
+// Display labels and badge colors for each dog size value stored in the database.
 const SIZE_LABELS = { small: "Small", medium: "Medium", large: "Large", extra_large: "XL" };
 const SIZE_COLORS = { small: { bg: "#eff6ff", color: "#1d4ed8" }, medium: { bg: "#f0fdf4", color: "#15803d" }, large: { bg: "#fefce8", color: "#a16207" }, extra_large: { bg: "#fdf4ff", color: "#7e22ce" } };
 
+// Converts a numeric age to a human-readable category used in filter chips and badges.
 function getAgeCategory(ageYears) {
   const age = Number(ageYears) || 0;
   if (age <= 1) return "Puppy";
@@ -18,6 +23,7 @@ function getAgeCategory(ageYears) {
   return "Senior";
 }
 
+// Animated shimmer placeholder card displayed while the dog list is loading from the cache.
 function DogCardSkeleton() {
   return (
     <div style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
@@ -32,13 +38,15 @@ function DogCardSkeleton() {
   );
 }
 
+// Calculates a rough compatibility score (60–99) between a dog and the user's quiz preferences.
+// Returns null when no preferences have been saved so the badge is hidden for first-time visitors.
 function calcMatchScore(dog, prefs) {
   if (!prefs || !Object.keys(prefs).length) return null;
   let score = 60;
   const size = (dog.size || "").toLowerCase();
   if (prefs.homeType === "Apartment" && (size === "small" || size === "medium")) score += 10;
   if (prefs.activityLevel === "High — runs, hikes, very active" && dog.energy_level === "high") score += 10;
-  if (prefs.activityLevel === "Low — mostly indoors" && dog.energy_level === "low") score += 10;
+  if (prefs.activityLevel === "Low — mostly indoors"            && dog.energy_level === "low")  score += 10;
   if (prefs.otherPets && prefs.otherPets !== "None" && dog.good_with_dogs == "1") score += 8;
   if (prefs.household?.includes("children") && dog.good_with_kids == "1") score += 8;
   const age = Number(dog.age_years) || 0;
@@ -185,16 +193,21 @@ export default function BrowseDogs() {
       setLoading(false);
     }
   }
-    const handleSaveDog = (dog) => {
+    // Optimistic save/unsave: updates localStorage and the heart icon immediately, then fires
+  // the backend call in the background so the change persists across devices.
+  const handleSaveDog = (dog) => {
+    const userId = parseInt(localStorage.getItem("userId") || "0");
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
     const isSaved = savedIds.has(dog.dog_id);
     let updated;
     if (isSaved) {
       updated = savedDogs.filter(d => d.dog_id !== dog.dog_id);
       addToast(`${dog.name} removed from saved dogs.`, "success");
+      if (userId) sendMessage("request.saved_dogs.remove", { user_id: userId, dog_id: dog.dog_id }).catch(() => {});
     } else {
       updated = [...savedDogs, dog];
       addToast(`${dog.name} saved!`, "success");
+      if (userId) sendMessage("request.saved_dogs.add", { user_id: userId, dog_id: dog.dog_id }).catch(() => {});
     }
     localStorage.setItem("savedDogs", JSON.stringify(updated));
     setSavedIds(new Set(updated.map(d => d.dog_id)));

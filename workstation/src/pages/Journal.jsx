@@ -1,8 +1,14 @@
+// Pet adoption journal — lets users create, edit, and delete dated log entries (vet visits,
+// training sessions, milestones, etc.). Entries are stored via RabbitMQ messages and cached
+// in localStorage under "journal_entries" so other parts of the app can read them without
+// an extra fetch.
 import React, { useState, useEffect } from "react"
 import { sendMessage } from "../services/messaging"
 import { useToast } from "../context/ToastContext"
 import { Sparkles } from "lucide-react"
 
+// Pre-written milestone prompts shown as quick-start chips when a user has fewer than 3 entries.
+// Each milestone carries a hint string that pre-fills the Notes textarea placeholder.
 const MILESTONES = [
   { title: "First Week Home",       type: "Milestone", hint: "How did the first week go? Any settling-in moments worth remembering?" },
   { title: "First Vet Visit",       type: "Vet Visit", hint: "Record the vet's name, clinic, vaccinations given, and any health notes." },
@@ -11,6 +17,7 @@ const MILESTONES = [
   { title: "One Month Milestone",   type: "Milestone", hint: "How have things changed since adoption day? What's your dog's personality like?" },
 ]
 
+// All supported entry categories with their badge colours; used in the type picker and filter tabs.
 const LOG_TYPES = [
   { value: "Milestone", label: "Milestone", bg: "#fef9c3", color: "#854d0e" },
   { value: "Vet Visit", label: "Vet Visit", bg: "#dbeafe", color: "#1e40af" },
@@ -19,6 +26,7 @@ const LOG_TYPES = [
   { value: "Note",      label: "Note",      bg: "#f1f5f9", color: "#475569" },
 ]
 
+// Returns the bg/color pair for a given log type, defaulting to the Note style for unknown types.
 function getTypeStyle(type) {
   return LOG_TYPES.find(t => t.value === type) || { bg: "#f1f5f9", color: "#475569" }
 }
@@ -29,6 +37,8 @@ function formatDate(dateStr) {
   return isNaN(d) ? dateStr : d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "America/New_York" })
 }
 
+// Default form state — reused every time the modal is closed or opened for a new entry.
+// hint is not a persisted field; it just pre-fills the textarea placeholder for milestone prompts.
 const BLANK = { log_id: null, title: "", log_type: "Note", notes: "", hint: "", log_date: new Date().toISOString().split("T")[0] }
 
 export default function Journal() {
@@ -69,6 +79,8 @@ export default function Journal() {
     e.preventDefault()
     setSaving(true)
     try {
+      // The API has no "update" endpoint, so edits are implemented as delete-then-recreate.
+      // The old entry is deleted first, then a new one is created with the updated fields.
       if (editingId) {
         await sendMessage("request.adoption.log.delete", { log_id: editingId, user_id: userId })
       }

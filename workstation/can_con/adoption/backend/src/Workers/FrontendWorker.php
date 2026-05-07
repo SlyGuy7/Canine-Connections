@@ -77,6 +77,9 @@ final class FrontendWorker
         $this->mq->registerConsumer('request.meetgreet.cancel',    [$this, 'handleMeetGreetCancel']);
         $this->mq->registerConsumer('request.notifications.list',  [$this, 'handleNotificationsList']);
         $this->mq->registerConsumer('request.notifications.read',  [$this, 'handleNotificationsRead']);
+        $this->mq->registerConsumer('request.saved_dogs.list',     [$this, 'handleSavedDogsList']);
+        $this->mq->registerConsumer('request.saved_dogs.add',      [$this, 'handleSavedDogsAdd']);
+        $this->mq->registerConsumer('request.saved_dogs.remove',   [$this, 'handleSavedDogsRemove']);
 
         echo "[FrontendWorker] All consumers registered — listening\n";
 
@@ -1042,6 +1045,42 @@ final class FrontendWorker
                 $result = $mq->publishAndWait('bridge.notifications.read', ['user_id' => $data['user_id'] ?? null, 'notification_id' => $data['notification_id'] ?? null], $corrId);
                 $this->respond($mq, 'response.notifications.read', $replyTo, $result ?? ['success' => false, 'error' => 'Could not mark as read'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.notifications.read', $replyTo, ['success' => false, 'error' => 'Could not mark as read'], $corrId); }
+        }, $msg);
+    }
+
+    public function handleSavedDogsList(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            echo "[FrontendWorker] handleSavedDogsList\n";
+            try {
+                $result = $mq->publishAndWait('bridge.saved_dogs.list', ['user_id' => $data['user_id'] ?? null], $corrId);
+                $this->respond($mq, 'response.saved_dogs.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load saved dogs'], $corrId);
+            } catch (\Throwable $e) { $this->respond($mq, 'response.saved_dogs.list', $replyTo, ['success' => false, 'error' => 'Could not load saved dogs'], $corrId); }
+        }, $msg);
+    }
+
+    public function handleSavedDogsAdd(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            echo "[FrontendWorker] handleSavedDogsAdd\n";
+            try {
+                $result = $mq->publishAndWait('bridge.saved_dogs.add', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null], $corrId);
+                $this->respond($mq, 'response.saved_dogs.add', $replyTo, $result ?? ['success' => false, 'error' => 'Could not save dog'], $corrId);
+            } catch (\Throwable $e) { $this->respond($mq, 'response.saved_dogs.add', $replyTo, ['success' => false, 'error' => 'Could not save dog'], $corrId); }
+        }, $msg);
+    }
+
+    public function handleSavedDogsRemove(array $data, $msg, ?string $corrId): void
+    {
+        $replyTo = $this->replyTo($msg);
+        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
+            echo "[FrontendWorker] handleSavedDogsRemove\n";
+            try {
+                $result = $mq->publishAndWait('bridge.saved_dogs.remove', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null], $corrId);
+                $this->respond($mq, 'response.saved_dogs.remove', $replyTo, $result ?? ['success' => false, 'error' => 'Could not remove saved dog'], $corrId);
+            } catch (\Throwable $e) { $this->respond($mq, 'response.saved_dogs.remove', $replyTo, ['success' => false, 'error' => 'Could not remove saved dog'], $corrId); }
         }, $msg);
     }
 

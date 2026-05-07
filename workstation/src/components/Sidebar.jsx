@@ -1,3 +1,5 @@
+// Primary navigation sidebar for all authenticated user pages.
+// Supports both desktop (fixed) and mobile (slide-in drawer) layouts.
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
@@ -6,6 +8,8 @@ import {
   Settings, LogOut, PawPrint, Moon, Sun, Star, X,
 } from "lucide-react";
 
+// Custom hook that manages dark/light mode state.
+// Persists the preference to localStorage and applies it by toggling data-theme on <html>.
 function useDarkMode() {
   const [dark, setDark] = useState(() => document.documentElement.getAttribute("data-theme") === "dark");
   const toggle = () => {
@@ -15,25 +19,33 @@ function useDarkMode() {
     setDark(next);
   };
   useEffect(() => {
+    // Restore the saved theme preference on first mount.
     const saved = localStorage.getItem("canine_theme");
     if (saved === "dark") { document.documentElement.setAttribute("data-theme", "dark"); setDark(true); }
   }, []);
   return [dark, toggle];
 }
 
+// Props:
+//   isMobile — true when viewport < 768px; changes sidebar from fixed to off-canvas drawer
+//   open     — controls whether the drawer is visible (desktop: always open)
+//   onClose  — called when the user taps the X or a nav link to close the drawer
 export default function Sidebar({ isMobile = false, open = true, onClose }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [hoveredPath, setHoveredPath] = useState(null);
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
+  // Red dot badge shown on Messages when there are unread messages in localStorage.
   const [hasUnread, setHasUnread] = useState(false);
   const [dark, toggleDark] = useDarkMode();
 
+  // Re-check the unread flag on every route change so the badge updates after visiting Messages.
   useEffect(() => {
     const flag = localStorage.getItem("canine_unread_messages");
     setHasUnread(flag === "true");
   }, [location.pathname]);
 
+  // Clears all user data from localStorage (except theme and geocache) and sends the user to /landing.
   const handleLogout = () => {
     const KEEP = new Set(["canine_theme", "shelter_geocache"]);
     Object.keys(localStorage).forEach(k => { if (!KEEP.has(k)) localStorage.removeItem(k); });

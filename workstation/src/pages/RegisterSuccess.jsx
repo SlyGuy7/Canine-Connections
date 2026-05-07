@@ -1,8 +1,12 @@
+// Post-registration confirmation page — shown after a successful account creation.
+// Displays a 800ms loading state before revealing next-step instructions and a
+// "Back to Home" link so the user can return and log in after verifying their email.
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import "../index.css";
 
 export default function RegisterSuccess() {
+  // Brief loading delay prevents a jarring flash of the success content immediately after navigation.
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

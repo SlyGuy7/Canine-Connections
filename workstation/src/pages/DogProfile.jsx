@@ -1,3 +1,6 @@
+// Detailed profile page for a single dog, accessed via /dogs/:id.
+// Fetches dog details and the user's applications in parallel, renders a photo gallery,
+// compatibility tags, shelter info, and an Apply or Already Applied CTA.
 import React, { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
@@ -5,6 +8,8 @@ import { useToast } from "../context/ToastContext";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { Share2, ChevronLeft, ChevronRight } from "lucide-react";
 
+// Adds the current dog to the front of the "recently viewed" list in localStorage (capped at 10).
+// Used by BrowseDogs.jsx to render the "Recently Viewed" row when no filters are active.
 function trackRecentlyViewed(dog) {
   try {
     const key = "canine_recently_viewed";
@@ -16,19 +21,21 @@ function trackRecentlyViewed(dog) {
 }
 
 export default function DogProfile() {
-  const { id }     = useParams();
-  const navigate   = useNavigate();
+  const { id }       = useParams();      // Dog ID from the URL (e.g. /dogs/42 → id = "42")
+  const navigate     = useNavigate();
   const { addToast } = useToast();
-  const isMobile   = useIsMobile();
+  const isMobile     = useIsMobile();
 
-  const [dog, setDog]             = useState(null);
-  const [shelter, setShelter]     = useState(null);
-  const [loading, setLoading]     = useState(true);
-  const [isSaved, setIsSaved]     = useState(false);
-  const [hasApplied, setHasApplied] = useState(false);
-  const [activePhoto, setActivePhoto] = useState(0);
+  const [dog, setDog]               = useState(null);
+  const [shelter, setShelter]       = useState(null);
+  const [loading, setLoading]       = useState(true);
+  const [isSaved, setIsSaved]       = useState(false);
+  const [hasApplied, setHasApplied] = useState(false);  // Drives the Apply vs. Already Applied CTA.
+  const [activePhoto, setActivePhoto] = useState(0);    // Index of the currently displayed photo.
+  // hasFetched prevents duplicate calls when React StrictMode double-mounts the component.
   const hasFetched = useRef(false);
 
+  // Reset the fetch guard whenever the dog ID in the URL changes.
   useEffect(() => { hasFetched.current = false; }, [id]);
 
   useEffect(() => {
@@ -37,20 +44,25 @@ export default function DogProfile() {
     load();
   }, [id]);
 
+  // Fires both the dog fetch and the application list fetch concurrently.
+  // The shelter info is fetched as a non-blocking follow-up after the dog loads.
   async function load() {
     setLoading(true);
     try {
       const [dogResult, appResult] = await Promise.all([
-        sendMessage("request.dogs.get", { dog_id: parseInt(id, 10) }),
+        sendMessage("request.dogs.get",         { dog_id: parseInt(id, 10) }),
         sendMessage("request.application.list", { user_id: parseInt(localStorage.getItem("userId") || "0") }),
       ]);
       if (dogResult?.success && dogResult.dog) {
         setDog(dogResult.dog);
         trackRecentlyViewed(dogResult.dog);
+        // Check localStorage saved dogs to initialise the heart button state.
         const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
         setIsSaved(saved.some(d => d.dog_id === dogResult.dog.dog_id));
+        // Check if any of the user's applications target this dog.
         const apps = appResult?.applications || [];
         setHasApplied(apps.some(a => String(a.dog_id) === String(id)));
+        // Fetch shelter details in the background — page is already usable without it.
         if (dogResult.dog.shelter_id) {
           sendMessage("request.shelters.get", { shelter_id: dogResult.dog.shelter_id })
             .then(r => { if (r?.success && r.shelter) setShelter(r.shelter); })
@@ -66,17 +78,22 @@ export default function DogProfile() {
     }
   }
 
+  // Optimistic save/unsave: flips the heart and updates localStorage immediately, then fires
+  // the backend call in the background so the change persists across devices.
   const handleSave = () => {
+    const userId = parseInt(localStorage.getItem("userId") || "0");
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
     if (isSaved) {
       const updated = savedDogs.filter(d => d.dog_id !== dog.dog_id);
       localStorage.setItem("savedDogs", JSON.stringify(updated));
       setIsSaved(false);
       addToast(`${dog.name} removed from saved dogs.`, "success");
+      if (userId) sendMessage("request.saved_dogs.remove", { user_id: userId, dog_id: dog.dog_id }).catch(() => {});
     } else {
       localStorage.setItem("savedDogs", JSON.stringify([...savedDogs, dog]));
       setIsSaved(true);
       addToast(`${dog.name} saved!`, "success");
+      if (userId) sendMessage("request.saved_dogs.add", { user_id: userId, dog_id: dog.dog_id }).catch(() => {});
     }
   };
 

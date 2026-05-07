@@ -1,7 +1,11 @@
+// Admin moderation page for user-submitted success stories.
+// Stories are split into two sections: Pending Approval and Published.
+// Admins approve stories to make them visible on the public SuccessStories page.
 import React, { useEffect, useState } from "react"
 import { sendMessage } from "../services/messaging"
 import AdminSidebar from "../components/AdminSidebar"
 
+// Shared dark-theme color tokens used throughout this page.
 const A = {
   bg:     '#0a0a0a',
   card:   '#111111',
@@ -12,6 +16,7 @@ const A = {
   subtle: '#444444',
 }
 
+// Formats a MySQL datetime string into a short readable date.
 const fmt = (d) => {
   if (!d) return '—'
   try { return new Date(d.replace(' ', 'T')).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', timeZone:'America/New_York' }) }
@@ -21,7 +26,9 @@ const fmt = (d) => {
 export default function AdminStories() {
   const [stories, setStories]       = useState([])
   const [loading, setLoading]       = useState(true)
+  // Stores the ID+action string of the button currently processing (e.g. "5approve") to show loading state.
   const [processing, setProcessing] = useState(null)
+  // Map of story_id → boolean for "Read more / Show less" toggle per card.
   const [expanded, setExpanded]     = useState({})
 
   useEffect(() => { loadStories() }, [])
@@ -34,19 +41,23 @@ export default function AdminStories() {
     } catch { setStories([]) } finally { setLoading(false) }
   }
 
+  // Sends the approval request and updates the story's status in local state on success.
   const handleApprove = async (storyId) => {
     setProcessing(storyId + 'approve')
     const adminId = parseInt(localStorage.getItem("adminUserId"))
     try {
       const result = await sendMessage("request.stories.approve", { story_id: storyId, approved_by: adminId })
       if (result?.success) {
+        // Optimistically flip the status locally so the card moves to the Published section immediately.
         setStories(prev => prev.map(s => s.story_id === storyId ? { ...s, status: 'approved' } : s))
       }
     } catch { } finally { setProcessing(null) }
   }
 
+  // Toggles the expanded/collapsed state of a story's text body.
   const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }))
 
+  // Split the flat stories array into two display sections.
   const pending  = stories.filter(s => (s.status || '') !== 'approved')
   const approved = stories.filter(s => s.status === 'approved')
 

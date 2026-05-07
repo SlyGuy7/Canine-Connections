@@ -1,15 +1,21 @@
+// Two-panel messaging UI for user ↔ shelter chat. The left sidebar lists all existing chat
+// sessions; clicking one loads the history and starts a 10-second polling interval to check
+// for new messages. On mobile, tapping a session slides to a full-screen chat panel.
+// New sessions can be started via router state passed from the ShelterDetails "Message Shelter" button.
 import React, { useState, useEffect, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/ToastContext";
 import { useIsMobile } from "../hooks/useIsMobile";
 
+// Five rotating colours assigned to shelter avatars based on their position in the sessions list.
 const AVATAR_COLORS = ["#d97706", "#059669", "#7c3aed", "#db2777", "#0891b2"];
 
 function getInitials(name = "") {
   return name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase();
 }
 
+// Smart relative timestamp: shows time if today, "Yesterday", weekday if within 7 days, or full date.
 function formatTime(dateStr) {
   if (!dateStr) return "";
   const d = new Date(dateStr.replace(" ", "T"));
@@ -130,6 +136,7 @@ export default function Messages() {
     const text = newMessage.trim();
     if (!text || !sessionId || sending) return;
 
+    // Append the message optimistically so the UI responds immediately; remove it on failure.
     const optimistic = { sender_id: parseInt(userId), message: text, created_at: new Date().toISOString(), first_name: "You", _optimistic: true };
     setMessages(prev => [...prev, optimistic]);
     setNewMessage("");

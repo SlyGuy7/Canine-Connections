@@ -1,8 +1,12 @@
+// Admin overview page — the first screen seen after admin login.
+// Fetches dogs, applications, and stories in parallel to populate four stat cards
+// and a table of the six most recent applications.
 import React, { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import AdminSidebar from "../components/AdminSidebar"
 
+// Shared dark-theme color tokens used throughout this page.
 const A = {
   bg:     '#0a0a0a',
   card:   '#111111',
@@ -14,12 +18,14 @@ const A = {
   subtle: '#444444',
 }
 
+// Formats a MySQL datetime string into a short human-readable date.
 const fmt = (d) => {
   if (!d) return '—'
   try { return new Date(d.replace(" ","T")).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'America/New_York'}) }
   catch { return d }
 }
 
+// Returns colors and label text for an application status pill.
 const statusStyle = (s) => {
   switch((s||'').toLowerCase()) {
     case 'approved':  return { bg:'#052e16', color:'#4ade80', label:'Approved' }
@@ -31,35 +37,40 @@ const statusStyle = (s) => {
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
-  const [stats, setStats]         = useState({ dogs: 0, applications: 0, pending: 0, stories: 0 })
+  const [stats, setStats]           = useState({ dogs: 0, applications: 0, pending: 0, stories: 0 })
+  // Only the six most recent applications shown in the preview table.
   const [recentApps, setRecentApps] = useState([])
-  const [loading, setLoading]     = useState(true)
+  const [loading, setLoading]       = useState(true)
 
   useEffect(() => { loadData() }, [])
 
+  // Fires three RabbitMQ requests concurrently so the page loads in one round-trip.
   async function loadData() {
     setLoading(true)
     try {
       const [dogsRes, appsRes, storiesRes] = await Promise.all([
-        sendMessage("request.dogs.list",      { limit: 500 }),
+        sendMessage("request.dogs.list",        { limit: 500 }),
         sendMessage("request.application.list", {}),
-        sendMessage("request.stories.list",   { limit: 50 }),
+        sendMessage("request.stories.list",     { limit: 50 }),
       ])
-      const dogs    = dogsRes?.dogs          || []
-      const apps    = appsRes?.applications  || []
-      const stories = storiesRes?.stories    || []
+      const dogs    = dogsRes?.dogs         || []
+      const apps    = appsRes?.applications || []
+      const stories = storiesRes?.stories   || []
       setStats({
         dogs:         dogs.filter(d => d.status === 'available').length,
         applications: apps.length,
         pending:      apps.filter(a => (a.status||'').toLowerCase() === 'pending').length,
         stories:      stories.length,
       })
+      // Slice to the 6 most recent for the preview table (API returns them newest-first).
       setRecentApps(apps.slice(0, 6))
     } catch { } finally { setLoading(false) }
   }
 
   const adminName = localStorage.getItem("adminFirstName") || localStorage.getItem("adminEmail") || "Admin"
 
+  // Each card is clickable and navigates to the relevant admin section.
+  // accent:true makes the Pending Review card show in red when there are items to review.
   const statCards = [
     { label:'Available Dogs',     value: stats.dogs,         path:'/admin/dogs',         accent: false },
     { label:'Total Applications', value: stats.applications,  path:'/admin/applications', accent: false },

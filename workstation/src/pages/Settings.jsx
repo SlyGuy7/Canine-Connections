@@ -1,9 +1,15 @@
+// Settings page — three-tab panel (Account Details, Notifications, Privacy & Security).
+// Account info changes are persisted to both localStorage and the backend via request.profile.update.
+// Notification and privacy toggles are stored client-side only (except loginAlerts which also
+// calls request.profile.update). Both a tab-switch guard and a React Router blocker warn the
+// user before they lose unsaved changes.
 import React, { useState, useRef } from 'react'
 import { useNavigate, useBlocker } from 'react-router-dom'
 import { sendMessage } from '../services/messaging'
 import { useToast } from '../context/ToastContext'
 import { useIsMobile } from '../hooks/useIsMobile'
 
+// Reusable animated toggle switch component; calls onChange with the new boolean value when clicked.
 function Toggle({ checked, onChange }) {
   return (
     <div onClick={() => onChange(!checked)} style={{ width: '44px', height: '24px', borderRadius: '12px', background: checked ? '#d97706' : '#d1d5db', cursor: 'pointer', position: 'relative', transition: 'background 0.2s', flexShrink: 0 }}>
@@ -114,6 +120,8 @@ export default function Settings() {
   const savedInfo    = useRef({ firstName: localStorage.getItem('userFirstName') || '', lastName: localStorage.getItem('userLastName') || '', phone: localStorage.getItem('userPhone') || '', address: localStorage.getItem('userAddress') || '' })
   const [pendingTab, setPendingTab] = useState(null)
 
+  // Track dirty state per-section so the tab-switch guard only fires for the currently active tab,
+  // while the React Router blocker fires if any section has unsaved changes.
   const isNotifsDirty  = JSON.stringify(notifs)   !== JSON.stringify(savedNotifs.current)
   const isPrivacyDirty = JSON.stringify(privacy)  !== JSON.stringify(savedPrivacy.current)
   const isInfoDirty    = firstName !== savedInfo.current.firstName || lastName !== savedInfo.current.lastName || phone !== savedInfo.current.phone || address !== savedInfo.current.address

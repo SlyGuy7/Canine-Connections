@@ -1,7 +1,11 @@
+// Admin page for reviewing and acting on all adoption applications.
+// Admins can filter by status, search, expand each application for details,
+// and approve, reject, or finalize adoptions.
 import React, { useEffect, useState } from "react"
 import { sendMessage } from "../services/messaging"
 import AdminSidebar from "../components/AdminSidebar"
 
+// Shared dark-theme color tokens used throughout this page.
 const A = {
   bg:     '#0a0a0a',
   card:   '#111111',
@@ -12,6 +16,7 @@ const A = {
   subtle: '#444444',
 }
 
+// Returns background color, text color, and display label for a given application status string.
 const statusStyle = (s) => {
   switch ((s || '').toLowerCase()) {
     case 'approved':  return { bg:'#052e16', color:'#4ade80', label:'Approved' }
@@ -21,12 +26,15 @@ const statusStyle = (s) => {
   }
 }
 
+// Formats a MySQL datetime string (e.g. "2025-01-15 14:30:00") into a readable date.
+// The .replace(' ', 'T') converts it to ISO 8601 so the Date constructor parses it correctly.
 const fmt = (d) => {
   if (!d) return '—'
   try { return new Date(d.replace(' ', 'T')).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', timeZone:'America/New_York' }) }
   catch { return d }
 }
 
+// Resolves the applicant display name from whichever fields are available in the record.
 const getName = (app) =>
   app.full_name || `${app.first_name || ''} ${app.last_name || ''}`.trim() || '—'
 
@@ -35,12 +43,16 @@ export default function AdminApplications() {
   const [loading, setLoading]           = useState(true)
   const [filterStatus, setFilterStatus] = useState("all")
   const [search, setSearch]             = useState("")
+  // Stores the ID of the button currently being processed to show loading state and prevent double-clicks.
   const [processing, setProcessing]     = useState(null)
+  // ID of the currently expanded application row (only one can be open at a time).
   const [expandedId, setExpandedId]     = useState(null)
+  // Map of application_id → reviewer notes text, kept in state so typing in one row doesn't reset others.
   const [notes, setNotes]               = useState({})
 
   useEffect(() => { loadApplications() }, [])
 
+  // Fetches all applications from the backend via RabbitMQ on page load.
   async function loadApplications() {
     setLoading(true)
     try {
@@ -49,6 +61,8 @@ export default function AdminApplications() {
     } catch { setApplications([]) } finally { setLoading(false) }
   }
 
+  // Sends an approve or reject decision to the backend. Updates the local list on success
+  // to avoid needing a full reload.
   const handleDecision = async (appId, decision) => {
     setProcessing(appId + decision)
     const adminId = parseInt(localStorage.getItem("adminUserId"))
@@ -60,6 +74,7 @@ export default function AdminApplications() {
         reviewer_notes: notes[appId] || "",
       })
       if (result?.success) {
+        // Optimistically update the status in local state instead of re-fetching all applications.
         setApplications(prev => prev.map(a =>
           a.application_id === appId ? { ...a, status: decision === "approve" ? "approved" : "rejected" } : a
         ))
@@ -68,6 +83,7 @@ export default function AdminApplications() {
     } catch { } finally { setProcessing(null) }
   }
 
+  // Finalizes an approved adoption — marks the dog as adopted and locks the application.
   const handleFinalize = async (appId) => {
     setProcessing(appId + "finalize")
     const adminId = parseInt(localStorage.getItem("adminUserId"))
@@ -86,6 +102,7 @@ export default function AdminApplications() {
     } catch { } finally { setProcessing(null) }
   }
 
+  // Pre-compute per-status counts so they can be shown in the filter tab badges.
   const counts = {
     all:       applications.length,
     pending:   applications.filter(a => (a.status||'').toLowerCase() === 'pending').length,
@@ -94,6 +111,7 @@ export default function AdminApplications() {
     finalized: applications.filter(a => (a.status||'').toLowerCase() === 'finalized').length,
   }
 
+  // Apply both the active status tab filter and the search query to produce the visible list.
   const filtered = applications.filter(a => {
     const matchStatus = filterStatus === "all" || (a.status||'').toLowerCase() === filterStatus
     const q = search.toLowerCase()
