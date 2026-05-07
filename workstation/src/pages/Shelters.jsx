@@ -67,9 +67,9 @@ function kmToMiles(km) { return km * 0.621371 }
 
 const RADIUS_OPTIONS = [5, 10, 15, 25, 50]
 
-function RecenterMap({ center, zoom }) {
+function RecenterMap({ lat, lng, zoom }) {
   const map = useMap()
-  useEffect(() => { map.setView(center, zoom) }, [center, zoom])
+  useEffect(() => { map.setView([lat, lng], zoom) }, [lat, lng, zoom])
   return null
 }
 
@@ -216,8 +216,9 @@ export default function Shelters() {
     return s.name?.toLowerCase().includes(term) || s.city?.toLowerCase().includes(term) || s.state?.toLowerCase().includes(term)
   })
 
-  const mapCenter = userLocation ? [userLocation.lat, userLocation.lng] : [38, -97]
-  const mapZoom   = userLocation ? 9 : 4
+  const mapLat  = userLocation ? userLocation.lat : 38
+  const mapLng  = userLocation ? userLocation.lng : -97
+  const mapZoom = userLocation ? 9 : 4
 
   const stateCount = new Set(shelters.map(s => s.state).filter(Boolean)).size
 
@@ -257,6 +258,21 @@ export default function Shelters() {
             ))}
           </div>
         )}
+      </div>
+
+      {/* How it works */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "24px" }}>
+        {[
+          { icon: "🔍", title: "Search", desc: "Find shelters by name, city, or state to narrow down options near you." },
+          { icon: "🗺️", title: "Explore the Map", desc: "Switch to Map view and use your location to see shelters within a chosen radius." },
+          { icon: "🐾", title: "Meet the Dogs", desc: "Visit any shelter's page to browse their available dogs and send a message." },
+        ].map(({ icon, title, desc }) => (
+          <div key={title} style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "18px 20px", display: "flex", flexDirection: "column", gap: "6px" }}>
+            <span style={{ fontSize: "26px", lineHeight: 1 }}>{icon}</span>
+            <h3 style={{ margin: "4px 0 0 0", fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>{title}</h3>
+            <p style={{ margin: 0, fontSize: "12px", color: "var(--text-muted)", lineHeight: "1.55" }}>{desc}</p>
+          </div>
+        ))}
       </div>
 
       {/* Search */}
@@ -319,12 +335,13 @@ export default function Shelters() {
       {viewMode === "map" && !loading && (
         <div style={{ borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)", marginBottom: "28px", height: "480px", position: "relative" }}>
           {geocoding && (
-            <div style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "white", padding: "8px 20px", borderRadius: "20px", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", fontSize: "13px", fontWeight: "600", color: "#6f5848" }}>
-              Locating shelters…
+            <div style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "white", padding: "8px 20px", borderRadius: "20px", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", fontSize: "13px", fontWeight: "600", color: "#6f5848", display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "12px", height: "12px", border: "2px solid #f3e8de", borderTopColor: "#d97706", borderRadius: "50%", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
+              {geoShelters.length > 0 ? `Placed ${geoShelters.length} of ${shelters.length} shelters…` : "Locating shelters…"}
             </div>
           )}
-          <MapContainer center={mapCenter} zoom={mapZoom} style={{ width: "100%", height: "100%" }}>
-            <RecenterMap center={mapCenter} zoom={mapZoom} />
+          <MapContainer center={[mapLat, mapLng]} zoom={mapZoom} style={{ width: "100%", height: "100%" }}>
+            <RecenterMap lat={mapLat} lng={mapLng} zoom={mapZoom} />
             <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" attribution='&copy; <a href="https://openstreetmap.org">OpenStreetMap</a> contributors' />
             {userLocation && (
               <Marker position={[userLocation.lat, userLocation.lng]} icon={BLUE_ICON}>

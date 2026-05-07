@@ -128,7 +128,7 @@ function DogCard({ dog, isSaved, onSave, onNavigate, matchScore }) {
 export default function BrowseDogs() {
   const [allDogs, setAllDogs] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({ breed: "All", size: "All", age: "All" });
+  const [filters, setFilters] = useState({ breed: "All", size: "All", age: "All", compat: [] });
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [savedIds, setSavedIds] = useState(() => new Set(JSON.parse(localStorage.getItem("savedDogs") || "[]").map(d => d.dog_id)));
@@ -206,7 +206,14 @@ export default function BrowseDogs() {
     const matchesBreed = filters.breed === "All" || dog.breed === filters.breed;
     const matchesSize = filters.size === "All" || (dog.size || "").toLowerCase() === filters.size.toLowerCase();
     const matchesAge = filters.age === "All" || getAgeCategory(dog.age_years) === filters.age;
-    return matchesSearch && matchesBreed && matchesSize && matchesAge;
+    const matchesCompat = filters.compat.every(c => {
+      if (c === "kids")      return String(dog.good_with_kids)      === "1";
+      if (c === "dogs")      return String(dog.good_with_dogs)      === "1";
+      if (c === "cats")      return String(dog.good_with_cats)      === "1";
+      if (c === "apartment") return String(dog.apartment_friendly)  === "1";
+      return true;
+    });
+    return matchesSearch && matchesBreed && matchesSize && matchesAge && matchesCompat;
   });
 
   const totalPages = Math.ceil(filteredDogs.length / PAGE_SIZE);
@@ -259,18 +266,36 @@ export default function BrowseDogs() {
           <option value="Adult">Adult (4–7 yrs)</option>
           <option value="Senior">Senior (8+ yrs)</option>
         </select>
-        {(searchTerm || filters.breed !== "All" || filters.size !== "All" || filters.age !== "All") && (
+        {(searchTerm || filters.breed !== "All" || filters.size !== "All" || filters.age !== "All" || filters.compat.length > 0) && (
           <button
-            onClick={() => { setSearchTerm(""); setFilters({ breed: "All", size: "All", age: "All" }); }}
+            onClick={() => { setSearchTerm(""); setFilters({ breed: "All", size: "All", age: "All", compat: [] }); }}
             style={{ padding: "10px 16px", borderRadius: "10px", border: "1px solid #fca5a5", background: "#fff1f2", color: "#dc2626", fontWeight: "600", fontSize: "13px", cursor: "pointer", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
           >
             Clear filters
           </button>
         )}
+        {/* Compatibility row */}
+        <div style={{ width: "100%", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", paddingTop: "4px" }}>
+          <span style={{ fontSize: "12px", fontWeight: "700", color: "#9a8070", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Compatibility</span>
+          {[
+            { key: "kids",      label: "Good with kids" },
+            { key: "dogs",      label: "Good with dogs" },
+            { key: "cats",      label: "Good with cats" },
+            { key: "apartment", label: "Apartment friendly" },
+          ].map(({ key, label }) => {
+            const active = filters.compat.includes(key);
+            return (
+              <button key={key} onClick={() => setFilters(f => ({ ...f, compat: active ? f.compat.filter(c => c !== key) : [...f.compat, key] }))}
+                style={{ padding: "7px 14px", borderRadius: "20px", border: `1px solid ${active ? "#ef4444" : "#e2d9d0"}`, background: active ? "#fff1f2" : "white", color: active ? "#dc2626" : "#78716c", fontWeight: active ? "700" : "500", fontSize: "13px", cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s", display: "flex", alignItems: "center", gap: "5px" }}>
+                {active && <span style={{ fontSize: "11px" }}>×</span>}{label}
+              </button>
+            );
+          })}
+        </div>
       </div>
 
       {/* Recently Viewed */}
-      {recentlyViewed.length > 0 && !searchTerm && filters.breed === "All" && filters.size === "All" && filters.age === "All" && (
+      {recentlyViewed.length > 0 && !searchTerm && filters.breed === "All" && filters.size === "All" && filters.age === "All" && filters.compat.length === 0 && (
         <div style={{ marginBottom: "28px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
             <History size={16} color="#9a8070" />
@@ -305,7 +330,7 @@ export default function BrowseDogs() {
           <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "700", color: "#2f241d" }}>No dogs found</h2>
           <p style={{ margin: "0 0 24px 0", color: "#78716c" }}>Try adjusting your search or filters.</p>
           <button
-            onClick={() => { setSearchTerm(""); setFilters({ breed: "All", size: "All", age: "All" }); }}
+            onClick={() => { setSearchTerm(""); setFilters({ breed: "All", size: "All", age: "All", compat: [] }); }}
             style={{ padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}
           >
             Clear all filters
