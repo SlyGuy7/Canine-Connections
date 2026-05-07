@@ -3,14 +3,26 @@ import { sendMessage } from "../services/messaging"
 import AdminSidebar from "../components/AdminSidebar"
 
 const A = {
-  bg:'#0d0d0d', card:'#141414', border:'#1f1f1f',
-  red:'#dc2626', text:'#ffffff', muted:'#888888', subtle:'#555555',
+  bg:     '#0a0a0a',
+  card:   '#111111',
+  border: '#1a1a1a',
+  red:    '#dc2626',
+  text:   '#f0f0f0',
+  muted:  '#777777',
+  subtle: '#444444',
+}
+
+const fmt = (d) => {
+  if (!d) return '—'
+  try { return new Date(d.replace(' ', 'T')).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric', timeZone:'America/New_York' }) }
+  catch { return d }
 }
 
 export default function AdminStories() {
-  const [stories, setStories]   = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [stories, setStories]       = useState([])
+  const [loading, setLoading]       = useState(true)
   const [processing, setProcessing] = useState(null)
+  const [expanded, setExpanded]     = useState({})
 
   useEffect(() => { loadStories() }, [])
 
@@ -23,7 +35,7 @@ export default function AdminStories() {
   }
 
   const handleApprove = async (storyId) => {
-    setProcessing(storyId)
+    setProcessing(storyId + 'approve')
     const adminId = parseInt(localStorage.getItem("adminUserId"))
     try {
       const result = await sendMessage("request.stories.approve", { story_id: storyId, approved_by: adminId })
@@ -33,77 +45,114 @@ export default function AdminStories() {
     } catch { } finally { setProcessing(null) }
   }
 
-  const fmt = (d) => { try { return new Date(d.replace(" ","T")).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric',timeZone:'America/New_York'}) } catch { return d||'' } }
+  const toggleExpand = (id) => setExpanded(prev => ({ ...prev, [id]: !prev[id] }))
 
-  const pending  = stories.filter(s => s.status !== 'approved')
+  const pending  = stories.filter(s => (s.status || '') !== 'approved')
   const approved = stories.filter(s => s.status === 'approved')
 
-  const Card = ({ story, showApprove }) => (
-    <div style={{ background: A.card, borderRadius:'12px', border:`1px solid ${A.border}`, padding:'24px' }}>
-      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', flexWrap:'wrap', gap:'10px', marginBottom:'12px' }}>
-        <div>
-          <h3 style={{ margin:'0 0 4px 0', color: A.text, fontSize:'16px', fontWeight:'600' }}>{story.title}</h3>
-          <p style={{ margin:0, color: A.subtle, fontSize:'12px' }}>
-            By {story.first_name||'User'} {story.last_name||''} &bull; {fmt(story.created_at)}
-          </p>
+  const StoryCard = ({ story, showApprove }) => {
+    const isExpanded = expanded[story.story_id]
+    const text = story.story || ''
+    const preview = text.length > 260 ? text.slice(0, 260) + '…' : text
+    return (
+      <div style={{ background: A.card, borderRadius:'12px', border:`1px solid ${showApprove ? '#7f1d1d' : A.border}`, padding:'22px', display:'flex', flexDirection:'column', gap:'12px' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:'12px' }}>
+          <div style={{ minWidth:0 }}>
+            <h3 style={{ margin:'0 0 4px 0', color: A.text, fontSize:'15px', fontWeight:'600', lineHeight:1.3 }}>{story.title}</h3>
+            <p style={{ margin:0, color: A.subtle, fontSize:'11px' }}>
+              {story.first_name || 'User'} {story.last_name || ''} &bull; {fmt(story.created_at)}
+            </p>
+          </div>
+          <span style={{
+            flexShrink: 0,
+            background: story.status === 'approved' ? '#052e16' : '#1c1917',
+            color:      story.status === 'approved' ? '#4ade80' : '#fbbf24',
+            padding:'3px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:'600',
+          }}>
+            {story.status === 'approved' ? 'Published' : 'Pending'}
+          </span>
         </div>
-        <span style={{
-          background: story.status === 'approved' ? '#052e16' : '#1c1917',
-          color:      story.status === 'approved' ? '#4ade80' : '#fbbf24',
-          padding:'3px 10px', borderRadius:'20px', fontSize:'12px', fontWeight:'600',
-        }}>
-          {story.status === 'approved' ? 'Published' : 'Pending'}
-        </span>
+
+        <p style={{ margin:0, color:'#bbb', fontSize:'13px', lineHeight:'1.7', background:'#0d0d0d', padding:'12px 14px', borderRadius:'8px', border:`1px solid ${A.border}` }}>
+          {isExpanded ? text : preview}
+          {text.length > 260 && (
+            <button
+              onClick={() => toggleExpand(story.story_id)}
+              style={{ background:'none', border:'none', color:'#f87171', fontSize:'12px', cursor:'pointer', marginLeft:'6px', padding:0, fontWeight:'600' }}
+            >
+              {isExpanded ? 'Show less' : 'Read more'}
+            </button>
+          )}
+        </p>
+
+        {showApprove && (
+          <div>
+            <button
+              disabled={!!processing}
+              onClick={() => handleApprove(story.story_id)}
+              style={{ background: A.red, border:'none', borderRadius:'8px', padding:'9px 20px', color:'white', fontWeight:'600', fontSize:'13px', cursor:'pointer', transition:'opacity 0.15s', opacity: processing === story.story_id + 'approve' ? 0.7 : 1 }}
+            >
+              {processing === story.story_id + 'approve' ? 'Publishing…' : 'Approve & Publish'}
+            </button>
+          </div>
+        )}
       </div>
-      <p style={{ margin:'0 0 16px 0', color:'#aaa', fontSize:'14px', lineHeight:'1.6', background:'#111', padding:'12px', borderRadius:'8px' }}>
-        {story.story?.length > 300 ? story.story.slice(0, 300) + '...' : story.story}
-      </p>
-      {showApprove && (
-        <button
-          disabled={processing === story.story_id}
-          onClick={() => handleApprove(story.story_id)}
-          style={{ background: A.red, border:'none', borderRadius:'8px', padding:'9px 20px', color:'white', fontWeight:'600', fontSize:'13px', cursor:'pointer' }}
-        >
-          {processing === story.story_id ? 'Publishing...' : 'Approve & Publish'}
-        </button>
-      )}
-    </div>
-  )
+    )
+  }
 
   return (
     <div style={{ display:'flex', minHeight:'100vh', background: A.bg }}>
       <AdminSidebar />
-      <div style={{ flex:1, padding:'40px', overflowY:'auto' }}>
+      <div style={{ flex:1, padding:'36px 40px', overflowY:'auto' }}>
 
-        <div style={{ marginBottom:'28px' }}>
-          <h1 style={{ margin:'0 0 6px 0', color: A.text, fontSize:'28px', fontWeight:'700' }}>Success Stories</h1>
-          <p style={{ margin:0, color: A.muted }}>{pending.length} pending approval.</p>
+        {/* Header */}
+        <div style={{ marginBottom:'32px' }}>
+          <p style={{ margin:'0 0 4px 0', fontSize:'12px', color: A.subtle, fontWeight:'600', letterSpacing:'0.1em', textTransform:'uppercase' }}>Admin Dashboard</p>
+          <h1 style={{ margin:'0 0 4px 0', color: A.text, fontSize:'26px', fontWeight:'700' }}>Success Stories</h1>
+          <p style={{ margin:0, color: A.muted, fontSize:'13px' }}>
+            {loading ? '—' : `${pending.length} pending approval · ${approved.length} published`}
+          </p>
         </div>
 
         {loading ? (
           <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-            {[1,2].map(i => <div key={i} style={{ background: A.card, borderRadius:'12px', padding:'24px', border:`1px solid ${A.border}`, height:'80px' }} />)}
+            {[1,2,3].map(i => <div key={i} style={{ background: A.card, borderRadius:'12px', padding:'24px', border:`1px solid ${A.border}`, height:'100px' }} />)}
+          </div>
+        ) : stories.length === 0 ? (
+          <div style={{ textAlign:'center', padding:'80px', color: A.muted }}>
+            <div style={{ fontSize:'36px', marginBottom:'12px', opacity:0.3 }}>⭐</div>
+            <p style={{ margin:0, fontSize:'14px' }}>No stories submitted yet.</p>
           </div>
         ) : (
           <>
+            {/* Pending section */}
             {pending.length > 0 && (
               <section style={{ marginBottom:'40px' }}>
-                <h2 style={{ margin:'0 0 16px 0', color: A.red, fontSize:'14px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.06em' }}>Pending Approval</h2>
-                <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-                  {pending.map(s => <Card key={s.story_id} story={s} showApprove />)}
+                <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'16px' }}>
+                  <h2 style={{ margin:0, color:'#f87171', fontSize:'12px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                    Pending Approval
+                  </h2>
+                  <span style={{ background:'rgba(220,38,38,0.15)', color:'#f87171', padding:'2px 8px', borderRadius:'10px', fontSize:'11px', fontWeight:'700' }}>{pending.length}</span>
+                </div>
+                <div style={{ display:'flex', flexDirection:'column', gap:'10px' }}>
+                  {pending.map(s => <StoryCard key={s.story_id} story={s} showApprove />)}
                 </div>
               </section>
             )}
+
+            {/* Published section */}
             {approved.length > 0 && (
               <section>
-                <h2 style={{ margin:'0 0 16px 0', color: A.muted, fontSize:'14px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.06em' }}>Published</h2>
-                <div style={{ display:'flex', flexDirection:'column', gap:'12px' }}>
-                  {approved.map(s => <Card key={s.story_id} story={s} showApprove={false} />)}
+                <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'16px' }}>
+                  <h2 style={{ margin:0, color: A.muted, fontSize:'12px', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.1em' }}>
+                    Published
+                  </h2>
+                  <span style={{ background:'#1a1a1a', color: A.subtle, padding:'2px 8px', borderRadius:'10px', fontSize:'11px', fontWeight:'700' }}>{approved.length}</span>
+                </div>
+                <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(360px, 1fr))', gap:'10px' }}>
+                  {approved.map(s => <StoryCard key={s.story_id} story={s} showApprove={false} />)}
                 </div>
               </section>
-            )}
-            {stories.length === 0 && (
-              <div style={{ textAlign:'center', padding:'60px', color: A.muted }}>No stories submitted yet.</div>
             )}
           </>
         )}
