@@ -422,10 +422,13 @@ function handleQuery($queue, $data, $db) {
 
         case "db.application.list":
             $userId=(int)($data["user_id"]??0); $shelterId=(int)($data["shelter_id"]??0);
+            $base="SELECT aa.*,u.email,u.first_name,u.last_name,u.phone,d.name as dog_name FROM adoption_applications aa JOIN users u ON aa.user_id=u.user_id LEFT JOIN dogs d ON aa.dog_id=d.dog_id";
             if ($shelterId) {
-                $sql="SELECT aa.*,u.email,u.first_name,u.last_name FROM adoption_applications aa JOIN users u ON aa.user_id=u.user_id WHERE EXISTS (SELECT 1 FROM dogs WHERE dog_id=aa.dog_id AND shelter_id={$shelterId}) ORDER BY aa.application_id DESC";
+                $sql="$base WHERE EXISTS (SELECT 1 FROM dogs WHERE dog_id=aa.dog_id AND shelter_id={$shelterId}) ORDER BY aa.application_id DESC";
+            } elseif ($userId) {
+                $sql="$base WHERE aa.user_id={$userId} ORDER BY aa.application_id DESC";
             } else {
-                $sql="SELECT aa.*,u.email,u.first_name,u.last_name FROM adoption_applications aa JOIN users u ON aa.user_id=u.user_id WHERE aa.user_id={$userId} ORDER BY aa.application_id DESC";
+                $sql="$base ORDER BY aa.application_id DESC";
             }
             $result=$db->query($sql); if (!$result) return ["success"=>false,"error"=>$db->error];
             return ["success"=>true,"applications"=>fetchAllAssoc($result)];
