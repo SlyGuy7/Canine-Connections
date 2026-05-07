@@ -12,8 +12,8 @@ return { title: "Reset Password", sub: "Enter your email to receive instructions
 const content = getHeaderContent()
 
 return (
-<div style={styles.overlay}>
-<div style={styles.modal} onClick={(e) => e.stopPropagation()}>
+<div style={styles.overlay} className="auth-modal-overlay">
+<div style={styles.modal} className="auth-modal" onClick={(e) => e.stopPropagation()}>
 <button style={styles.close} onClick={close}>x</button>
 
     <div style={styles.header}>
