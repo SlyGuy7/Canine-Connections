@@ -16,10 +16,10 @@ function formatTime(dateStr) {
   if (isNaN(d)) return dateStr;
   const now = new Date();
   const diffDays = Math.floor((now - d) / 86400000);
-  if (diffDays === 0) return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  if (diffDays === 0) return d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", timeZone: "America/New_York" });
   if (diffDays === 1) return "Yesterday";
-  if (diffDays < 7)  return d.toLocaleDateString("en-US", { weekday: "short" });
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  if (diffDays < 7)  return d.toLocaleDateString("en-US", { weekday: "short", timeZone: "America/New_York" });
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "America/New_York" });
 }
 
 export default function Messages() {
