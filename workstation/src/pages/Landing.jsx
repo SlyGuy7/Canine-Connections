@@ -11,8 +11,6 @@ import AuthModal from "../components/AuthModal"
 // Modal that fetches up to 4 dogs matching a clicked category (Small, Large, Puppies) and
 // displays them as a preview grid before offering a "See All" link to /browse-dogs.
 function CategoryPreviewModal({ category, close, navigate }) {
-  if (!category) return null
-
   const [previewDogs, setPreviewDogs] = React.useState([])
   const [catLoading, setCatLoading] = React.useState(true)
 
@@ -35,6 +33,7 @@ function CategoryPreviewModal({ category, close, navigate }) {
   }
 
   React.useEffect(() => {
+    if (!category) return
     setCatLoading(true)
     sendMessage("request.dogs.list", { ...queryParams, offset: 0 })
       .then(result => {
@@ -49,6 +48,8 @@ function CategoryPreviewModal({ category, close, navigate }) {
       .catch(() => {})
       .finally(() => setCatLoading(false))
   }, [category])
+
+  if (!category) return null
 
   return (
     <div
