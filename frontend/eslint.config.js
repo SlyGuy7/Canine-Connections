@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   // Skip linting the production build output folder.
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'dist-demo']),
   {
     // Apply these rules to all JavaScript and JSX source files.
     files: ['**/*.{js,jsx}'],
@@ -37,6 +37,11 @@ export default defineConfig([
       // Warn if a file exports something other than a React component (breaks fast refresh).
       'react-refresh/only-export-components': 'warn',
     },
+  },
+  {
+    // End-to-end scripts run in Node, not the browser.
+    files: ['e2e/**/*.mjs'],
+    languageOptions: { globals: globals.node },
   },
   {
     // The app entry point renders the root and exports nothing, so the fast-refresh rule doesn't apply.

@@ -1,3 +1,5 @@
+USE adoption_center;
+
 -- Seed data for resources table
 -- Run on all DB nodes: mysql -u adoption_user -p adoption_center < seeds.sql
 

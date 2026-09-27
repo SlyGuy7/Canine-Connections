@@ -16,7 +16,9 @@ function logMsg($msg) {
 }
 
 $dotenv = Dotenv::createImmutable(__DIR__);
-$dotenv->load();
+// Without a .env file (e.g. in Docker), settings come from the process environment.
+$dotenv->safeLoad();
+foreach (getenv() as $name => $value) { $_ENV[$name] ??= $value; }
 
 $port = (int) $_ENV['RABBITMQ_PORT'];
 $user = $_ENV['RABBITMQ_USER'];
@@ -73,7 +75,18 @@ function connectDb(string $host, string $user, string $pass, string $name, int $
     $conn->set_charset('utf8mb4');
     $conn->query("SET SESSION wait_timeout=28800");
     $conn->query("SET SESSION interactive_timeout=28800");
-    // Only connect to the active Group Replication PRIMARY (ONLINE).
+    // A standalone server (no Group Replication, e.g. local Docker) is used as long as it is writable.
+    try {
+        $gr = $conn->query("SELECT COUNT(*) AS n FROM information_schema.PLUGINS WHERE PLUGIN_NAME = 'group_replication' AND PLUGIN_STATUS = 'ACTIVE'");
+        if ($gr && (int)$gr->fetch_assoc()['n'] === 0) {
+            $ro = $conn->query("SELECT @@super_read_only AS ro")->fetch_assoc();
+            if ((int)($ro['ro'] ?? 0) === 1) { $conn->close(); return null; }
+            return $conn;
+        }
+    } catch (\Throwable $e) {
+        // Fall through to the cluster checks below.
+    }
+    // In a cluster, only connect to the active Group Replication PRIMARY (ONLINE).
     try {
         $grResult = $conn->query(
             "SELECT MEMBER_ROLE FROM performance_schema.replication_group_members " .

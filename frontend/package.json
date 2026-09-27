@@ -9,10 +9,12 @@
   "scripts": {
     "start": "vite --open",
     "dev": "vite",
+    "demo": "vite --mode demo --open",
     "build": "vite build",
+    "build:demo": "vite build --mode demo --outDir dist-demo",
     "lint": "eslint . --max-warnings 0",
-    "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "preview": "vite preview"
   },
   "dependencies": {
     "@stomp/stompjs": "^7.3.0",

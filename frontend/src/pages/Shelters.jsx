@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useEffectEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { useDataCache } from "../context/dataCache"
-import { MapPin, List, Navigation } from "lucide-react"
+import { Globe, House, List, Mail, Map, MapPin, Navigation, PawPrint, Phone, TriangleAlert } from "lucide-react"
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import L from "leaflet"
 import "leaflet/dist/leaflet.css"
@@ -84,7 +84,7 @@ function RecenterMap({ lat, lng, zoom }) {
 function ShelterSkeleton() {
   const S = { background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }
   return (
-    <div style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
+    <div style={{ background: "var(--card-bg)", borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)" }}>
       <div style={{ height: "160px", ...S }} />
       <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
         {[["65%", "18px"], ["45%", "14px"], ["55%", "14px"], ["100%", "40px"]].map(([w, h], i) => (
@@ -109,7 +109,7 @@ function ShelterCard({ shelter, navigate }) {
           : <div style={{ width: "72px", height: "72px", borderRadius: "50%", background: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "22px", fontWeight: "800", color: "white" }}>{initials}</div>
         }
         {shelter.is_active === 0 && (
-          <span style={{ position: "absolute", top: "12px", right: "12px", background: "#fee2e2", color: "#dc2626", fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "20px" }}>Inactive</span>
+          <span style={{ position: "absolute", top: "12px", right: "12px", background: "var(--danger-soft)", color: "#dc2626", fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "20px" }}>Inactive</span>
         )}
         {shelter._distanceMiles != null && (
           <span style={{ position: "absolute", top: "12px", left: "12px", background: "rgba(255,255,255,0.92)", color: "#d97706", fontSize: "11px", fontWeight: "700", padding: "4px 10px", borderRadius: "20px" }}>
@@ -120,12 +120,12 @@ function ShelterCard({ shelter, navigate }) {
       <div style={{ padding: "20px 22px", flex: 1, display: "flex", flexDirection: "column" }}>
         <h3 style={{ margin: "0 0 10px 0", color: "var(--text-primary)", fontSize: "17px", fontWeight: "700", lineHeight: "1.3" }}>{shelter.name}</h3>
         <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginBottom: "16px" }}>
-          {(shelter.city || shelter.state) && <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>📍 {[shelter.city, shelter.state].filter(Boolean).join(", ")}</span>}
-          {shelter.phone && <span style={{ fontSize: "13px", color: "var(--text-muted)" }}>📞 {shelter.phone}</span>}
-          {shelter.email && <span style={{ fontSize: "13px", color: "var(--text-muted)", wordBreak: "break-all" }}>✉️ {shelter.email}</span>}
+          {(shelter.city || shelter.state) && <span style={{ fontSize: "13px", color: "var(--text-muted)" }}><MapPin size={15} className="inline-icon" /> {[shelter.city, shelter.state].filter(Boolean).join(", ")}</span>}
+          {shelter.phone && <span style={{ fontSize: "13px", color: "var(--text-muted)" }}><Phone size={15} className="inline-icon" /> {shelter.phone}</span>}
+          {shelter.email && <span style={{ fontSize: "13px", color: "var(--text-muted)", wordBreak: "break-all" }}><Mail size={15} className="inline-icon" /> {shelter.email}</span>}
           {shelter.website && (
             <a href={shelter.website.startsWith("http") ? shelter.website : `https://${shelter.website}`} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: "13px", color: "#d97706", fontWeight: "600", textDecoration: "none" }}>
-              🌐 Visit Website
+              <Globe size={15} className="inline-icon" /> Visit Website
             </a>
           )}
         </div>
@@ -236,7 +236,7 @@ export default function Shelters() {
 
       {/* Header */}
       <div style={{ background: "linear-gradient(135deg, #2f241d 0%, #4a3728 100%)", borderRadius: "24px", padding: "32px 36px", marginBottom: "24px", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: "32px", top: "-10px", fontSize: "120px", opacity: 0.06, userSelect: "none", lineHeight: 1, pointerEvents: "none" }}>🏡</div>
+        <div aria-hidden="true" style={{ position: "absolute", right: "-20px", bottom: "-40px", opacity: 0.07, color: "white", pointerEvents: "none" }}><House size={200} strokeWidth={1.25} /></div>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "16px", marginBottom: "20px" }}>
           <div>
             <h1 style={{ margin: 0, fontSize: "28px", fontWeight: "800", color: "white" }}>Partner Shelters</h1>
@@ -252,9 +252,9 @@ export default function Shelters() {
         {!loading && shelters.length > 0 && (
           <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
             {[
-              { icon: "🏡", label: "Shelters", value: shelters.length },
-              { icon: "🗺️", label: "States",   value: stateCount },
-              { icon: "🐾", label: "Available Dogs", value: "Browse →" },
+              { icon: <House size={20} />, label: "Shelters", value: shelters.length },
+              { icon: <Map size={20} />, label: "States",   value: stateCount },
+              { icon: <PawPrint size={20} />, label: "Available Dogs", value: "Browse →" },
             ].map(stat => (
               <div key={stat.label} style={{ padding: "10px 16px", borderRadius: "12px", background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.1)", cursor: stat.label === "Available Dogs" ? "pointer" : "default" }}
                 onClick={stat.label === "Available Dogs" ? () => navigate("/browse-dogs") : undefined}>
@@ -269,8 +269,8 @@ export default function Shelters() {
       {/* How it works */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "14px", marginBottom: "24px" }}>
         {[
-          { icon: "🗺️", title: "Explore the Map", desc: "Switch to Map view and use your location to see shelters within a chosen radius." },
-          { icon: "🐾", title: "Meet the Dogs", desc: "Visit any shelter's page to browse their available dogs and send a message." },
+          { icon: <Map size={20} />, title: "Explore the Map", desc: "Switch to Map view and use your location to see shelters within a chosen radius." },
+          { icon: <PawPrint size={20} />, title: "Meet the Dogs", desc: "Visit any shelter's page to browse their available dogs and send a message." },
         ].map(({ icon, title, desc }) => (
           <div key={title} style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "16px", padding: "18px 20px", display: "flex", flexDirection: "column", gap: "6px" }}>
             <span style={{ fontSize: "26px", lineHeight: 1 }}>{icon}</span>
@@ -286,7 +286,7 @@ export default function Shelters() {
           <button
             onClick={useMyLocation}
             disabled={locating}
-            style={{ display: "flex", alignItems: "center", gap: "8px", padding: "9px 16px", borderRadius: "10px", border: "none", background: userLocation ? "#dcfce7" : "#d97706", color: userLocation ? "#166534" : "white", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}
+            style={{ display: "flex", alignItems: "center", gap: "8px", padding: "9px 16px", borderRadius: "10px", border: "none", background: userLocation ? "var(--success-soft)" : "#d97706", color: userLocation ? "#166534" : "white", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}
           >
             <Navigation size={14} />
             {locating ? "Locating…" : userLocation ? "Location set" : "Use my location"}
@@ -319,8 +319,8 @@ export default function Shelters() {
 
       {error && (
         <div style={{ background: "#fef2f2", border: "1px solid #fecaca", borderRadius: "12px", padding: "14px 18px", color: "#dc2626", marginBottom: "24px", fontSize: "14px", fontWeight: "500", display: "flex", alignItems: "center", gap: "10px" }}>
-          <span>⚠️</span><span>{error}</span>
-          <button onClick={loadShelters} style={{ marginLeft: "auto", padding: "6px 14px", borderRadius: "8px", border: "1px solid #fca5a5", background: "white", color: "#dc2626", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>Retry</button>
+          <span><TriangleAlert size={16} /></span><span>{error}</span>
+          <button onClick={loadShelters} style={{ marginLeft: "auto", padding: "6px 14px", borderRadius: "8px", border: "1px solid #fca5a5", background: "var(--card-bg)", color: "#dc2626", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>Retry</button>
         </div>
       )}
 
@@ -328,7 +328,7 @@ export default function Shelters() {
       {viewMode === "map" && !loading && (
         <div style={{ borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)", marginBottom: "28px", height: "480px", position: "relative" }}>
           {geocoding && (
-            <div style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "white", padding: "8px 20px", borderRadius: "20px", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", fontSize: "13px", fontWeight: "600", color: "#6f5848", display: "flex", alignItems: "center", gap: "8px" }}>
+            <div style={{ position: "absolute", top: "16px", left: "50%", transform: "translateX(-50%)", zIndex: 1000, background: "var(--card-bg)", padding: "8px 20px", borderRadius: "20px", boxShadow: "0 4px 16px rgba(0,0,0,0.12)", fontSize: "13px", fontWeight: "600", color: "var(--text-muted)", display: "flex", alignItems: "center", gap: "8px" }}>
               <div style={{ width: "12px", height: "12px", border: "2px solid #f3e8de", borderTopColor: "#d97706", borderRadius: "50%", animation: "spin 0.8s linear infinite", flexShrink: 0 }} />
               {geoShelters.length > 0 ? `Placed ${geoShelters.length} of ${shelters.length} shelters…` : "Locating shelters…"}
             </div>
@@ -345,8 +345,8 @@ export default function Shelters() {
               <Marker key={s.shelter_id} position={[s.coords.lat, s.coords.lng]} icon={ORANGE_ICON}>
                 <Popup>
                   <div style={{ minWidth: "160px" }}>
-                    <strong style={{ fontSize: "14px", color: "#2f241d" }}>{s.name}</strong>
-                    {(s.city || s.state) && <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#78716c" }}>📍 {[s.city, s.state].filter(Boolean).join(", ")}</p>}
+                    <strong style={{ fontSize: "14px", color: "var(--text-primary)" }}>{s.name}</strong>
+                    {(s.city || s.state) && <p style={{ margin: "4px 0 0", fontSize: "12px", color: "var(--text-muted)" }}><MapPin size={15} className="inline-icon" /> {[s.city, s.state].filter(Boolean).join(", ")}</p>}
                     {s._distanceMiles != null && <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#d97706", fontWeight: "700" }}>{s._distanceMiles.toFixed(1)} miles away</p>}
                     <button onClick={() => navigate(`/shelters/${s.shelter_id}`)} style={{ marginTop: "8px", padding: "6px 14px", borderRadius: "8px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "12px", cursor: "pointer", width: "100%" }}>View Details</button>
                   </div>
@@ -364,7 +364,7 @@ export default function Shelters() {
         </div>
       ) : filtered.length === 0 ? (
         <div style={{ textAlign: "center", padding: "80px 40px", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)" }}>
-          <div style={{ fontSize: "64px", marginBottom: "16px" }}>🏡</div>
+          <div style={{ fontSize: "64px", marginBottom: "16px" }}><House size={51} strokeWidth={1.5} /></div>
           <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "700", color: "var(--text-primary)" }}>No shelters found</h2>
           <p style={{ margin: "0 0 24px 0", color: "var(--text-muted)" }}>Check back later as our network grows.</p>
         </div>

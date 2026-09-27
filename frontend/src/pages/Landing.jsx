@@ -7,6 +7,7 @@ import { useNavigate } from "react-router-dom"
 import { useIsMobile } from "../hooks/useIsMobile"
 import { sendMessage } from "../services/messaging"
 import AuthModal from "../components/AuthModal"
+import { ArrowRight, BadgeDollarSign, Dog, Heart, HeartHandshake, MessageCircleHeart, PawPrint, ShieldCheck, Sparkles } from "lucide-react"
 
 // Heading and dog filter for each category preview on the landing page.
 const CATEGORIES = {
@@ -61,31 +62,31 @@ function CategoryPreviewModal({ category, close, navigate }) {
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: "860px", background: "#fffaf5", borderRadius: "24px", padding: "40px", position: "relative", boxShadow: "0 24px 70px rgba(0,0,0,0.28)", maxHeight: "90vh", overflowY: "auto" }}
+        style={{ width: "100%", maxWidth: "860px", background: "var(--bg-primary)", borderRadius: "24px", padding: "40px", position: "relative", boxShadow: "0 24px 70px rgba(0,0,0,0.28)", maxHeight: "90vh", overflowY: "auto" }}
       >
         <button
           onClick={close}
-          style={{ position: "absolute", top: "16px", right: "20px", background: "none", border: "none", fontSize: "26px", cursor: "pointer", color: "#6f5848", lineHeight: 1, padding: "4px 8px", borderRadius: "8px" }}
+          style={{ position: "absolute", top: "16px", right: "20px", background: "none", border: "none", fontSize: "26px", cursor: "pointer", color: "var(--text-muted)", lineHeight: 1, padding: "4px 8px", borderRadius: "8px" }}
         >
           ×
         </button>
-        <h2 style={{ marginTop: 0, color: "#2f241d", fontSize: "28px", fontWeight: "800" }}>{title}</h2>
-        <p style={{ color: "#6f5848", marginBottom: "28px", fontSize: "15px" }}>{subtitle}</p>
+        <h2 style={{ marginTop: 0, color: "var(--text-primary)", fontSize: "28px", fontWeight: "800" }}>{title}</h2>
+        <p style={{ color: "var(--text-muted)", marginBottom: "28px", fontSize: "15px" }}>{subtitle}</p>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "16px", marginBottom: "32px" }}>
           {previewDogs.length > 0 ? previewDogs.map((dog) => (
-            <div key={dog.id} style={{ border: "1px solid #efdfd1", borderRadius: "16px", overflow: "hidden", background: "white", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
+            <div key={dog.id} style={{ border: "1px solid var(--border)", borderRadius: "16px", overflow: "hidden", background: "var(--card-bg)", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
               {dog.image ? (
                 <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "140px", objectFit: "cover" }} />
               ) : (
-                <div style={{ width: "100%", height: "140px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "44px" }}>🐕</div>
+                <div style={{ width: "100%", height: "140px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "44px" }}><Dog size={35} strokeWidth={1.5} /></div>
               )}
               <div style={{ padding: "14px" }}>
-                <h4 style={{ margin: "0 0 4px 0", color: "#2f241d", fontSize: "16px", fontWeight: "700" }}>{dog.name}</h4>
+                <h4 style={{ margin: "0 0 4px 0", color: "var(--text-primary)", fontSize: "16px", fontWeight: "700" }}>{dog.name}</h4>
                 <p style={{ margin: 0, fontSize: "12px", color: "#d97706", fontWeight: "600" }}>{dog.breed}</p>
               </div>
             </div>
           )) : (
-            <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "#6f5848" }}>
+            <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
               {catLoading ? "Loading..." : "No dogs found in this category."}
             </div>
           )}
@@ -112,7 +113,7 @@ function DogModal({ dog, close, requireAuth }) {
     >
       <div
         onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: "520px", background: "white", borderRadius: "24px", overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.25)", position: "relative" }}
+        style={{ width: "100%", maxWidth: "520px", background: "var(--card-bg)", borderRadius: "24px", overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.25)", position: "relative" }}
       >
         <button
           onClick={close}
@@ -123,30 +124,30 @@ function DogModal({ dog, close, requireAuth }) {
         {dog.image ? (
           <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "300px", objectFit: "cover" }} />
         ) : (
-          <div style={{ width: "100%", height: "300px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px" }}>🐕</div>
+          <div style={{ width: "100%", height: "300px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px" }}><Dog size={58} strokeWidth={1.5} /></div>
         )}
         <div style={{ padding: "28px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
             <div>
-              <h2 style={{ fontSize: "28px", color: "#2f241d", margin: "0 0 4px 0", fontWeight: "800" }}>{dog.name}</h2>
+              <h2 style={{ fontSize: "28px", color: "var(--text-primary)", margin: "0 0 4px 0", fontWeight: "800" }}>{dog.name}</h2>
               <p style={{ color: "#d97706", fontWeight: "700", margin: 0, fontSize: "16px" }}>{dog.breed}</p>
             </div>
             {(dog.age_years || dog.size) && (
               <div style={{ textAlign: "right" }}>
-                {dog.age_years && <p style={{ margin: "0 0 2px 0", fontSize: "13px", color: "#6f5848" }}>{dog.age_years} yr</p>}
-                {dog.size && <p style={{ margin: 0, fontSize: "13px", color: "#6f5848" }}>{dog.size}</p>}
+                {dog.age_years && <p style={{ margin: "0 0 2px 0", fontSize: "13px", color: "var(--text-muted)" }}>{dog.age_years} yr</p>}
+                {dog.size && <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>{dog.size}</p>}
               </div>
             )}
           </div>
-          <p style={{ margin: "0 0 24px 0", lineHeight: "1.6", color: "#5f4a3c", fontSize: "15px" }}>
+          <p style={{ margin: "0 0 24px 0", lineHeight: "1.6", color: "var(--text-muted)", fontSize: "15px" }}>
             {dog.description || `${dog.name} is a wonderful ${dog.breed} looking for a forever home. They are fully vetted, microchipped, and ready to meet their new family.`}
           </p>
           <div style={{ display: "flex", gap: "12px" }}>
             <button
               onClick={requireAuth}
-              style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "1px solid #efdfd1", background: "white", cursor: "pointer", fontWeight: "700", fontSize: "15px", color: "#2f241d" }}
+              style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--card-bg)", cursor: "pointer", fontWeight: "700", fontSize: "15px", color: "var(--text-primary)" }}
             >
-              🤍 Save
+              <Heart size={15} className="inline-icon" /> Save
             </button>
             <button
               onClick={requireAuth}
@@ -253,7 +254,7 @@ export default function Landing() {
   }, [])
 
   // Slice once so re-renders that don't change the dogs array don't recreate the featured list.
-  const featuredDogs = useMemo(() => dogs.slice(0, 6), [dogs])
+  const featuredDogs = useMemo(() => dogs.slice(0, 7), [dogs])
 
   // Closes any open dog modal and forces the register flow — called by DogModal action buttons.
   function requireAuth() {
@@ -279,51 +280,51 @@ export default function Landing() {
     <div className="landing-page" id="home">
 
       {/* ── Navbar ── */}
-      <nav className="landing-nav" style={{ position: "absolute", top: 0, left: 0, right: 0, display: "flex", justifyContent: "space-between", alignItems: "center", padding: isMobile ? "16px 20px" : "24px 48px", zIndex: 100 }}>
-        <div style={{ color: "white", fontSize: "20px", fontWeight: "800", letterSpacing: "-0.3px", textShadow: "0 1px 4px rgba(0,0,0,0.4)" }}>
-          🐾 Canine Connections
-        </div>
-        <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+      <nav className="landing-nav">
+        <a href="/landing" className="brand-mark" aria-label="Canine Connections home">
+          <span className="brand-mark__icon"><PawPrint size={18} strokeWidth={2.5} /></span>
+          <span>Canine Connections</span>
+        </a>
+        <div className="landing-nav__actions">
           {isLoggedIn ? (
             <>
-              <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "rgba(255,255,255,0.12)", backdropFilter: "blur(8px)", borderRadius: "40px", padding: "6px 16px 6px 8px", border: "1px solid rgba(255,255,255,0.2)" }}>
-                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#d97706", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "13px", fontWeight: "800", color: "white", flexShrink: 0 }}>
-                  {initials}
+              {!isMobile && (
+                <div className="nav-user">
+                  <span className="nav-user__avatar">{initials}</span>
+                  <span className="nav-user__name">{displayName}</span>
                 </div>
-                <span style={{ color: "white", fontWeight: "600", fontSize: "14px", maxWidth: "140px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {displayName}
-                </span>
-              </div>
-              <button
-                onClick={() => navigate("/dashboard")}
-                style={{ padding: "9px 20px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer", whiteSpace: "nowrap" }}
-              >
-                Go to Dashboard
+              )}
+              <button className="btn btn-primary" onClick={() => navigate("/dashboard")}>
+                {isMobile ? "Dashboard" : "Go to Dashboard"}
               </button>
             </>
           ) : (
             <>
-              <button className="login-btn-top" onClick={() => setModalMode("login")}>Login</button>
-              <button className="register-btn-top" onClick={() => setModalMode("register")}>Register</button>
+              <button className="btn btn-glass" onClick={() => setModalMode("login")}>Log in</button>
+              <button className="btn btn-primary" onClick={() => setModalMode("register")}>Sign up</button>
             </>
           )}
         </div>
       </nav>
 
       {/* ── Hero ── */}
-      <header className="hero-banner" style={{ height: "100vh", justifyContent: "center" }}>
-        <h1 style={{ fontSize: isMobile ? "34px" : "62px", margin: "0 0 16px 0", fontWeight: "800", lineHeight: 1.1 }}>Find your New Best Friend</h1>
-        <p style={{ fontSize: "20px", margin: "0 0 36px 0", opacity: 0.9, maxWidth: "520px" }}>
-          Connect with local shelters and give a rescue dog the forever home they deserve.
-        </p>
-        <button
-          onClick={handleCTA}
-          style={{ padding: "16px 40px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "800", fontSize: "17px", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.2)", transition: "transform 0.2s" }}
-          onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-          onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-        >
-          {isLoggedIn ? "Browse Dogs" : "Get Started — It's Free"}
-        </button>
+      <header className="hero">
+        <div className="hero__content">
+          <span className="hero__eyebrow"><Sparkles size={14} /> Free to apply · Partner shelters near you</span>
+          <h1 className="hero__title">Find your <em>new best friend.</em></h1>
+          <p className="hero__subtitle">
+            Browse rescue dogs from local shelters, take a two-minute compatibility quiz,
+            and apply to adopt — all in one place.
+          </p>
+          <div className="hero__actions">
+            <button className="btn btn-primary btn-lg" onClick={handleCTA}>
+              {isLoggedIn ? "Browse dogs" : "Get started — it's free"} <ArrowRight size={18} />
+            </button>
+            <button className="btn btn-glass btn-lg" onClick={() => (isLoggedIn ? navigate("/quiz") : setModalMode("register"))}>
+              Take the match quiz
+            </button>
+          </div>
+        </div>
       </header>
 
       {/* ── Stats Strip ── */}
@@ -344,10 +345,10 @@ export default function Landing() {
       </div>
 
       {/* ── Category Cards ── */}
-      <div style={{ background: "#f7efe7", paddingTop: "64px", paddingBottom: "20px" }}>
+      <div style={{ background: "var(--bg-secondary)", paddingTop: "64px", paddingBottom: "20px" }}>
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <h2 style={{ fontSize: "34px", fontWeight: "800", color: "#2f241d", margin: "0 0 10px 0" }}>Browse by Category</h2>
-          <p style={{ color: "#6f5848", fontSize: "16px", margin: 0 }}>Find the perfect match for your home and lifestyle.</p>
+          <h2 style={{ fontSize: "34px", fontWeight: "800", color: "var(--text-primary)", margin: "0 0 10px 0" }}>Browse by Category</h2>
+          <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: 0 }}>Find the perfect match for your home and lifestyle.</p>
         </div>
         <nav className="category-container" style={{ marginTop: 0 }}>
           {categories.map(cat => (
@@ -365,21 +366,21 @@ export default function Landing() {
       </div>
 
       {/* ── How It Works ── */}
-      <section id="how-it-works" style={{ background: "#fff", padding: "80px 20px" }}>
+      <section id="how-it-works" style={{ background: "var(--card-bg)", padding: "80px 20px" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "56px" }}>
-            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "#2f241d", margin: "0 0 10px 0" }}>How It Works</h2>
-            <p style={{ color: "#6f5848", fontSize: "16px", margin: 0 }}>Three simple steps to finding your forever companion.</p>
+            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "var(--text-primary)", margin: "0 0 10px 0" }}>How It Works</h2>
+            <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: 0 }}>Three simple steps to finding your forever companion.</p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "32px" }}>
             {steps.map((step, i) => (
-              <div key={i} style={{ background: "#fffaf5", border: "1px solid #efdfd1", borderRadius: "20px", padding: "36px 32px", position: "relative", overflow: "hidden" }}>
+              <div key={i} style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: "20px", padding: "36px 32px", position: "relative", overflow: "hidden" }}>
                 <div style={{ fontSize: "64px", fontWeight: "900", color: "#fde6cf", position: "absolute", top: "12px", right: "20px", lineHeight: 1, userSelect: "none" }}>{step.number}</div>
                 <div style={{ width: "48px", height: "48px", background: "#d97706", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px" }}>
                   <span style={{ color: "white", fontWeight: "800", fontSize: "18px" }}>{parseInt(step.number)}</span>
                 </div>
-                <h3 style={{ fontSize: "20px", fontWeight: "700", color: "#2f241d", margin: "0 0 12px 0" }}>{step.title}</h3>
-                <p style={{ color: "#6f5848", fontSize: "15px", lineHeight: "1.6", margin: 0 }}>{step.desc}</p>
+                <h3 style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-primary)", margin: "0 0 12px 0" }}>{step.title}</h3>
+                <p style={{ color: "var(--text-muted)", fontSize: "15px", lineHeight: "1.6", margin: 0 }}>{step.desc}</p>
               </div>
             ))}
           </div>
@@ -393,25 +394,25 @@ export default function Landing() {
         const dotw = dogs[new Date().getDay() % dogs.length]
         const dotwPhoto = dotw?.photos ? dotw.photos.split(",")[0].trim() : null
         return dotw ? (
-          <section style={{ background: "#fff", padding: "80px 20px" }}>
+          <section style={{ background: "var(--card-bg)", padding: "80px 20px" }}>
             <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", gap: "48px", alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ width: "340px", height: "340px", borderRadius: "24px", overflow: "hidden", background: "#fcedda", flexShrink: 0, position: "relative" }}>
+              <div style={{ width: "340px", height: "340px", borderRadius: "24px", overflow: "hidden", background: "var(--brand-soft)", flexShrink: 0, position: "relative" }}>
                 {dotwPhoto
                   ? <img src={dotwPhoto} alt={dotw.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "100px" }}>🐕</div>
+                  : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "100px" }}><Dog size={58} strokeWidth={1.5} /></div>
                 }
                 <div style={{ position: "absolute", top: "16px", left: "16px", background: "#d97706", color: "white", fontSize: "12px", fontWeight: "800", padding: "6px 14px", borderRadius: "20px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  🌟 Dog of the Week
+                  <Sparkles size={15} className="inline-icon" /> Dog of the Week
                 </div>
               </div>
               <div style={{ flex: 1, minWidth: "260px" }}>
                 <p style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "700", color: "#d97706", textTransform: "uppercase", letterSpacing: "2px" }}>Dog of the Week</p>
-                <h2 style={{ margin: "0 0 8px 0", fontSize: "40px", fontWeight: "800", color: "#2f241d", lineHeight: 1.1 }}>{dotw.name}</h2>
+                <h2 style={{ margin: "0 0 8px 0", fontSize: "40px", fontWeight: "800", color: "var(--text-primary)", lineHeight: 1.1 }}>{dotw.name}</h2>
                 <p style={{ margin: "0 0 8px 0", fontSize: "17px", color: "#d97706", fontWeight: "700" }}>{dotw.breed}</p>
-                <p style={{ margin: "0 0 8px 0", fontSize: "14px", color: "#9c7e6a" }}>
+                <p style={{ margin: "0 0 8px 0", fontSize: "14px", color: "var(--text-muted)" }}>
                   {dotw.age_years} yr · {dotw.size} · {dotw.gender}
                 </p>
-                <p style={{ margin: "0 0 28px 0", color: "#5f4a3c", lineHeight: "1.7", fontSize: "15px" }}>
+                <p style={{ margin: "0 0 28px 0", color: "var(--text-muted)", lineHeight: "1.7", fontSize: "15px" }}>
                   {dotw.description || `${dotw.name} is a wonderful ${dotw.breed} looking for a forever home.`}
                 </p>
                 <button
@@ -429,23 +430,23 @@ export default function Landing() {
       })()}
 
       {/* ── Why Adopt? ── */}
-      <section style={{ background: "#f7efe7", padding: "80px 20px" }}>
+      <section style={{ background: "var(--bg-secondary)", padding: "80px 20px" }}>
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "56px" }}>
-            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "#2f241d", margin: "0 0 10px 0" }}>Why Adopt?</h2>
-            <p style={{ color: "#6f5848", fontSize: "16px", margin: 0 }}>Adopting a rescue dog changes both of your lives.</p>
+            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "var(--text-primary)", margin: "0 0 10px 0" }}>Why Adopt?</h2>
+            <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: 0 }}>Adopting a rescue dog changes both of your lives.</p>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "24px" }}>
             {[
-              { icon: "❤️", title: "Save a Life", desc: "Rescue dogs are waiting for a second chance. Your adoption directly saves a life and frees shelter space for another dog in need." },
-              { icon: "💰", title: "Free to Apply", desc: "Our platform charges nothing. Submit your application, connect with shelters, and find your match at zero cost." },
-              { icon: "✅", title: "Vet Checked", desc: "Every dog in our network is health-checked, vaccinated, and microchipped before adoption, giving you peace of mind." },
-              { icon: "🤝", title: "Ongoing Support", desc: "Our adoption support team is here before, during, and after your adoption to help you and your new dog settle in." },
+              { icon: HeartHandshake, title: "Save a Life", desc: "Rescue dogs are waiting for a second chance. Your adoption directly saves a life and frees shelter space for another dog in need." },
+              { icon: BadgeDollarSign, title: "Free to Apply", desc: "Our platform charges nothing. Submit your application, connect with shelters, and find your match at zero cost." },
+              { icon: ShieldCheck, title: "Vet Checked", desc: "Every dog in our network is health-checked, vaccinated, and microchipped before adoption, giving you peace of mind." },
+              { icon: MessageCircleHeart, title: "Ongoing Support", desc: "Our adoption support team is here before, during, and after your adoption to help you and your new dog settle in." },
             ].map(item => (
-              <div key={item.title} style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", padding: "32px 28px", textAlign: "center" }}>
-                <div style={{ fontSize: "40px", marginBottom: "16px" }}>{item.icon}</div>
-                <h3 style={{ fontSize: "18px", fontWeight: "700", color: "#2f241d", margin: "0 0 10px 0" }}>{item.title}</h3>
-                <p style={{ color: "#6f5848", fontSize: "14px", lineHeight: "1.7", margin: 0 }}>{item.desc}</p>
+              <div key={item.title} style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", padding: "28px", boxShadow: "var(--shadow-sm)" }}>
+                <div className="icon-tile"><item.icon size={22} strokeWidth={2} /></div>
+                <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-primary)", margin: "0 0 10px 0" }}>{item.title}</h3>
+                <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.7", margin: 0 }}>{item.desc}</p>
               </div>
             ))}
           </div>
@@ -462,7 +463,7 @@ export default function Landing() {
         </p>
         <button
           onClick={handleCTA}
-          style={{ padding: "18px 48px", borderRadius: "12px", border: "none", background: "white", color: "#d97706", fontWeight: "800", fontSize: "18px", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", transition: "transform 0.2s" }}
+          style={{ padding: "18px 48px", borderRadius: "12px", border: "none", background: "var(--card-bg)", color: "#d97706", fontWeight: "800", fontSize: "18px", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", transition: "transform 0.2s" }}
           onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
           onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
         >
@@ -471,17 +472,17 @@ export default function Landing() {
       </section>
 
       {/* ── Featured Dogs ── */}
-      <section style={{ background: "#f7efe7", padding: "80px 20px" }}>
+      <section style={{ background: "var(--bg-secondary)", padding: "80px 20px" }}>
         <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
           <div style={{ textAlign: "center", marginBottom: "48px" }}>
-            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "#2f241d", margin: "0 0 10px 0" }}>Dogs Available for Adoption</h2>
-            <p style={{ color: "#6f5848", fontSize: "16px", margin: 0 }}>Every dog deserves a loving home. Could yours be next?</p>
+            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "var(--text-primary)", margin: "0 0 10px 0" }}>Dogs Available for Adoption</h2>
+            <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: 0 }}>Every dog deserves a loving home. Could yours be next?</p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
             {dogsLoading ? (
               Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} style={{ background: "white", borderRadius: "16px", overflow: "hidden", border: "1px solid #efdfd1" }}>
+                <div key={i} style={{ background: "var(--card-bg)", borderRadius: "16px", overflow: "hidden", border: "1px solid var(--border)" }}>
                   <div style={{ height: "200px", ...SHIMMER }} />
                   <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
                     <div style={{ height: "16px", borderRadius: "8px", width: "60%", ...SHIMMER }} />
@@ -495,20 +496,20 @@ export default function Landing() {
                 <div
                   key={dog.id}
                   onClick={() => setSelectedDog(dog)}
-                  style={{ background: "white", borderRadius: "16px", overflow: "hidden", border: "1px solid #efdfd1", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
+                  style={{ background: "var(--card-bg)", borderRadius: "16px", overflow: "hidden", border: "1px solid var(--border)", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
                   onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 28px rgba(0,0,0,0.1)" }}
                   onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)" }}
                 >
                   {dog.image ? (
                     <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "200px", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none" }} />
                   ) : (
-                    <div style={{ height: "200px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "56px" }}>🐕</div>
+                    <div style={{ height: "200px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "56px" }}><Dog size={45} strokeWidth={1.5} /></div>
                   )}
                   <div style={{ padding: "16px" }}>
-                    <h3 style={{ margin: "0 0 4px 0", fontSize: "17px", fontWeight: "700", color: "#2f241d" }}>{dog.name}</h3>
+                    <h3 style={{ margin: "0 0 4px 0", fontSize: "17px", fontWeight: "700", color: "var(--text-primary)" }}>{dog.name}</h3>
                     <p style={{ margin: "0 0 2px 0", fontSize: "13px", color: "#d97706", fontWeight: "600" }}>{dog.breed}</p>
                     {(dog.age_years || dog.size) && (
-                      <p style={{ margin: 0, fontSize: "12px", color: "#a8a29e" }}>
+                      <p style={{ margin: 0, fontSize: "12px", color: "var(--text-subtle)" }}>
                         {[dog.age_years && `${dog.age_years} yr`, dog.size, dog.gender].filter(Boolean).join(" · ")}
                       </p>
                     )}
@@ -524,7 +525,7 @@ export default function Landing() {
               onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
               onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
             >
-              <div style={{ fontSize: "40px", marginBottom: "12px" }}>🐾</div>
+              <div style={{ fontSize: "40px", marginBottom: "12px" }}><PawPrint size={32} strokeWidth={1.5} /></div>
               <h3 style={{ color: "white", fontWeight: "700", fontSize: "18px", margin: "0 0 8px 0" }}>See All Dogs</h3>
               <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px", margin: "0 0 20px 0" }}>Browse our full network of available dogs</p>
               <div style={{ background: "#d97706", color: "white", padding: "10px 24px", borderRadius: "10px", fontWeight: "700", fontSize: "14px" }}>
@@ -540,9 +541,9 @@ export default function Landing() {
         <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "32px", marginBottom: "40px" }}>
             <div style={{ maxWidth: "280px" }}>
-              <div style={{ color: "white", fontSize: "20px", fontWeight: "800", marginBottom: "12px" }}>🐾 Canine Connections</div>
+              <div style={{ color: "white", fontSize: "20px", fontWeight: "800", marginBottom: "12px" }}><PawPrint size={15} className="inline-icon" /> Canine Connections</div>
               <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", lineHeight: "1.6", margin: 0 }}>
-                Connecting rescue dogs with loving families across Canada. Every adoption changes two lives.
+                Connecting rescue dogs with loving families across the Northeast. Every adoption changes two lives.
               </p>
             </div>
             <div style={{ display: "flex", gap: "60px", flexWrap: "wrap" }}>
@@ -576,7 +577,7 @@ export default function Landing() {
           </div>
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "24px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
             <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "13px", margin: 0 }}>© 2026 Canine Connections. All rights reserved.</p>
-            <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "13px", margin: 0 }}>Made with ❤️ for rescue dogs everywhere.</p>
+            <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "13px", margin: 0 }}>Made with care for rescue dogs everywhere.</p>
           </div>
         </div>
       </footer>

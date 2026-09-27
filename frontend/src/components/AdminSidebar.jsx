@@ -3,14 +3,15 @@
 import React, { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import { clearAdminSession } from "../services/auth"
+import { ClipboardList, LayoutDashboard, LogOut, PawPrint, Star, UserRound } from "lucide-react"
 
 // All five admin sections — rendered as nav buttons in order.
 const links = [
-  { label: "Overview",        path: "/admin/dashboard",     icon: "▦" },
-  { label: "Dogs",            path: "/admin/dogs",          icon: "🐾" },
-  { label: "Applications",   path: "/admin/applications",  icon: "📋" },
-  { label: "Success Stories", path: "/admin/stories",       icon: "⭐" },
-  { label: "Users",           path: "/admin/users",         icon: "👤" },
+  { label: "Overview",        path: "/admin/dashboard",     icon: <LayoutDashboard size={20} /> },
+  { label: "Dogs",            path: "/admin/dogs",          icon: <PawPrint size={20} /> },
+  { label: "Applications",   path: "/admin/applications",  icon: <ClipboardList size={20} /> },
+  { label: "Success Stories", path: "/admin/stories",       icon: <Star size={20} /> },
+  { label: "Users",           path: "/admin/users",         icon: <UserRound size={20} /> },
 ]
 
 export default function AdminSidebar() {
@@ -40,8 +41,8 @@ export default function AdminSidebar() {
       {/* Logo */}
       <div style={{ padding: '24px 20px', borderBottom: '1px solid #1a1a1a' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <div style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg,#dc2626,#b91c1c)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(220,38,38,0.3)' }}>
-            <span style={{ color: 'white', fontWeight: '800', fontSize: '12px' }}>CC</span>
+          <div style={{ width: '36px', height: '36px', background: 'linear-gradient(135deg,#d97706,#b45309)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 12px rgba(217,119,6,0.3)' }}>
+            <PawPrint size={18} color="white" strokeWidth={2.5} />
           </div>
           <div>
             <p style={{ margin: 0, color: 'white', fontWeight: '700', fontSize: '13px', lineHeight: 1.2 }}>Admin Portal</p>
@@ -61,10 +62,10 @@ export default function AdminSidebar() {
               onMouseEnter={() => setHovered(link.path)}
               onMouseLeave={() => setHovered(null)}
               style={{
-                background: active ? 'rgba(220,38,38,0.15)' : hovered === link.path ? '#141414' : 'transparent',
-                border: active ? '1px solid rgba(220,38,38,0.3)' : '1px solid transparent',
+                background: active ? 'rgba(217,119,6,0.15)' : hovered === link.path ? '#141414' : 'transparent',
+                border: active ? '1px solid rgba(217,119,6,0.3)' : '1px solid transparent',
                 borderRadius: '8px', padding: '10px 12px', textAlign: 'left', cursor: 'pointer',
-                color: active ? '#f87171' : hovered === link.path ? '#e0e0e0' : '#666',
+                color: active ? '#fbbf24' : hovered === link.path ? '#e0e0e0' : '#666',
                 fontWeight: active ? '600' : '400', fontSize: '13px',
                 display: 'flex', alignItems: 'center', gap: '10px', transition: 'all 0.15s',
                 width: '100%',
@@ -72,7 +73,7 @@ export default function AdminSidebar() {
             >
               <span style={{ fontSize: '14px', width: '18px', textAlign: 'center' }}>{link.icon}</span>
               {link.label}
-              {active && <div style={{ marginLeft: 'auto', width: '5px', height: '5px', borderRadius: '50%', background: '#dc2626' }} />}
+              {active && <div style={{ marginLeft: 'auto', width: '5px', height: '5px', borderRadius: '50%', background: '#d97706' }} />}
             </button>
           )
         })}
@@ -95,7 +96,7 @@ export default function AdminSidebar() {
           onMouseEnter={e => { e.currentTarget.style.borderColor = '#7f1d1d'; e.currentTarget.style.color = '#f87171' }}
           onMouseLeave={e => { e.currentTarget.style.borderColor = '#1f1f1f'; e.currentTarget.style.color = '#555' }}
         >
-          <span>↩</span> Sign Out
+          <span><LogOut size={16} /></span> Sign Out
         </button>
       </div>
     </aside>
