@@ -8,6 +8,23 @@ Canine Connections is a full-stack dog adoption platform that connects prospecti
 
 ---
 
+## ⚡ Quick start
+
+Pick one — both are a single command from the repository root.
+
+| | Command | Needs | What you get |
+|---|---|---|---|
+| **Demo** | `npm run demo` | [Node.js 20.19+](https://nodejs.org) | The full site in your browser on sample data. No servers, no setup. |
+| **Full stack** | `npm start` (or `docker compose up --build`) | [Docker Desktop](https://www.docker.com/products/docker-desktop/) | The real system — MySQL, RabbitMQ, the three PHP workers and the site — at **http://localhost:8080** |
+
+Full-stack logins (local only):
+- Adopter: `demo@canineconnections.org` / `demo1234`
+- Admin portal (http://localhost:8080/admin): `admin@canineconnections.org` / `admin1234`
+
+`npm run stop` shuts the stack down; `npm run reset` also wipes its database so the sample data loads fresh. The RabbitMQ dashboard is at http://localhost:15672 (`canine` / `canine-dev-backend`), and emails are printed to the logs instead of being sent (`docker compose logs frontend-worker`).
+
+---
+
 ## 🐶 What the Site Does
 
 ### For Adopters
@@ -169,7 +186,9 @@ Canine-Connections/
 │   ├── rejoin_rabbitmq.sh
 │   └── importers/             # RescueGroups / Dog API import + shelter sync
 │
-└── .github/workflows/ci.yml   # Lint, tests and audits for every component
+├── docker/                    # Local stack: PHP + web images, nginx, RabbitMQ config
+├── docker-compose.yml         # npm start / docker compose up
+└── .github/workflows/ci.yml   # Lint, tests, audits and a full-stack end-to-end run
 ```
 
 ---
@@ -231,14 +250,17 @@ GitHub Actions runs all of these, plus dependency audits and syntax checks, on e
 
 ## 💻 Local Development
 
+See **Quick start** above for running everything. For day-to-day frontend work:
+
 ```bash
 cd frontend
-cp .env.example .env   # then fill in VITE_MQ_LOGIN / VITE_MQ_PASSCODE
 npm install
-npm run dev
+npm run demo        # hot-reloading dev server on sample data (src/services/demoBackend.js)
 ```
 
-The Vite dev server proxies `/ws` and `/client-ip` to the live load balancer via `vite.config.js`, so no local RabbitMQ or PHP setup is needed. Use the restricted web user (see `infra/rabbitmq/setup_web_user.sh`) in `frontend/.env`.
+To develop the frontend against a real backend instead, create `frontend/.env` from `.env.example` with the restricted web user (`infra/rabbitmq/setup_web_user.sh`) and run `npm run dev`; Vite proxies `/ws` and `/client-ip` to the load balancer configured in `vite.config.js`.
+
+If you change the sample dogs/shelters in `demoBackend.js`, regenerate the database copy with `node database/scripts/generate_dev_seed.mjs`.
 
 ---
 
