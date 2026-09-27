@@ -39,6 +39,11 @@ export default defineConfig([
     },
   },
   {
+    // End-to-end scripts run in Node, not the browser.
+    files: ['e2e/**/*.mjs'],
+    languageOptions: { globals: globals.node },
+  },
+  {
     // The app entry point renders the root and exports nothing, so the fast-refresh rule doesn't apply.
     files: ['src/main.jsx'],
     rules: { 'react-refresh/only-export-components': 'off' },

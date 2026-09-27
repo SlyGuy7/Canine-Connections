@@ -227,3 +227,6 @@ export async function demoRequest(type, payload = {}) {
   const handler = handlers[type];
   return handler ? handler(payload) : { success: true };
 }
+
+// Also used to generate database/sql/dev_seed.sql, so the local stack shows the same data.
+export const DEMO_DATA = { SHELTERS, DOGS, RESOURCES, QUESTIONS, STORIES };
