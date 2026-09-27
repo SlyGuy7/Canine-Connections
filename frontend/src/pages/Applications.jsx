@@ -4,13 +4,14 @@ import React, { useState, useEffect, useRef, useEffectEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/toast";
+import { Clock, FileText, Hourglass, PawPrint } from "lucide-react"
 
 // Maps each status string to the colors, icon, label, and descriptive message shown on the card.
 const STATUS_CONFIG = {
   approved:    { bg: "#dcfce7", color: "#166534", icon: "✓",  label: "Approved",  message: "Congratulations! Next steps have been emailed to you." },
   rejected:    { bg: "#fee2e2", color: "#991b1b", icon: "✕",  label: "Rejected",  message: "Unfortunately this application was not approved." },
-  "in review": { bg: "#dbeafe", color: "#1e40af", icon: "⏳", label: "In Review", message: "The shelter is currently reviewing your application." },
-  pending:     { bg: "#fef9c3", color: "#854d0e", icon: "🕐", label: "Pending",   message: "Your application is awaiting shelter review." },
+  "in review": { bg: "#dbeafe", color: "#1e40af", icon: <Hourglass size={20} />, label: "In Review", message: "The shelter is currently reviewing your application." },
+  pending:     { bg: "#fef9c3", color: "#854d0e", icon: <Clock size={20} />, label: "Pending",   message: "Your application is awaiting shelter review." },
 };
 
 // Returns the STATUS_CONFIG entry for a raw status string, defaulting to pending.
@@ -32,7 +33,7 @@ function progressStep(status) {
 // Placeholder card with animated shimmer bars shown while applications are loading.
 function AppSkeleton() {
   return (
-    <div style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "28px", display: "flex", flexDirection: "column", gap: "14px" }}>
+    <div style={{ background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", padding: "28px", display: "flex", flexDirection: "column", gap: "14px" }}>
       {[["40%", "18px"], ["60%", "13px"], ["100%", "6px"], ["30%", "13px"]].map(([w, h], i) => (
         <div key={i} style={{ height: h, width: w, borderRadius: "8px", background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
       ))}
@@ -90,8 +91,8 @@ export default function Applications() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px", flexWrap: "wrap", gap: "16px" }}>
         <div>
-          <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>My Applications</h1>
-          <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>
+          <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>My Applications</h1>
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>
             {loading ? "Loading your applications…" : `${applications.length} application${applications.length !== 1 ? "s" : ""} submitted`}
           </p>
         </div>
@@ -124,10 +125,10 @@ export default function Applications() {
           {Array.from({ length: 3 }).map((_, i) => <AppSkeleton key={i} />)}
         </div>
       ) : applications.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "100px 40px", background: "white", borderRadius: "24px", border: "1px solid #efdfd1" }}>
-          <div style={{ fontSize: "72px", marginBottom: "20px" }}>📄</div>
-          <h2 style={{ margin: "0 0 10px 0", fontSize: "24px", fontWeight: "800", color: "#2f241d" }}>No applications yet</h2>
-          <p style={{ margin: "0 0 32px 0", color: "#78716c", fontSize: "16px", maxWidth: "360px", display: "inline-block" }}>
+        <div style={{ textAlign: "center", padding: "100px 40px", background: "var(--card-bg)", borderRadius: "24px", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: "72px", marginBottom: "20px" }}><FileText size={58} strokeWidth={1.5} /></div>
+          <h2 style={{ margin: "0 0 10px 0", fontSize: "24px", fontWeight: "800", color: "var(--text-primary)" }}>No applications yet</h2>
+          <p style={{ margin: "0 0 32px 0", color: "var(--text-muted)", fontSize: "16px", maxWidth: "360px", display: "inline-block" }}>
             Find a dog you love, hit Apply, and track everything right here.
           </p>
           <br />
@@ -146,18 +147,18 @@ export default function Applications() {
             return (
               <div
                 key={app.application_id}
-                style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "28px", transition: "box-shadow 0.2s ease" }}
+                style={{ background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", padding: "28px", transition: "box-shadow 0.2s ease" }}
                 onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.07)"}
                 onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
               >
                 {/* Card header */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px", gap: "12px", flexWrap: "wrap" }}>
                   <div>
-                    <h2 style={{ margin: "0 0 4px 0", fontSize: "18px", fontWeight: "700", color: "#2f241d" }}>
+                    <h2 style={{ margin: "0 0 4px 0", fontSize: "18px", fontWeight: "700", color: "var(--text-primary)" }}>
                       Application #{applications.indexOf(app) + 1}
                     </h2>
-                    <p style={{ margin: 0, fontSize: "13px", color: "#a8a29e" }}>
-                      Dog #{app.dog_id}
+                    <p style={{ margin: 0, fontSize: "13px", color: "var(--text-subtle)" }}>
+                      {app.dog_name || `Dog #${app.dog_id}`}
                     </p>
                   </div>
                   <span style={{ padding: "6px 14px", borderRadius: "20px", background: cfg.bg, color: cfg.color, fontSize: "12px", fontWeight: "700", display: "flex", alignItems: "center", gap: "5px", whiteSpace: "nowrap" }}>
@@ -175,8 +176,8 @@ export default function Applications() {
                       return (
                         <React.Fragment key={s}>
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
-                            <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: rejected ? "#fee2e2" : done ? "#fde6cf" : "#f5ede4", border: `2px solid ${rejected ? "#ef4444" : done ? "#d97706" : "#e5d5c5"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", transition: "all 0.3s" }}>
-                              {rejected ? "✕" : done ? "🐾" : "○"}
+                            <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: rejected ? "var(--danger-soft)" : done ? "var(--brand-soft)" : "#f5ede4", border: `2px solid ${rejected ? "#ef4444" : done ? "#d97706" : "#e5d5c5"}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px", transition: "all 0.3s" }}>
+                              {rejected ? "✕" : done ? <PawPrint size={20} /> : "○"}
                             </div>
                             <span style={{ fontSize: "10px", fontWeight: done ? "700" : "500", color: done ? "#d97706" : "#c4a98e", whiteSpace: "nowrap" }}>{s}</span>
                           </div>
@@ -190,7 +191,7 @@ export default function Applications() {
                 </div>
 
                 {/* Status message */}
-                <p style={{ margin: "0 0 20px 0", fontSize: "14px", color: "#6f5848", padding: "12px 16px", background: cfg.bg + "80", borderRadius: "10px" }}>
+                <p style={{ margin: "0 0 20px 0", fontSize: "14px", color: "var(--text-muted)", padding: "12px 16px", background: cfg.bg + "80", borderRadius: "10px" }}>
                   {cfg.message}
                 </p>
 
@@ -198,7 +199,7 @@ export default function Applications() {
                 <div style={{ display: "flex", gap: "10px" }}>
                   <button
                     onClick={() => navigate(`/dogs/${app.dog_id}`)}
-                    style={{ padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer", transition: "background 0.15s" }}
+                    style={{ padding: "10px 20px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text-primary)", fontWeight: "600", fontSize: "14px", cursor: "pointer", transition: "background 0.15s" }}
                     onMouseEnter={e => e.currentTarget.style.background = "#fdf6ef"}
                     onMouseLeave={e => e.currentTarget.style.background = "white"}
                   >
@@ -225,36 +226,36 @@ export default function Applications() {
           onClick={() => setViewApp(null)}
           style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px", backdropFilter: "blur(4px)" }}
         >
-          <div onClick={e => e.stopPropagation()} style={{ background: "white", borderRadius: "24px", padding: "40px", maxWidth: "480px", width: "100%", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--card-bg)", borderRadius: "24px", padding: "40px", maxWidth: "480px", width: "100%", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#2f241d" }}>Application Details</h2>
-              <button onClick={() => setViewApp(null)} style={{ width: "32px", height: "32px", borderRadius: "50%", border: "none", background: "#f3e8de", color: "#6f5848", fontSize: "16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "var(--text-primary)" }}>Application Details</h2>
+              <button onClick={() => setViewApp(null)} style={{ width: "32px", height: "32px", borderRadius: "50%", border: "none", background: "#f3e8de", color: "var(--text-muted)", fontSize: "16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
             </div>
             {(() => {
               const cfg = getStatus(viewApp.status);
               return (
-                <div style={{ background: "#fffaf5", border: "1px solid #efdfd1", borderRadius: "16px", padding: "20px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
+                <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: "16px", padding: "20px 24px", display: "flex", flexDirection: "column", gap: "12px" }}>
                   {[
                     ["Application ID", `#${viewApp.application_id}`],
                     ["Dog ID", `#${viewApp.dog_id}`],
                   ].map(([label, val]) => (
                     <div key={label} style={{ display: "flex", justifyContent: "space-between", fontSize: "14px" }}>
-                      <span style={{ color: "#78716c" }}>{label}</span>
-                      <span style={{ fontWeight: "600", color: "#2f241d" }}>{val}</span>
+                      <span style={{ color: "var(--text-muted)" }}>{label}</span>
+                      <span style={{ fontWeight: "600", color: "var(--text-primary)" }}>{val}</span>
                     </div>
                   ))}
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "14px", paddingTop: "4px", borderTop: "1px solid #efdfd1", marginTop: "4px" }}>
-                    <span style={{ color: "#78716c" }}>Status</span>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "14px", paddingTop: "4px", borderTop: "1px solid var(--border)", marginTop: "4px" }}>
+                    <span style={{ color: "var(--text-muted)" }}>Status</span>
                     <span style={{ padding: "4px 12px", borderRadius: "20px", background: cfg.bg, color: cfg.color, fontWeight: "700", fontSize: "12px" }}>{cfg.label}</span>
                   </div>
                 </div>
               );
             })()}
-            <p style={{ margin: "16px 0 24px", fontSize: "14px", color: "#78716c", lineHeight: "1.6" }}>{getStatus(viewApp.status).message}</p>
+            <p style={{ margin: "16px 0 24px", fontSize: "14px", color: "var(--text-muted)", lineHeight: "1.6" }}>{getStatus(viewApp.status).message}</p>
             <div style={{ display: "flex", gap: "10px" }}>
               <button
                 onClick={() => { setViewApp(null); navigate(`/dogs/${viewApp.dog_id}`); }}
-                style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
+                style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text-primary)", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
               >
                 View Dog
               </button>

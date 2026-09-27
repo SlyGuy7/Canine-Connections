@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   // Skip linting the production build output folder.
-  globalIgnores(['dist']),
+  globalIgnores(['dist', 'dist-demo']),
   {
     // Apply these rules to all JavaScript and JSX source files.
     files: ['**/*.{js,jsx}'],

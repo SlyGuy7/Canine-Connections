@@ -6,6 +6,7 @@ import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import { useToast } from "../context/toast"
 import AdminSidebar from "../components/AdminSidebar"
+import { ClipboardList } from "lucide-react"
 
 // Shared dark-theme color tokens used throughout this page.
 const A = {
@@ -13,7 +14,7 @@ const A = {
   card:   '#111111',
   card2:  '#141414',
   border: '#1a1a1a',
-  red:    '#dc2626',
+  red:    '#d97706',
   text:   '#f0f0f0',
   muted:  '#777777',
   subtle: '#444444',
@@ -76,7 +77,7 @@ export default function AdminDashboard() {
   const adminName = localStorage.getItem("adminFirstName") || localStorage.getItem("adminEmail") || "Admin"
 
   // Each card is clickable and navigates to the relevant admin section.
-  // accent:true makes the Pending Review card show in red when there are items to review.
+  // accent:true makes the Pending Review card stand out when there are items to review.
   const statCards = [
     { label:'Available Dogs',     value: stats.dogs,         path:'/admin/dogs',         accent: false },
     { label:'Total Applications', value: stats.applications,  path:'/admin/applications', accent: false },
@@ -105,14 +106,14 @@ export default function AdminDashboard() {
               style={{
                 background: card.accent ? '#160000' : A.card,
                 borderRadius:'12px', padding:'22px 24px',
-                border: `1px solid ${card.accent ? '#7f1d1d' : A.border}`,
+                border: `1px solid ${card.accent ? '#78350f' : A.border}`,
                 cursor:'pointer', transition:'border-color 0.15s, transform 0.15s',
               }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = card.accent ? '#dc2626' : '#333'; e.currentTarget.style.transform = 'translateY(-1px)' }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = card.accent ? '#7f1d1d' : A.border; e.currentTarget.style.transform = 'translateY(0)' }}
+              onMouseEnter={e => { e.currentTarget.style.borderColor = card.accent ? '#d97706' : '#333'; e.currentTarget.style.transform = 'translateY(-1px)' }}
+              onMouseLeave={e => { e.currentTarget.style.borderColor = card.accent ? '#78350f' : A.border; e.currentTarget.style.transform = 'translateY(0)' }}
             >
-              <p style={{ margin:'0 0 12px 0', fontSize:'11px', color: card.accent ? '#f87171' : A.muted, fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em' }}>{card.label}</p>
-              <p style={{ margin:0, fontSize:'36px', fontWeight:'800', color: card.accent ? '#dc2626' : A.text, lineHeight:1 }}>
+              <p style={{ margin:'0 0 12px 0', fontSize:'11px', color: card.accent ? '#fbbf24' : A.muted, fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.08em' }}>{card.label}</p>
+              <p style={{ margin:0, fontSize:'36px', fontWeight:'800', color: card.accent ? '#d97706' : A.text, lineHeight:1 }}>
                 {loading ? <span style={{ fontSize:'24px', color: A.subtle }}>—</span> : card.value}
               </p>
             </div>
@@ -144,7 +145,7 @@ export default function AdminDashboard() {
             </div>
           ) : recentApps.length === 0 ? (
             <div style={{ padding:'60px', textAlign:'center' }}>
-              <div style={{ fontSize:'40px', marginBottom:'12px', opacity:0.3 }}>📋</div>
+              <div style={{ fontSize:'40px', marginBottom:'12px', opacity:0.3 }}><ClipboardList size={16} /></div>
               <p style={{ color: A.muted, margin:0, fontSize:'14px' }}>No applications yet.</p>
             </div>
           ) : (

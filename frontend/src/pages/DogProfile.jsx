@@ -6,7 +6,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/toast";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { Share2, ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Dog, Heart, Mail, MapPin, PawPrint, Phone, Share2, Zap } from "lucide-react";
 
 // Adds the current dog to the front of the "recently viewed" list in localStorage (capped at 10).
 // Used by BrowseDogs.jsx to render the "Recently Viewed" row when no filters are active.
@@ -117,8 +117,8 @@ export default function DogProfile() {
   if (!dog) {
     return (
       <div style={{ maxWidth: "1000px", margin: "0 auto", textAlign: "center", paddingTop: "80px" }}>
-        <div style={{ fontSize: "64px", marginBottom: "16px" }}>🐾</div>
-        <h2 style={{ color: "#2f241d", marginBottom: "12px" }}>Dog not found</h2>
+        <div style={{ fontSize: "64px", marginBottom: "16px" }}><PawPrint size={51} strokeWidth={1.5} /></div>
+        <h2 style={{ color: "var(--text-primary)", marginBottom: "12px" }}>Dog not found</h2>
         <button onClick={() => navigate(-1)} style={{ padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}>
           ← Go Back
         </button>
@@ -145,10 +145,10 @@ export default function DogProfile() {
 
         {/* ── Left: photos ── */}
         <div style={{ width: isMobile ? "100%" : "400px", flexShrink: 0 }}>
-          <div style={{ width: "100%", height: "400px", borderRadius: "20px", overflow: "hidden", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", border: "1px solid #efdfd1", position: "relative" }}>
+          <div style={{ width: "100%", height: "400px", borderRadius: "20px", overflow: "hidden", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px", border: "1px solid var(--border)", position: "relative" }}>
             {currentPhoto
               ? <img src={currentPhoto} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none"; }} />
-              : "🐕"}
+              : <Dog size={20} />}
             {photos.length > 1 && (
               <>
                 <button onClick={() => setActivePhoto(i => (i - 1 + photos.length) % photos.length)}
@@ -185,7 +185,7 @@ export default function DogProfile() {
           {/* Energy level badge */}
           {dog.energy_level && (
             <div style={{ marginTop: "16px", display: "flex", alignItems: "center", gap: "10px", background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "14px", padding: "14px 18px" }}>
-              <span style={{ fontSize: "20px" }}>⚡</span>
+              <span style={{ fontSize: "20px" }}><Zap size={16} strokeWidth={1.5} /></span>
               <div>
                 <div style={{ fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Energy level</div>
                 <div style={{ fontSize: "15px", fontWeight: "700", color: "var(--text-primary)", textTransform: "capitalize" }}>{dog.energy_level}</div>
@@ -199,7 +199,7 @@ export default function DogProfile() {
 
           {/* Name + save + share */}
           <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "16px", marginBottom: "6px" }}>
-            <h1 style={{ margin: 0, fontSize: "36px", fontWeight: "800", color: "#2f241d", lineHeight: 1.1 }}>{dog.name}</h1>
+            <h1 style={{ margin: 0, fontSize: "36px", fontWeight: "800", color: "var(--text-primary)", lineHeight: 1.1 }}>{dog.name}</h1>
             <div style={{ display: "flex", gap: "8px", flexShrink: 0 }}>
               <button
                 onClick={() => {
@@ -218,9 +218,9 @@ export default function DogProfile() {
               </button>
               <button
                 onClick={handleSave}
-                style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "12px", border: isSaved ? "1px solid #fca5a5" : "1px solid var(--border)", background: isSaved ? "#fff1f2" : "var(--card-bg)", color: isSaved ? "#e11d48" : "var(--text-muted)", fontWeight: "700", fontSize: "15px", cursor: "pointer", transition: "all 0.15s" }}
+                style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "12px", border: isSaved ? "1px solid #fca5a5" : "1px solid var(--border)", background: isSaved ? "var(--danger-soft)" : "var(--card-bg)", color: isSaved ? "#e11d48" : "var(--text-muted)", fontWeight: "700", fontSize: "15px", cursor: "pointer", transition: "all 0.15s" }}
               >
-                <span style={{ fontSize: "18px" }}>{isSaved ? "♥" : "♡"}</span>
+                <span style={{ fontSize: "18px" }}>{isSaved ? <Heart size={20} /> : "♡"}</span>
                 {isSaved ? "Saved" : "Save"}
               </button>
             </div>
@@ -229,7 +229,7 @@ export default function DogProfile() {
           <p style={{ margin: "0 0 6px 0", fontSize: "18px", color: "#d97706", fontWeight: "700" }}>{dog.breed}</p>
 
           {/* Status pill */}
-          <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: "20px", background: dog.status === "available" ? "#dcfce7" : "#f3f4f6", color: dog.status === "available" ? "#16a34a" : "#6b7280", fontSize: "13px", fontWeight: "700", marginBottom: "24px", textTransform: "capitalize" }}>
+          <span style={{ display: "inline-block", padding: "4px 14px", borderRadius: "20px", background: dog.status === "available" ? "var(--success-soft)" : "#f3f4f6", color: dog.status === "available" ? "#16a34a" : "#6b7280", fontSize: "13px", fontWeight: "700", marginBottom: "24px", textTransform: "capitalize" }}>
             {dog.status || "Available"}
           </span>
 
@@ -243,10 +243,10 @@ export default function DogProfile() {
           {/* Compatibility tags */}
           {traits.length > 0 && (
             <div style={{ marginBottom: "24px" }}>
-              <p style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>Compatibility</p>
+              <p style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Compatibility</p>
               <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
                 {traits.map(t => (
-                  <span key={t.label} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "7px 14px", borderRadius: "10px", fontSize: "13px", fontWeight: "600", background: t.ok ? "#f0fdf4" : "#fef2f2", color: t.ok ? "#16a34a" : "#dc2626", border: `1px solid ${t.ok ? "#bbf7d0" : "#fecaca"}` }}>
+                  <span key={t.label} style={{ display: "inline-flex", alignItems: "center", gap: "6px", padding: "7px 14px", borderRadius: "10px", fontSize: "13px", fontWeight: "600", background: t.ok ? "var(--success-soft)" : "#fef2f2", color: t.ok ? "#16a34a" : "#dc2626", border: `1px solid ${t.ok ? "var(--success-border)" : "var(--danger-border)"}` }}>
                     {t.ok ? "✓" : "✗"} {t.label}
                   </span>
                 ))}
@@ -270,10 +270,10 @@ export default function DogProfile() {
                 <div>
                   <div style={{ fontSize: "17px", fontWeight: "700", color: "var(--text-primary)", marginBottom: "4px" }}>{shelter.name}</div>
                   {(shelter.city || shelter.state) && (
-                    <div style={{ fontSize: "14px", color: "#6f5848" }}>📍 {[shelter.city, shelter.state].filter(Boolean).join(", ")}</div>
+                    <div style={{ fontSize: "14px", color: "var(--text-muted)" }}><MapPin size={15} className="inline-icon" /> {[shelter.city, shelter.state].filter(Boolean).join(", ")}</div>
                   )}
-                  {shelter.phone && <div style={{ fontSize: "14px", color: "#6f5848", marginTop: "2px" }}>📞 {shelter.phone}</div>}
-                  {shelter.email && <div style={{ fontSize: "14px", color: "#6f5848", marginTop: "2px" }}>✉️ {shelter.email}</div>}
+                  {shelter.phone && <div style={{ fontSize: "14px", color: "var(--text-muted)", marginTop: "2px" }}><Phone size={15} className="inline-icon" /> {shelter.phone}</div>}
+                  {shelter.email && <div style={{ fontSize: "14px", color: "var(--text-muted)", marginTop: "2px" }}><Mail size={15} className="inline-icon" /> {shelter.email}</div>}
                 </div>
                 <button
                   onClick={() => navigate(`/shelters/${shelter.shelter_id}`)}
@@ -287,7 +287,7 @@ export default function DogProfile() {
 
           {/* CTA */}
           {hasApplied ? (
-            <div style={{ width: "100%", padding: "16px", borderRadius: "14px", background: "#f0fdf4", border: "1.5px solid #86efac", textAlign: "center" }}>
+            <div style={{ width: "100%", padding: "16px", borderRadius: "14px", background: "var(--success-soft)", border: "1.5px solid #86efac", textAlign: "center" }}>
               <span style={{ fontSize: "17px", fontWeight: "700", color: "#16a34a" }}>✓ You've already applied for {dog.name}</span>
               <p style={{ margin: "6px 0 0 0", fontSize: "13px", color: "#4ade80" }}>
                 <span style={{ color: "#166534", cursor: "pointer", textDecoration: "underline" }} onClick={() => navigate("/applications")}>View your application →</span>

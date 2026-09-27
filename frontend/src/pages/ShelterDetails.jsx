@@ -6,6 +6,7 @@ import React, { useState, useEffect, useEffectEvent } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import { useDataCache } from "../context/dataCache"
+import { Globe, House, Mail, MapPin, MessageCircle, PawPrint, Phone } from "lucide-react"
 
 export default function ShelterDetails() {
   const { id } = useParams()
@@ -66,7 +67,7 @@ export default function ShelterDetails() {
 
   if (loading) {
     return (
-      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "60px 0", textAlign: "center", color: "#6f5848" }}>
+      <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "60px 0", textAlign: "center", color: "var(--text-muted)" }}>
         Loading shelter…
       </div>
     )
@@ -91,7 +92,7 @@ export default function ShelterDetails() {
               {shelter.logo_url ? (
                 <img src={shelter.logo_url} alt={shelter.name} style={{ maxWidth: "90px", maxHeight: "90px", objectFit: "contain", borderRadius: "12px" }} />
               ) : (
-                <span style={{ fontSize: "48px" }}>🏡</span>
+                <span style={{ fontSize: "48px" }}><House size={38} strokeWidth={1.5} /></span>
               )}
             </div>
 
@@ -101,14 +102,14 @@ export default function ShelterDetails() {
               <div style={{ display: "flex", flexWrap: "wrap", gap: "16px", marginBottom: "16px" }}>
                 {(shelter.city || shelter.state) && (
                   <span style={{ color: "var(--text-muted)", fontSize: "15px" }}>
-                    📍 {[shelter.city, shelter.state, shelter.zip].filter(Boolean).join(", ")}
+                    <MapPin size={15} className="inline-icon" /> {[shelter.city, shelter.state, shelter.zip].filter(Boolean).join(", ")}
                   </span>
                 )}
                 {shelter.phone && (
-                  <span style={{ color: "var(--text-muted)", fontSize: "15px" }}>📞 {shelter.phone}</span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "15px" }}><Phone size={15} className="inline-icon" /> {shelter.phone}</span>
                 )}
                 {shelter.email && (
-                  <span style={{ color: "var(--text-muted)", fontSize: "15px" }}>✉️ {shelter.email}</span>
+                  <span style={{ color: "var(--text-muted)", fontSize: "15px" }}><Mail size={15} className="inline-icon" /> {shelter.email}</span>
                 )}
               </div>
 
@@ -119,7 +120,7 @@ export default function ShelterDetails() {
                   rel="noreferrer"
                   style={{ color: "#b45309", fontSize: "14px", textDecoration: "none", display: "inline-block", marginBottom: "12px" }}
                 >
-                  🌐 Visit Website
+                  <Globe size={15} className="inline-icon" /> Visit Website
                 </a>
               )}
 
@@ -133,7 +134,7 @@ export default function ShelterDetails() {
                 onClick={() => navigate("/messages", { state: { shelterId: parseInt(id), shelter } })}
                 style={{ marginTop: "16px", display: "inline-flex", alignItems: "center", gap: "8px", padding: "10px 20px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}
               >
-                💬 Message Shelter
+                <MessageCircle size={15} className="inline-icon" /> Message Shelter
               </button>
             </div>
           </div>
@@ -172,7 +173,7 @@ export default function ShelterDetails() {
                     {photoUrl ? (
                       <img src={photoUrl} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={(e) => { e.target.style.display = "none" }} />
                     ) : (
-                      <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}>🐾</div>
+                      <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "48px" }}><PawPrint size={38} strokeWidth={1.5} /></div>
                     )}
                   </div>
                   <div style={{ padding: "14px" }}>

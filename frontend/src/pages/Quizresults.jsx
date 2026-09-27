@@ -109,10 +109,10 @@ export default function QuizResults() {
   if (loading) {
     return (
       <div style={WRAPPER}>
-        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Your Matches</h1>
+        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>Your Matches</h1>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "20px", marginTop: "28px" }}>
           {[1, 2, 3].map(i => (
-            <div key={i} style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
+            <div key={i} style={{ background: "var(--card-bg)", borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)" }}>
               <div style={{ height: "220px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
               <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
                 <div style={{ height: "18px", width: "55%", borderRadius: "8px", background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
@@ -129,7 +129,7 @@ export default function QuizResults() {
     return (
       <div style={{ ...WRAPPER, textAlign: "center", paddingTop: "80px" }}>
         <div style={{ fontSize: "64px", marginBottom: "16px" }}>🐾</div>
-        <h2 style={{ margin: "0 0 8px 0", color: "#2f241d" }}>{error}</h2>
+        <h2 style={{ margin: "0 0 8px 0", color: "var(--text-primary)" }}>{error}</h2>
         <button onClick={() => navigate("/quiz")} style={{ marginTop: "20px", padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}>
           Take the Quiz
         </button>
@@ -140,33 +140,33 @@ export default function QuizResults() {
   return (
     <div style={WRAPPER}>
       <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Your Matches</h1>
-        <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>
+        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>Your Matches</h1>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>
           Based on your quiz answers, here are the dogs that best fit your lifestyle.
         </p>
       </div>
 
         {matchedIds.length === 0 ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            <div style={{ background: "white", borderRadius: "20px", padding: "40px", border: "1px solid #efdfd1", textAlign: "center" }}>
+            <div style={{ background: "var(--card-bg)", borderRadius: "20px", padding: "40px", border: "1px solid var(--border)", textAlign: "center" }}>
               <div style={{ fontSize: "64px", marginBottom: "16px" }}>🐾</div>
-              <h2 style={{ color: "#2f241d", marginBottom: "12px" }}>No Exact Matches Found</h2>
-              <p style={{ color: "#6f5848", fontSize: "16px", maxWidth: "500px", margin: "0 auto 8px" }}>
+              <h2 style={{ color: "var(--text-primary)", marginBottom: "12px" }}>No Exact Matches Found</h2>
+              <p style={{ color: "var(--text-muted)", fontSize: "16px", maxWidth: "500px", margin: "0 auto 8px" }}>
                 We could not find a dog that matches all of your preferences at once. This is usually because some criteria are hard to combine — for example, apartment-friendly dogs rarely require a yard.
               </p>
             </div>
 
             {answerValues.length > 0 && (
-              <div style={{ background: "white", borderRadius: "20px", padding: "32px", border: "1px solid #efdfd1" }}>
-                <h3 style={{ color: "#2f241d", marginBottom: "20px" }}>Your Selected Preferences</h3>
+              <div style={{ background: "var(--card-bg)", borderRadius: "20px", padding: "32px", border: "1px solid var(--border)" }}>
+                <h3 style={{ color: "var(--text-primary)", marginBottom: "20px" }}>Your Selected Preferences</h3>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "12px" }}>
                   {answerValues.map((val) => {
                     const trait = TRAIT_LABELS[val]
                     if (!trait) return null
                     return (
-                      <div key={val} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", borderRadius: "10px", background: "#fffaf5", border: "1px solid #efdfd1" }}>
+                      <div key={val} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px 16px", borderRadius: "10px", background: "var(--bg-primary)", border: "1px solid var(--border)" }}>
                         <span style={{ fontSize: "22px" }}>{trait.icon}</span>
-                        <span style={{ color: "#2f241d", fontSize: "14px", fontWeight: "500" }}>{trait.label}</span>
+                        <span style={{ color: "var(--text-primary)", fontSize: "14px", fontWeight: "500" }}>{trait.label}</span>
                       </div>
                     )
                   })}
@@ -174,7 +174,7 @@ export default function QuizResults() {
               </div>
             )}
 
-            <div style={{ background: "#fff7ed", borderRadius: "20px", padding: "28px", border: "1px solid #fed7aa" }}>
+            <div style={{ background: "var(--brand-soft)", borderRadius: "20px", padding: "28px", border: "1px solid #fed7aa" }}>
               <h3 style={{ color: "#92400e", marginBottom: "12px" }}>What you can do</h3>
               <ul style={{ color: "#78350f", fontSize: "15px", lineHeight: "2", paddingLeft: "20px", margin: 0 }}>
                 <li>Retake the quiz with more flexible preferences</li>
@@ -187,7 +187,7 @@ export default function QuizResults() {
               <button className="btn btn-primary" style={{ flex: 1, padding: "16px" }} onClick={() => navigate("/quiz")}>
                 Retake Quiz
               </button>
-              <button className="btn" style={{ flex: 1, padding: "16px", background: "white", border: "1px solid #d8c1af", color: "#2f241d" }} onClick={() => navigate("/browse-dogs")}>
+              <button className="btn" style={{ flex: 1, padding: "16px", background: "var(--card-bg)", border: "1px solid #d8c1af", color: "var(--text-primary)" }} onClick={() => navigate("/browse-dogs")}>
                 Browse All Dogs
               </button>
             </div>
@@ -201,18 +201,18 @@ export default function QuizResults() {
                   : dog.photos ? dog.photos.split(",").map((p) => p.trim()) : []
                 const primaryPhoto = photos[0] || null
                 return (
-                  <div key={dog.dog_id} style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1", display: "flex", flexDirection: "column", transition: "transform 0.2s, box-shadow 0.2s" }}
+                  <div key={dog.dog_id} style={{ background: "var(--card-bg)", borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)", display: "flex", flexDirection: "column", transition: "transform 0.2s, box-shadow 0.2s" }}
                     onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.10)" }}
                     onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none" }}>
-                    <div style={{ height: "220px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <div style={{ height: "220px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                       {primaryPhoto
                         ? <img src={primaryPhoto} alt={dog.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none" }} />
                         : <span style={{ fontSize: "64px" }}>🐕</span>}
                     </div>
                     <div style={{ padding: "18px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
-                      <h3 style={{ margin: "0 0 4px 0", fontSize: "18px", fontWeight: "700", color: "#2f241d" }}>{dog.name}</h3>
-                      <p style={{ margin: "0 0 2px 0", fontSize: "14px", color: "#78716c" }}>{dog.breed}</p>
-                      <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "#a8a29e" }}>{dog.age_years} yr · {dog.size} · {dog.energy_level}</p>
+                      <h3 style={{ margin: "0 0 4px 0", fontSize: "18px", fontWeight: "700", color: "var(--text-primary)" }}>{dog.name}</h3>
+                      <p style={{ margin: "0 0 2px 0", fontSize: "14px", color: "var(--text-muted)" }}>{dog.breed}</p>
+                      <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "var(--text-subtle)" }}>{dog.age_years} yr · {dog.size} · {dog.energy_level}</p>
                       <div style={{ display: "flex", gap: "8px", marginTop: "auto" }}>
                         <button onClick={() => navigate(`/dogs/${dog.dog_id}`)} style={{ flex: 2, padding: "11px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}>
                           View Profile
@@ -220,7 +220,7 @@ export default function QuizResults() {
                         <button
                           onClick={() => handleToggleSave(dog)}
                           title={savedIds.has(dog.dog_id) ? "Remove from saved" : "Save dog"}
-                          style={{ flex: 1, padding: "11px", borderRadius: "10px", border: savedIds.has(dog.dog_id) ? "1px solid #fca5a5" : "1px solid #e2d9d0", background: savedIds.has(dog.dog_id) ? "#fff1f2" : "white", color: savedIds.has(dog.dog_id) ? "#e11d48" : "#a8a29e", fontSize: "18px", cursor: "pointer", transition: "all 0.15s ease" }}
+                          style={{ flex: 1, padding: "11px", borderRadius: "10px", border: savedIds.has(dog.dog_id) ? "1px solid #fca5a5" : "1px solid #e2d9d0", background: savedIds.has(dog.dog_id) ? "var(--danger-soft)" : "white", color: savedIds.has(dog.dog_id) ? "#e11d48" : "#a8a29e", fontSize: "18px", cursor: "pointer", transition: "all 0.15s ease" }}
                         >
                           {savedIds.has(dog.dog_id) ? "♥" : "♡"}
                         </button>
@@ -231,7 +231,7 @@ export default function QuizResults() {
               })}
             </div>
             <div style={{ marginTop: "32px", textAlign: "center" }}>
-              <button onClick={() => navigate("/quiz")} style={{ padding: "12px 28px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
+              <button onClick={() => navigate("/quiz")} style={{ padding: "12px 28px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text-primary)", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>
                 Retake Quiz
               </button>
             </div>
