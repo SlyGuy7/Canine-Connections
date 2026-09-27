@@ -70,14 +70,19 @@ function getClient() {
   return _connectPromise;
 }
 
-// Generates a unique correlation ID used to match each reply to its originating request.
+// Requests are published to this exchange; the backend binds each request.* queue to it.
+// The browser's RabbitMQ user may only write here and read reply.* queues
+// (see infra/rabbitmq/setup_web_user.sh), so it can never reach internal bridge.* / db.* queues.
+const REQUEST_EXCHANGE = "canine.requests";
+
+// Generates a unique, unguessable correlation ID used to match each reply to its originating request.
 function makeCorrelationId() {
-  return `req_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  return `req_${crypto.randomUUID()}`;
 }
 
 // Publishes a message to the given queue and returns a promise that resolves with the response.
 // Flow:
-//   1. Subscribe to a unique reply queue (type.reply.<correlationId>).
+//   1. Subscribe to a unique reply queue (reply.<type>.<correlationId>).
 //   2. Publish the message with correlation-id and reply-to headers.
 //   3. The backend worker reads the message, processes it, and publishes the result to replyQueue.
 //   4. Our subscription receives it and resolves the promise.
@@ -88,7 +93,7 @@ export async function sendMessage(type, payload) {
 
   return new Promise((resolve) => {
     const correlationId    = makeCorrelationId();
-    const replyQueue       = `${type}.reply.${correlationId}`;
+    const replyQueue       = `reply.${type}.${correlationId}`;
     const replyDestination = `/queue/${replyQueue}`;
     const receiptId        = `sub-${correlationId}`; // Used to confirm the subscription is active before publishing.
 
@@ -114,7 +119,7 @@ export async function sendMessage(type, payload) {
     // eliminating the race condition where the reply arrives before we are subscribed.
     client.watchForReceipt(receiptId, () => {
       client.publish({
-        destination: `/queue/${type}`,
+        destination: `/exchange/${REQUEST_EXCHANGE}/${type}`,
         headers: { "correlation-id": correlationId, "reply-to": replyDestination },
         body: JSON.stringify(payload),
       });

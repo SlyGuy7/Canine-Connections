@@ -11,6 +11,9 @@ use PhpAmqpLib\Wire\AMQPTable;
 // Handles connection setup, queue declaration, message publishing, consuming, and request/response messaging.
 final class RabbitMqClient
 {
+    // Exchange the browser publishes request.* messages to (see frontend/src/services/messaging.js).
+    public const WEB_EXCHANGE = 'canine.requests';
+
     private AMQPStreamConnection $connection;
     private $channel;
 
@@ -308,6 +311,13 @@ final class RabbitMqClient
     public function registerConsumer(string $queue, callable $callback): void
     {
         $this->channel->queue_declare($queue, false, true, false, false);
+
+        // Browser-facing queues are reachable only through the web exchange, so the restricted
+        // web user (infra/rabbitmq/setup_web_user.sh) can publish requests but never reach bridge.* / db.*.
+        if (str_starts_with($queue, 'request.')) {
+            $this->channel->exchange_declare(self::WEB_EXCHANGE, 'direct', false, true, false);
+            $this->channel->queue_bind($queue, self::WEB_EXCHANGE, $queue);
+        }
 
         // Allows the worker to handle one unacknowledged message at a time.
         $this->channel->basic_qos(null, 1, null);
