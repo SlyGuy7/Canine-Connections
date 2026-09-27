@@ -2,6 +2,7 @@
 // Supports both desktop (fixed) and mobile (slide-in drawer) layouts.
 import React, { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { clearUserSession } from "../services/auth";
 import {
   User, LayoutDashboard, Search, Building2, Heart,
   FileText, MessageCircle, Brain, BookOpen, Library,
@@ -45,10 +46,9 @@ export default function Sidebar({ isMobile = false, open = true, onClose }) {
     setHasUnread(flag === "true");
   }, [location.pathname]);
 
-  // Clears all user data from localStorage (except theme and geocache) and sends the user to /landing.
+  // Clears the session and all cached user data, then sends the user to /landing.
   const handleLogout = () => {
-    const KEEP = new Set(["canine_theme", "shelter_geocache"]);
-    Object.keys(localStorage).forEach(k => { if (!KEEP.has(k)) localStorage.removeItem(k); });
+    clearUserSession();
     sessionStorage.clear();
     navigate("/landing");
   };

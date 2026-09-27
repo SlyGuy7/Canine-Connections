@@ -5,6 +5,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
+import { clearUserSession, setUserToken } from "../services/auth";
 import { Eye, EyeOff } from "lucide-react";
 // localStorage key that stores the Unix timestamp (seconds) when the lockout expires.
 const LOCKOUT_KEY = "canine_lockout_until";
@@ -63,8 +64,8 @@ export default function Login({ switchToRegister, switchToForgot }) {
         const user = result.user || {};
         // Clear any stale session data from a previous user, but keep theme preference and
         // geocache so the UI doesn't flicker and the shelter map doesn't need to re-geocode.
-        const KEEP = new Set(["canine_theme", "shelter_geocache"]);
-        Object.keys(localStorage).forEach(k => { if (!KEEP.has(k)) localStorage.removeItem(k); });
+        clearUserSession();
+        setUserToken(result.token);
         const fName = user.first_name || user.firstName || "";
         const lName = user.last_name  || user.lastName  || "";
         localStorage.setItem("userFirstName", fName);
@@ -74,7 +75,6 @@ export default function Login({ switchToRegister, switchToForgot }) {
         else localStorage.removeItem("userFullName");
         localStorage.setItem("isAuthenticated", "true");
         localStorage.setItem("userEmail", email);
-        localStorage.setItem("userPassword", password);
         localStorage.setItem("userId", user.user_id || "");
         localStorage.setItem("userRole", user.role || "adopter");
         if (user.phone)   localStorage.setItem("userPhone", user.phone);

@@ -2,6 +2,7 @@
 // Reads admin identity from localStorage and provides nav links + sign-out.
 import React, { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
+import { clearAdminSession } from "../services/auth"
 
 // All five admin sections — rendered as nav buttons in order.
 const links = [
@@ -18,9 +19,9 @@ export default function AdminSidebar() {
   // Tracks which nav button is hovered so we can apply a hover background without CSS.
   const [hovered, setHovered] = useState(null)
 
-  // Clears all admin session keys from localStorage and redirects to the admin login page.
+  // Clears the admin session and redirects to the admin login page.
   const handleLogout = () => {
-    ["adminToken","adminRole","adminUserId","adminEmail","adminFirstName"].forEach(k => localStorage.removeItem(k))
+    clearAdminSession()
     navigate("/admin")
   }
 

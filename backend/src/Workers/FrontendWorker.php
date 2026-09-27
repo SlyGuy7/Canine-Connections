@@ -3,7 +3,10 @@
 namespace App\Workers;
 
 use App\Infrastructure\Messaging\RabbitMqClient;
+use App\Security\AccessPolicy;
 use App\Security\Encryption;
+use App\Security\LoginThrottle;
+use App\Security\SessionToken;
 use App\Services\Mailer;
 
 // FrontendWorker is the frontend-facing backend worker.
@@ -25,66 +28,87 @@ final class FrontendWorker
         echo "[FrontendWorker] Registering consumers...\n";
 
         // Authentication request queues handle registration, login, verification, and password flows.
-        $this->mq->registerConsumer('request.auth.register',       [$this, 'handleRegister']);
-        $this->mq->registerConsumer('request.auth.login',          [$this, 'handleLogin']);
-        $this->mq->registerConsumer('request.auth.verify',         [$this, 'handleVerifyEmail']);
-        $this->mq->registerConsumer('request.auth.resetPassword',  [$this, 'handleResetPassword']);
-        $this->mq->registerConsumer('request.auth.forgotPassword',         [$this, 'handleForgotPassword']);
-        $this->mq->registerConsumer('request.auth.setNewPassword',         [$this, 'handleSetNewPassword']);
-        $this->mq->registerConsumer('request.auth.resendVerification',     [$this, 'handleResendVerification']);
+        $this->on('request.auth.register',       'handleRegister');
+        $this->on('request.auth.login',          'handleLogin');
+        $this->on('request.auth.verify',         'handleVerifyEmail');
+        $this->on('request.auth.resetPassword',  'handleResetPassword');
+        $this->on('request.auth.forgotPassword',         'handleForgotPassword');
+        $this->on('request.auth.setNewPassword',         'handleSetNewPassword');
+        $this->on('request.auth.resendVerification',     'handleResendVerification');
         // Application feature queues handle profile, shelters, dogs, applications, adoption, content, chat, and notifications.
-        $this->mq->registerConsumer('request.profile.update',      [$this, 'handleProfileUpdate']);
-        $this->mq->registerConsumer('request.account.delete',      [$this, 'handleAccountDelete']);
-        $this->mq->registerConsumer('request.shelters.list',       [$this, 'handleSheltersList']);
-        $this->mq->registerConsumer('request.shelters.get',        [$this, 'handleSheltersGet']);
-        $this->mq->registerConsumer('request.api.key.get',         [$this, 'handleApiKeyGet']);
-        $this->mq->registerConsumer('request.api.key.regenerate',  [$this, 'handleApiKeyRegenerate']);
-        $this->mq->registerConsumer('request.api.logs',            [$this, 'handleApiLogs']);
-        $this->mq->registerConsumer('request.dogs.list',           [$this, 'handleDogsList']);
-        $this->mq->registerConsumer('request.dogs.get',            [$this, 'handleDogsGet']);
-        $this->mq->registerConsumer('request.api.dog.upsert',      [$this, 'handleApiDogUpsert']);
-        $this->mq->registerConsumer('request.application.submit',  [$this, 'handleApplicationSubmit']);
-        $this->mq->registerConsumer('request.application.status',  [$this, 'handleApplicationStatus']);
-        $this->mq->registerConsumer('request.application.list',    [$this, 'handleApplicationList']);
-        $this->mq->registerConsumer('request.application.approve', [$this, 'handleApplicationApprove']);
-        $this->mq->registerConsumer('request.application.reject',  [$this, 'handleApplicationReject']);
-        $this->mq->registerConsumer('request.adoptions.list',      [$this, 'handleAdoptionsList']);
-        $this->mq->registerConsumer('request.adoptions.get',       [$this, 'handleAdoptionsGet']);
-        $this->mq->registerConsumer('request.adoptions.finalize',  [$this, 'handleAdoptionsFinalize']);
-        $this->mq->registerConsumer('request.quiz.questions',      [$this, 'handleQuizQuestions']);
-        $this->mq->registerConsumer('request.quiz.submit',         [$this, 'handleQuiz']);
-        $this->mq->registerConsumer('request.quiz.results',        [$this, 'handleQuizResults']);
-        $this->mq->registerConsumer('request.adoption.log.create', [$this, 'handleAdoptionLogCreate']);
-        $this->mq->registerConsumer('request.adoption.log.list',   [$this, 'handleAdoptionLogList']);
-        $this->mq->registerConsumer('request.foster.apply',        [$this, 'handleFosterApply']);
-        $this->mq->registerConsumer('request.foster.list',         [$this, 'handleFosterList']);
-        $this->mq->registerConsumer('request.foster.cancel',       [$this, 'handleFosterCancel']);
-        $this->mq->registerConsumer('request.parks.list',          [$this, 'handleParksList']);
-        $this->mq->registerConsumer('request.resources.list',      [$this, 'handleResourcesList']);
-        $this->mq->registerConsumer('request.resources.get',       [$this, 'handleResourcesGet']);
-        $this->mq->registerConsumer('request.stories.list',        [$this, 'handleStoriesList']);
-        $this->mq->registerConsumer('request.stories.submit',      [$this, 'handleStoriesSubmit']);
-        $this->mq->registerConsumer('request.stories.approve',     [$this, 'handleStoriesApprove']);
-        $this->mq->registerConsumer('request.badges.list',         [$this, 'handleBadgesList']);
-        $this->mq->registerConsumer('request.badges.mine',         [$this, 'handleBadgesMine']);
-        $this->mq->registerConsumer('request.enquiry.send',        [$this, 'handleEnquiry']);
-        $this->mq->registerConsumer('request.chat.start',          [$this, 'handleChatStart']);
-        $this->mq->registerConsumer('request.chat.message',        [$this, 'handleChatMessage']);
-        $this->mq->registerConsumer('request.chat.history',        [$this, 'handleChatHistory']);
-        $this->mq->registerConsumer('request.chat.sessions',       [$this, 'handleChatSessions']);
-        $this->mq->registerConsumer('request.meetgreet.schedule',  [$this, 'handleMeetGreetSchedule']);
-        $this->mq->registerConsumer('request.meetgreet.list',      [$this, 'handleMeetGreetList']);
-        $this->mq->registerConsumer('request.meetgreet.cancel',    [$this, 'handleMeetGreetCancel']);
-        $this->mq->registerConsumer('request.notifications.list',  [$this, 'handleNotificationsList']);
-        $this->mq->registerConsumer('request.notifications.read',  [$this, 'handleNotificationsRead']);
-        $this->mq->registerConsumer('request.saved_dogs.list',     [$this, 'handleSavedDogsList']);
-        $this->mq->registerConsumer('request.saved_dogs.add',      [$this, 'handleSavedDogsAdd']);
-        $this->mq->registerConsumer('request.saved_dogs.remove',   [$this, 'handleSavedDogsRemove']);
+        $this->on('request.profile.update',      'handleProfileUpdate');
+        $this->on('request.account.delete',      'handleAccountDelete');
+        $this->on('request.shelters.list',       'handleSheltersList');
+        $this->on('request.shelters.get',        'handleSheltersGet');
+        $this->on('request.api.key.get',         'handleApiKeyGet');
+        $this->on('request.api.key.regenerate',  'handleApiKeyRegenerate');
+        $this->on('request.api.logs',            'handleApiLogs');
+        $this->on('request.dogs.list',           'handleDogsList');
+        $this->on('request.dogs.get',            'handleDogsGet');
+        $this->on('request.api.dog.upsert',      'handleApiDogUpsert');
+        $this->on('request.application.submit',  'handleApplicationSubmit');
+        $this->on('request.application.status',  'handleApplicationStatus');
+        $this->on('request.application.list',    'handleApplicationList');
+        $this->on('request.application.approve', 'handleApplicationApprove');
+        $this->on('request.application.reject',  'handleApplicationReject');
+        $this->on('request.adoptions.list',      'handleAdoptionsList');
+        $this->on('request.adoptions.get',       'handleAdoptionsGet');
+        $this->on('request.adoptions.finalize',  'handleAdoptionsFinalize');
+        $this->on('request.quiz.questions',      'handleQuizQuestions');
+        $this->on('request.quiz.submit',         'handleQuiz');
+        $this->on('request.quiz.results',        'handleQuizResults');
+        $this->on('request.adoption.log.create', 'handleAdoptionLogCreate');
+        $this->on('request.adoption.log.list',   'handleAdoptionLogList');
+        $this->on('request.adoption.log.delete', 'handleAdoptionLogDelete');
+        $this->on('request.foster.apply',        'handleFosterApply');
+        $this->on('request.foster.list',         'handleFosterList');
+        $this->on('request.foster.cancel',       'handleFosterCancel');
+        $this->on('request.parks.list',          'handleParksList');
+        $this->on('request.resources.list',      'handleResourcesList');
+        $this->on('request.resources.get',       'handleResourcesGet');
+        $this->on('request.stories.list',        'handleStoriesList');
+        $this->on('request.stories.submit',      'handleStoriesSubmit');
+        $this->on('request.stories.approve',     'handleStoriesApprove');
+        $this->on('request.badges.list',         'handleBadgesList');
+        $this->on('request.badges.mine',         'handleBadgesMine');
+        $this->on('request.enquiry.send',        'handleEnquiry');
+        $this->on('request.chat.start',          'handleChatStart');
+        $this->on('request.chat.message',        'handleChatMessage');
+        $this->on('request.chat.history',        'handleChatHistory');
+        $this->on('request.chat.sessions',       'handleChatSessions');
+        $this->on('request.meetgreet.schedule',  'handleMeetGreetSchedule');
+        $this->on('request.meetgreet.list',      'handleMeetGreetList');
+        $this->on('request.meetgreet.cancel',    'handleMeetGreetCancel');
+        $this->on('request.notifications.list',  'handleNotificationsList');
+        $this->on('request.notifications.read',  'handleNotificationsRead');
+        $this->on('request.saved_dogs.list',     'handleSavedDogsList');
+        $this->on('request.saved_dogs.add',      'handleSavedDogsAdd');
+        $this->on('request.saved_dogs.remove',   'handleSavedDogsRemove');
 
         echo "[FrontendWorker] All consumers registered — listening\n";
 
         // Keeps the frontend worker alive while RabbitMQ delivers frontend request messages.
         $this->mq->wait($running);
+    }
+
+    // Registers a consumer whose messages pass through AccessPolicy before reaching the handler.
+    // Unauthenticated or unauthorized requests are answered here and never reach the bridge layer.
+    private function on(string $queue, string $method): void
+    {
+        $this->mq->registerConsumer($queue, function (array $data, $msg, ?string $corrId) use ($queue, $method) {
+            $access = AccessPolicy::check($queue, $data);
+            if (!$access['ok']) {
+                echo "[FrontendWorker][DENY] {$queue}: {$access['code']}\n";
+                $this->respond($this->mq, 'response.error', $this->replyTo($msg), [
+                    'success' => false,
+                    'code'    => $access['code'],
+                    'error'   => $access['error'],
+                ], $corrId);
+                $msg->ack();
+                return;
+            }
+            $this->{$method}($access['data'], $msg, $corrId);
+        });
     }
 
     // Creates a fresh RabbitMQ connection for child processes and tries all configured broker hosts.
@@ -232,7 +256,7 @@ final class FrontendWorker
                     'role'       => 'adopter',
                 ], $corrId);
                 $token  = $result['verification_token'] ?? null;
-                $appUrl = rtrim($data['app_url'] ?? 'http://localhost:7012', '/');
+                $appUrl = $this->appUrl();
                 if ($token) {
                     Mailer::verifyEmail($data['email'], $firstName, "{$appUrl}/verify-email?token={$token}");
                 }
@@ -254,52 +278,57 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'email and password are required'], $corrId);
                     return;
                 }
+                $srcIp = (string)($data['clientIp'] ?? 'unknown');
+                if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
+                $srcIp = preg_replace('/[^a-zA-Z0-9._:-]/', '', $srcIp);
+
+                // Lockouts are enforced before the password is checked, per IP and per account.
+                $throttle = new LoginThrottle();
+                $keys     = ['ip:' . $srcIp, 'acct:' . strtolower(trim((string)$data['email']))];
+                $locked   = max(array_map(fn ($k) => $throttle->lockedUntil($k) ?? 0, $keys));
+                if ($locked > 0) {
+                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Too many failed attempts. Try again later.', 'locked_until' => $locked], $corrId);
+                    return;
+                }
+
                 // Retrieves the user record through the bridge layer before local password verification.
                 $result = $mq->publishAndWait('bridge.auth.login', ['email' => $data['email']], $corrId);
                 if (!$result) {
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Service temporarily unavailable. Please try again in a moment.'], $corrId);
                     return;
                 }
-                if (($result['success'] ?? false) !== true || !isset($result['user'])) {
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'No account found with that email.'], $corrId);
+                $user = ($result['success'] ?? false) === true ? ($result['user'] ?? null) : null;
+
+                // Unknown emails and wrong passwords get the same answer so accounts cannot be enumerated.
+                if (!$user || !password_verify((string)$data['password'], (string)$user['password_hash'])) {
+                    // The src_ip field is what Fail2Ban matches on (infra/fail2ban).
+                    echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . " src_ip=" . $srcIp . "\n";
+                    $attempts  = max(array_map(fn ($k) => $throttle->fail($k), $keys));
+                    $remaining = max(0, LoginThrottle::MAX_ATTEMPTS - $attempts);
+                    if ($remaining === 0) {
+                        $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Locked out for 1 hour.', 'locked_until' => time() + LoginThrottle::WINDOW], $corrId);
+                        return;
+                    }
+                    $errMsg = "Invalid email or password. {$remaining} attempt" . ($remaining === 1 ? '' : 's') . " remaining.";
+                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => $errMsg], $corrId);
                     return;
                 }
-                $user = $result['user'];
                 if (isset($user['email_verified']) && (int)$user['email_verified'] === 0) {
                     $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Please verify your email before logging in. Check your inbox for the verification link.'], $corrId);
                     return;
                 }
-                $srcIp = $data['clientIp'] ?? 'unknown';
-                if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
-                $safeIp = preg_replace('/[^a-zA-Z0-9._:-]/', '', $srcIp);
-                $attemptsFile = '/tmp/canine-attempts-' . $safeIp;
-                // Failed login attempts are tracked by source IP and can trigger a temporary lockout.
-                if (!password_verify($data['password'], $user['password_hash'])) {
-                    echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . " src_ip=" . $srcIp . "\n";
-                    $rawAttempts = (int)(@file_get_contents($attemptsFile) ?: 0);
-                    if ($rawAttempts >= 5 && file_exists($attemptsFile) && (time() - filemtime($attemptsFile)) >= 3600) {
-                        $rawAttempts = 0;
-                    }
-                    $attempts = $rawAttempts + 1;
-                    file_put_contents($attemptsFile, $attempts);
-                    $remaining = max(0, 5 - $attempts);
-                    if ($remaining > 0) {
-                        $errMsg = "Invalid password. {$remaining} attempt" . ($remaining === 1 ? '' : 's') . " remaining.";
-                    } else {
-                        $lockedUntil = time() + 3600;
-                        $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Locked out for 1 hour.', 'locked_until' => $lockedUntil], $corrId);
-                        return;
-                    }
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => $errMsg], $corrId);
-                    return;
-                }
-                @unlink($attemptsFile);
+                foreach ($keys as $k) $throttle->clear($k);
                 unset($user['password_hash']);
                 $user['first_name'] = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : '';
                 $user['last_name']  = isset($user['last_name'])  && $user['last_name']  !== '' ? $this->dec($user['last_name'])  : '';
                 $user['phone']      = isset($user['phone'])      && $user['phone']      !== '' ? $this->dec($user['phone'])      : '';
                 $user['address']    = isset($user['address'])    && $user['address']    !== '' ? $this->dec($user['address'])    : '';
-                $this->respond($mq, 'response.auth.login', $replyTo, ['success' => true, 'user' => $user], $corrId);
+                $token = SessionToken::issue(SessionToken::TYPE_SESSION, [
+                    'uid'   => (int)$user['user_id'],
+                    'role'  => (string)($user['role'] ?? 'adopter'),
+                    'email' => (string)$user['email'],
+                ], SessionToken::SESSION_TTL);
+                $this->respond($mq, 'response.auth.login', $replyTo, ['success' => true, 'user' => $user, 'token' => $token], $corrId);
                 if (!empty($user['login_notifications'])) {
                     Mailer::loginAlert($user['email'] ?? $data['email'], $user['first_name']);
                 }
@@ -373,7 +402,7 @@ final class FrontendWorker
             echo "[FrontendWorker] handleForgotPassword: " . ($data['email'] ?? 'no email') . "\n";
             try {
                 $email  = $data['email']   ?? '';
-                $appUrl = $data['app_url'] ?? '';
+                $appUrl = $this->appUrl();
                 if (empty($email)) {
                     $this->respond($mq, 'response.auth.forgotPassword', $replyTo, ['success' => false, 'error' => 'Email is required'], $corrId);
                     return;
@@ -386,10 +415,11 @@ final class FrontendWorker
 
                 $user      = $result['user'];
                 $firstName = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : 'there';
-                $payload = base64_encode(json_encode(['email' => $email, 'exp' => time() + 3600]));
-                $sig     = hash_hmac('sha256', $payload, $_ENV['APP_KEY'] ?? 'secret');
-                $token   = $payload . '.' . $sig;
-                $resetUrl = "{$appUrl}/reset-password?token={$token}";
+                $token = SessionToken::issue(SessionToken::TYPE_RESET, [
+                    'email' => $email,
+                    'pv'    => $this->passwordVersion((string)$user['password_hash']),
+                ], SessionToken::RESET_TTL);
+                $resetUrl = "{$appUrl}/reset-password?token=" . rawurlencode($token);
 
                 Mailer::send(
                     $email,
@@ -425,23 +455,20 @@ final class FrontendWorker
                     $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Token and password are required'], $corrId);
                     return;
                 }
-                $parts = explode('.', $token, 2);
-                if (count($parts) !== 2) {
-                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Invalid or expired link'], $corrId);
+                $claims = SessionToken::verify($token, SessionToken::TYPE_RESET);
+                if ($claims === null) {
+                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Invalid or expired link. Please request a new one.'], $corrId);
                     return;
                 }
-                [$payload, $sig] = $parts;
-                $expectedSig = hash_hmac('sha256', $payload, $_ENV['APP_KEY'] ?? 'secret');
-                if (!hash_equals($expectedSig, $sig)) {
-                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Invalid or expired link'], $corrId);
+                $email = (string)$claims['email'];
+                // The link is only valid while the password it was issued against is unchanged,
+                // so each link works once.
+                $current = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId . '_check');
+                $currentHash = (string)($current['user']['password_hash'] ?? '');
+                if ($currentHash === '' || !hash_equals($this->passwordVersion($currentHash), (string)($claims['pv'] ?? ''))) {
+                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'This reset link has already been used. Please request a new one.'], $corrId);
                     return;
                 }
-                $decoded = json_decode(base64_decode($payload), true);
-                if (!$decoded || ($decoded['exp'] ?? 0) < time()) {
-                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Reset link has expired. Please request a new one.'], $corrId);
-                    return;
-                }
-                $email  = $decoded['email'];
                 $result = $mq->publishAndWait('bridge.auth.resetPassword', [
                     'email'              => $email,
                     'password_hash'      => $this->enc->hashPassword($newPassword),
@@ -470,7 +497,7 @@ final class FrontendWorker
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
             echo "[FrontendWorker] handleResendVerification: " . ($data['email'] ?? 'no email') . "\n";
             $email  = $data['email']   ?? '';
-            $appUrl = $data['app_url'] ?? '';
+            $appUrl = $this->appUrl();
             // Always respond success to prevent email enumeration
             $this->respond($mq, 'response.auth.resendVerification', $replyTo, ['success' => true], $corrId);
             if (empty($email)) return;
@@ -1082,6 +1109,19 @@ final class FrontendWorker
                 $this->respond($mq, 'response.saved_dogs.remove', $replyTo, $result ?? ['success' => false, 'error' => 'Could not remove saved dog'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.saved_dogs.remove', $replyTo, ['success' => false, 'error' => 'Could not remove saved dog'], $corrId); }
         }, $msg);
+    }
+
+    // Base URL for links in emails. Comes from server config, never from the request: a
+    // client-supplied URL would let an attacker send real reset emails that leak tokens to their site.
+    private function appUrl(): string
+    {
+        return rtrim((string)($_ENV['APP_URL'] ?? 'https://canineconnections.org'), '/');
+    }
+
+    // Short fingerprint of the stored password hash; embedded in reset links to make them single-use.
+    private function passwordVersion(string $passwordHash): string
+    {
+        return substr(hash('sha256', $passwordHash), 0, 16);
     }
 
     // Helper methods below wrap encryption and decryption behavior for personal fields.

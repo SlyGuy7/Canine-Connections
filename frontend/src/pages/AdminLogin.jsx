@@ -3,6 +3,7 @@
 import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
+import { ADMIN_ROLES, setAdminToken } from "../services/auth"
 
 export default function AdminLogin() {
   const navigate = useNavigate()
@@ -28,13 +29,13 @@ export default function AdminLogin() {
       if (result?.success && result.user) {
         const role = result.user.role
         // Reject users who successfully authenticated but do not have an admin role.
-        if (role !== "super_admin" && role !== "shelter_admin") {
+        if (!ADMIN_ROLES.includes(role)) {
           setError("Access denied. Admin privileges required.")
           setLoading(false)
           return
         }
         // Store the admin session keys read by AdminGuard.jsx and AdminSidebar.jsx.
-        localStorage.setItem("adminToken",     "true")
+        setAdminToken(result.token)
         localStorage.setItem("adminRole",      role)
         localStorage.setItem("adminUserId",    result.user.user_id)
         localStorage.setItem("adminEmail",     result.user.email)

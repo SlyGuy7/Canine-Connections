@@ -2,6 +2,7 @@
 // Uses STOMP over WebSocket to talk to RabbitMQ. Every call is request/reply:
 // sendMessage publishes to a named queue and waits on a unique per-request reply queue.
 import { Client } from "@stomp/stompjs";
+import { clearAdminSession, clearUserSession, isAdminPath, tokenForCurrentPage } from "./auth";
 
 // Derive the WebSocket URL automatically from the current page origin.
 // In dev, Vite proxies /ws to the live RabbitMQ broker (see vite.config.js).
@@ -80,6 +81,24 @@ function makeCorrelationId() {
   return `req_${crypto.randomUUID()}`;
 }
 
+// Copy of a payload that is safe to print: passwords and ID document images are masked.
+function redact(payload) {
+  if (!payload || typeof payload !== "object") return payload;
+  return Object.fromEntries(Object.entries(payload).map(([k, v]) =>
+    [k, /pass|_b64$/i.test(k) && v ? "[redacted]" : v]));
+}
+
+// The backend rejected the session (missing, expired or forged token): log out and go to the login screen.
+function handleExpiredSession() {
+  if (isAdminPath()) {
+    clearAdminSession();
+    window.location.assign("/admin");
+  } else {
+    clearUserSession();
+    window.location.assign("/landing");
+  }
+}
+
 // Publishes a message to the given queue and returns a promise that resolves with the response.
 // Flow:
 //   1. Subscribe to a unique reply queue (reply.<type>.<correlationId>).
@@ -88,8 +107,10 @@ function makeCorrelationId() {
 //   4. Our subscription receives it and resolves the promise.
 //   5. A 60-second timeout resolves with an error if no reply arrives.
 export async function sendMessage(type, payload) {
-  console.log(`%c[MQ →] ${type}`, "color:#b45309;font-weight:600", payload);
+  console.log(`%c[MQ →] ${type}`, "color:#b45309;font-weight:600", redact(payload));
   const client = await getClient();
+  // The session token travels with every request; the backend derives the user's identity from it.
+  const body = { ...payload, _token: tokenForCurrentPage() };
 
   return new Promise((resolve) => {
     const correlationId    = makeCorrelationId();
@@ -121,7 +142,7 @@ export async function sendMessage(type, payload) {
       client.publish({
         destination: `/exchange/${REQUEST_EXCHANGE}/${type}`,
         headers: { "correlation-id": correlationId, "reply-to": replyDestination },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(body),
       });
     });
 
@@ -131,6 +152,7 @@ export async function sendMessage(type, payload) {
       (message) => {
         try {
           const result = JSON.parse(message.body);
+          if (result?.code === "auth_required") handleExpiredSession();
           if (result?.success === false) {
             console.warn(`%c[MQ ←] ${type} FAILED`, "color:#b45309;font-weight:600", result?.error ?? result);
           } else {
