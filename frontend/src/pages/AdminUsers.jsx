@@ -4,14 +4,13 @@
 import React, { useEffect, useState } from "react"
 import { sendMessage } from "../services/messaging"
 import AdminSidebar from "../components/AdminSidebar"
-import { UserRound } from "lucide-react"
 
 // Shared dark-theme color tokens used throughout this page.
 const A = {
   bg:     '#0a0a0a',
   card:   '#111111',
   border: '#1a1a1a',
-  red:    '#d97706',
+  red:    '#dc2626',
   text:   '#f0f0f0',
   muted:  '#777777',
   subtle: '#444444',
@@ -117,7 +116,7 @@ export default function AdminUsers() {
           </div>
         ) : filtered.length === 0 ? (
           <div style={{ textAlign:'center', padding:'80px', color: A.muted }}>
-            <div style={{ fontSize:'36px', marginBottom:'12px', opacity:0.3 }}><UserRound size={16} /></div>
+            <div style={{ fontSize:'36px', marginBottom:'12px', opacity:0.3 }}>👤</div>
             <p style={{ margin:0, fontSize:'14px' }}>No users found.</p>
           </div>
         ) : (

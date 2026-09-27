@@ -5,7 +5,6 @@
 import React, { useState, useEffect } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
-import { CircleCheck, CircleX, PawPrint } from "lucide-react"
 
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams()
@@ -33,22 +32,22 @@ export default function VerifyEmail() {
   }, [token])
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-secondary)", padding: "20px" }}>
-      <div style={{ background: "var(--card-bg)", borderRadius: "24px", padding: "52px 40px", maxWidth: "460px", width: "100%", textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.08)", border: "1px solid var(--border)" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f7efe7", padding: "20px" }}>
+      <div style={{ background: "white", borderRadius: "24px", padding: "52px 40px", maxWidth: "460px", width: "100%", textAlign: "center", boxShadow: "0 8px 40px rgba(0,0,0,0.08)", border: "1px solid #efdfd1" }}>
 
         {status === "verifying" && (
           <>
-            <div style={{ fontSize: "56px", marginBottom: "20px" }}><PawPrint size={45} strokeWidth={1.5} /></div>
-            <h2 style={{ color: "var(--text-primary)", fontSize: "26px", fontWeight: "800", margin: "0 0 12px 0" }}>Verifying your email…</h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: 0 }}>Just a moment while we activate your account.</p>
+            <div style={{ fontSize: "56px", marginBottom: "20px" }}>🐾</div>
+            <h2 style={{ color: "#2f241d", fontSize: "26px", fontWeight: "800", margin: "0 0 12px 0" }}>Verifying your email…</h2>
+            <p style={{ color: "#6f5848", fontSize: "16px", margin: 0 }}>Just a moment while we activate your account.</p>
           </>
         )}
 
         {status === "success" && (
           <>
-            <div style={{ fontSize: "56px", marginBottom: "20px" }}><CircleCheck size={45} strokeWidth={1.5} /></div>
-            <h2 style={{ color: "var(--text-primary)", fontSize: "26px", fontWeight: "800", margin: "0 0 12px 0" }}>Email Verified!</h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: "0 0 32px 0" }}>
+            <div style={{ fontSize: "56px", marginBottom: "20px" }}>✅</div>
+            <h2 style={{ color: "#2f241d", fontSize: "26px", fontWeight: "800", margin: "0 0 12px 0" }}>Email Verified!</h2>
+            <p style={{ color: "#6f5848", fontSize: "16px", margin: "0 0 32px 0" }}>
               Your account is now active. You can log in and start your adoption journey.
             </p>
             <button
@@ -62,9 +61,9 @@ export default function VerifyEmail() {
 
         {status === "error" && (
           <>
-            <div style={{ fontSize: "56px", marginBottom: "20px" }}><CircleX size={45} strokeWidth={1.5} /></div>
-            <h2 style={{ color: "var(--text-primary)", fontSize: "26px", fontWeight: "800", margin: "0 0 12px 0" }}>Verification Failed</h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: "0 0 32px 0" }}>{error}</p>
+            <div style={{ fontSize: "56px", marginBottom: "20px" }}>❌</div>
+            <h2 style={{ color: "#2f241d", fontSize: "26px", fontWeight: "800", margin: "0 0 12px 0" }}>Verification Failed</h2>
+            <p style={{ color: "#6f5848", fontSize: "16px", margin: "0 0 32px 0" }}>{error}</p>
             <button
               onClick={() => navigate("/")}
               style={{ width: "100%", padding: "16px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "17px", cursor: "pointer" }}

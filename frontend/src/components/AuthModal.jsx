@@ -3,7 +3,6 @@
 import Login from "../pages/Login"
 import Register from "../pages/Register"
 import ForgotPassword from "../pages/ForgotPassword"
-import { PawPrint, X } from "lucide-react"
 
 // Props:
 //   mode       — "login" | "register" | "forgot-password" — which form to render
@@ -25,11 +24,11 @@ return (
 <div style={styles.overlay} className="auth-modal-overlay">
   {/* stopPropagation prevents a click inside the modal from bubbling up and closing it. */}
   <div style={styles.modal} className="auth-modal" onClick={(e) => e.stopPropagation()}>
-    <button style={styles.close} onClick={close} aria-label="Close"><X size={20} /></button>
+    <button style={styles.close} onClick={close}>x</button>
 
     {/* Header section with paw icon, dynamic title, and subtitle */}
     <div style={styles.header}>
-      <div className="brand-mark__icon" style={{ width: "48px", height: "48px", borderRadius: "14px", margin: "0 auto 14px" }}><PawPrint size={24} strokeWidth={2.5} /></div>
+      <div style={styles.paw}>🐾</div>
       <h2 style={styles.title}>{content.title}</h2>
       <p style={styles.subtitle}>{content.sub}</p>
     </div>
@@ -93,8 +92,8 @@ width: "440px",
 maxWidth: "100%",
 maxHeight: "90vh",
 overflowY: "auto",
-background: "var(--bg-primary)",
-color: "var(--text-primary)",
+background: "#fffaf5",
+color: "#2f241d",
 borderRadius: "22px",
 padding: "30px 26px 24px",
 position: "relative",
@@ -103,16 +102,13 @@ border: "1px solid #f1dfcf",
 },
 close: {
 position: "absolute",
-top: "14px",
+top: "12px",
 right: "14px",
-width: "36px",
-height: "36px",
-display: "grid",
-placeItems: "center",
-borderRadius: "10px",
 border: "none",
-background: "var(--bg-secondary)",
-color: "var(--text-muted)",
+background: "transparent",
+fontSize: "28px",
+lineHeight: 1,
+color: "#7a5c47",
 cursor: "pointer",
 },
 header: {
@@ -129,13 +125,13 @@ fontSize: "28px",
 },
 subtitle: {
 margin: 0,
-color: "var(--text-muted)",
+color: "#6f5848",
 fontSize: "15px",
 },
 switchText: {
 marginTop: "16px",
 textAlign: "center",
-color: "var(--text-muted)",
+color: "#6f5848",
 },
 switchBtn: {
 border: "none",

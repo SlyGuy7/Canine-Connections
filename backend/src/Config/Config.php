@@ -30,12 +30,8 @@ final class Config
 
     public static function loadEnv(string $path): void
     {
-        // Without a .env file (e.g. in Docker), settings come from the process environment.
         if (!file_exists($path)) {
-            foreach (getenv() as $name => $value) {
-                $_ENV[$name] ??= $value;
-            }
-            return;
+            throw new \RuntimeException(".env file not found at: {$path}");
         }
 
         $lines = file($path, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);

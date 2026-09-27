@@ -15,7 +15,6 @@ node_modules/
 # Frontend build output
 dist
 dist-ssr
-dist-demo
 *.local
 !**/fail2ban/jail.local
 

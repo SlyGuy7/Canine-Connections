@@ -3,7 +3,6 @@
 // specific category is active). A search bar filters results by title or description client-side.
 import React, { useState, useEffect } from "react"
 import { sendMessage } from "../services/messaging"
-import { BookOpen, Clapperboard, FileText, Link } from "lucide-react"
 
 // Available filter tabs. "all" shows all resources grouped by section; others filter to one category.
 const CATEGORIES = [
@@ -23,7 +22,7 @@ const CATEGORY_STYLES = {
   general:   { bg: "#f1f5f9", color: "#475569" },
 }
 
-const TYPE_ICONS = { article: <FileText size={14} />, video: <Clapperboard size={14} />, link: <Link size={14} /> }
+const TYPE_ICONS = { article: "📄", video: "🎬", link: "🔗" }
 
 export default function Resources() {
   const [resources, setResources] = useState([])
@@ -69,10 +68,10 @@ export default function Resources() {
     <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 60px 0" }}>
 
         <header style={{ marginBottom: "28px" }}>
-          <h1 style={{ margin: "0 0 6px 0", color: "var(--text-primary)", fontSize: "28px", fontWeight: "800" }}>
+          <h1 style={{ margin: "0 0 6px 0", color: "#2f241d", fontSize: "28px", fontWeight: "800" }}>
             Educational Resources
           </h1>
-          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>
+          <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>
             Guides and articles to help you give your dog the best life possible.
           </p>
         </header>
@@ -113,7 +112,7 @@ export default function Resources() {
         {loading ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" }}>
             {[1,2,3,4,5,6].map(i => (
-              <div key={i} style={{ background: "var(--card-bg)", borderRadius: "16px", border: "1px solid var(--border)", padding: "24px" }}>
+              <div key={i} style={{ background: "white", borderRadius: "16px", border: "1px solid #efdfd1", padding: "24px" }}>
                 <div style={{ height: "14px", width: "30%", background: "#e0d5cc", borderRadius: "6px", marginBottom: "12px" }} />
                 <div style={{ height: "16px", width: "80%", background: "#e0d5cc", borderRadius: "6px", marginBottom: "10px" }} />
                 <div style={{ height: "12px", width: "60%", background: "#e0d5cc", borderRadius: "6px" }} />
@@ -121,10 +120,10 @@ export default function Resources() {
             ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "80px 40px", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)" }}>
-            <div style={{ fontSize: "56px", marginBottom: "16px" }}><BookOpen size={45} strokeWidth={1.5} /></div>
-            <h2 style={{ margin: "0 0 8px 0", color: "var(--text-primary)", fontSize: "20px" }}>No resources found</h2>
-            <p style={{ margin: 0, color: "var(--text-muted)" }}>Try a different category or search term.</p>
+          <div style={{ textAlign: "center", padding: "80px 40px", background: "white", borderRadius: "20px", border: "1px solid #efdfd1" }}>
+            <div style={{ fontSize: "56px", marginBottom: "16px" }}>📚</div>
+            <h2 style={{ margin: "0 0 8px 0", color: "#2f241d", fontSize: "20px" }}>No resources found</h2>
+            <p style={{ margin: 0, color: "#78716c" }}>Try a different category or search term.</p>
           </div>
         ) : activeCategory !== "all" ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "16px" }}>
@@ -136,7 +135,7 @@ export default function Resources() {
             return (
               <div key={cat} style={{ marginBottom: "40px" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "16px" }}>
-                  <h2 style={{ margin: 0, color: "var(--text-primary)", fontSize: "18px", fontWeight: "700" }}>{catInfo?.label}</h2>
+                  <h2 style={{ margin: 0, color: "#2f241d", fontSize: "18px", fontWeight: "700" }}>{catInfo?.label}</h2>
                   <button
                     onClick={() => setActiveCategory(cat)}
                     style={{ background: "none", border: "none", color: "#b45309", fontSize: "13px", fontWeight: "600", cursor: "pointer" }}
@@ -157,7 +156,7 @@ export default function Resources() {
 
 function ResourceCard({ resource }) {
   const catStyle  = CATEGORY_STYLES[resource.category] || CATEGORY_STYLES.general
-  const typeIcon  = TYPE_ICONS[resource.content_type]  || TYPE_ICONS.article
+  const typeIcon  = TYPE_ICONS[resource.content_type]  || "📄"
 
   return (
     <a
@@ -167,7 +166,7 @@ function ResourceCard({ resource }) {
       style={{ textDecoration: "none", display: "block" }}
     >
       <div
-        style={{ background: "var(--card-bg)", borderRadius: "16px", border: "1px solid var(--border)", padding: "22px", height: "100%", boxSizing: "border-box", transition: "transform 0.15s, box-shadow 0.15s", cursor: "pointer" }}
+        style={{ background: "white", borderRadius: "16px", border: "1px solid #efdfd1", padding: "22px", height: "100%", boxSizing: "border-box", transition: "transform 0.15s, box-shadow 0.15s", cursor: "pointer" }}
         onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(0,0,0,0.08)" }}
         onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none" }}
       >
@@ -178,12 +177,12 @@ function ResourceCard({ resource }) {
           <span style={{ fontSize: "13px" }}>{typeIcon}</span>
         </div>
 
-        <h3 style={{ margin: "0 0 8px 0", color: "var(--text-primary)", fontSize: "15px", fontWeight: "700", lineHeight: "1.4" }}>
+        <h3 style={{ margin: "0 0 8px 0", color: "#2f241d", fontSize: "15px", fontWeight: "700", lineHeight: "1.4" }}>
           {resource.title}
         </h3>
 
         {resource.description && (
-          <p style={{ margin: "0 0 16px 0", color: "var(--text-muted)", fontSize: "13px", lineHeight: "1.6" }}>
+          <p style={{ margin: "0 0 16px 0", color: "#6f5848", fontSize: "13px", lineHeight: "1.6" }}>
             {resource.description}
           </p>
         )}
