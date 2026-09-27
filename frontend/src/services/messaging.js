@@ -107,6 +107,13 @@ function handleExpiredSession() {
 //   4. Our subscription receives it and resolves the promise.
 //   5. A 60-second timeout resolves with an error if no reply arrives.
 export async function sendMessage(type, payload) {
+  // Demo mode (npm run demo) answers from in-browser sample data instead of RabbitMQ.
+  // The check is a build-time constant, so normal builds don't include the demo backend.
+  if (import.meta.env.VITE_DEMO === "true") {
+    const { demoRequest } = await import("./demoBackend");
+    return demoRequest(type, payload);
+  }
+
   console.log(`%c[MQ →] ${type}`, "color:#b45309;font-weight:600", redact(payload));
   const client = await getClient();
   // The session token travels with every request; the backend derives the user's identity from it.

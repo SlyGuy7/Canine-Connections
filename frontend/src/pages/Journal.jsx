@@ -3,9 +3,10 @@
 // in localStorage under "journal_entries" so other parts of the app can read them without
 // an extra fetch.
 import React, { useState, useEffect, useEffectEvent } from "react"
+import { formatEnum } from "../utils/format"
 import { sendMessage } from "../services/messaging"
 import { useToast } from "../context/toast"
-import { Sparkles } from "lucide-react"
+import { NotebookPen, Sparkles } from "lucide-react"
 
 // Pre-written milestone prompts shown as quick-start chips when a user has fewer than 3 entries.
 // Each milestone carries a hint string that pre-fills the Notes textarea placeholder.
@@ -138,15 +139,15 @@ export default function Journal() {
 
   const filtered = filterType === "All" ? entries : entries.filter(e => e.log_type === filterType)
 
-  const inputStyle = { width: "100%", padding: "11px 14px", borderRadius: "10px", border: "1px solid #e2d9d0", fontSize: "14px", outline: "none", color: "#2f241d", boxSizing: "border-box", background: "#fffaf5" }
+  const inputStyle = { width: "100%", padding: "11px 14px", borderRadius: "10px", border: "1px solid var(--border)", fontSize: "14px", outline: "none", color: "var(--text-primary)", boxSizing: "border-box", background: "var(--bg-primary)" }
 
   return (
     <div style={{ maxWidth: "860px", margin: "0 auto", padding: "0 0 60px 0" }}>
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "28px", flexWrap: "wrap", gap: "16px" }}>
         <div>
-          <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Pet Journal</h1>
-          <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>
+          <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>Pet Journal</h1>
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>
             {loading ? "Loading..." : entries.length === 0 ? "Your memories will appear here." : `${entries.length} entr${entries.length !== 1 ? "ies" : "y"} recorded`}
           </p>
         </div>
@@ -160,11 +161,11 @@ export default function Journal() {
 
       {/* Milestone prompts — show when few entries */}
       {!loading && entries.length < 3 && (
-        <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", padding: "20px 24px", marginBottom: "24px" }}>
+        <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", padding: "20px 24px", marginBottom: "24px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
             <Sparkles size={16} color="#d97706" />
-            <span style={{ fontSize: "14px", fontWeight: "700", color: "#2f241d" }}>Suggested Milestones</span>
-            <span style={{ fontSize: "12px", color: "#9a8070" }}>— tap one to start an entry</span>
+            <span style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>Suggested Milestones</span>
+            <span style={{ fontSize: "12px", color: "var(--text-muted)" }}>— tap one to start an entry</span>
           </div>
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
             {MILESTONES.map(m => {
@@ -203,7 +204,7 @@ export default function Journal() {
       {loading && (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           {[1,2,3].map(i => (
-            <div key={i} style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "24px 28px" }}>
+            <div key={i} style={{ background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", padding: "24px 28px" }}>
               <div style={{ height: "14px", width: "40%", background: "#e0d5cc", borderRadius: "6px", marginBottom: "12px" }} />
               <div style={{ height: "12px", width: "70%", background: "#e0d5cc", borderRadius: "6px" }} />
             </div>
@@ -212,17 +213,17 @@ export default function Journal() {
       )}
 
       {!loading && entries.length === 0 && (
-        <div style={{ textAlign: "center", padding: "100px 40px", background: "white", borderRadius: "24px", border: "1px solid #efdfd1" }}>
-          <div style={{ fontSize: "64px", marginBottom: "16px" }}>📖</div>
-          <h2 style={{ margin: "0 0 10px 0", fontSize: "22px", fontWeight: "800", color: "#2f241d" }}>No memories yet</h2>
-          <p style={{ margin: 0, color: "#78716c", fontSize: "15px", maxWidth: "340px", display: "inline-block" }}>
+        <div style={{ textAlign: "center", padding: "100px 40px", background: "var(--card-bg)", borderRadius: "24px", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: "64px", marginBottom: "16px" }}><NotebookPen size={51} strokeWidth={1.5} /></div>
+          <h2 style={{ margin: "0 0 10px 0", fontSize: "22px", fontWeight: "800", color: "var(--text-primary)" }}>No memories yet</h2>
+          <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px", maxWidth: "340px", display: "inline-block" }}>
             Record vet visits, training wins, milestones, or just a great walk.
           </p>
         </div>
       )}
 
       {!loading && entries.length > 0 && filtered.length === 0 && (
-        <div style={{ textAlign: "center", padding: "60px", background: "white", borderRadius: "20px", border: "1px solid #efdfd1", color: "#78716c" }}>
+        <div style={{ textAlign: "center", padding: "60px", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", color: "var(--text-muted)" }}>
           No {filterType} entries yet.
         </div>
       )}
@@ -233,30 +234,30 @@ export default function Journal() {
           const isDeleting = deleteId === entry.log_id
           return (
             <div key={entry.log_id}
-              style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "24px 28px" }}
+              style={{ background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", padding: "24px 28px" }}
               onMouseEnter={e => e.currentTarget.style.boxShadow = "0 4px 20px rgba(0,0,0,0.07)"}
               onMouseLeave={e => e.currentTarget.style.boxShadow = "none"}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "12px", gap: "12px", flexWrap: "wrap" }}>
                 <span style={{ padding: "4px 12px", borderRadius: "20px", background: typeStyle.bg, color: typeStyle.color, fontSize: "12px", fontWeight: "700" }}>
-                  {entry.log_type || "Note"}
+                  {formatEnum(entry.log_type || "note")}
                 </span>
-                <span style={{ fontSize: "13px", color: "#a8a29e" }}>{formatDate(entry.log_date)}</span>
+                <span style={{ fontSize: "13px", color: "var(--text-subtle)" }}>{formatDate(entry.log_date)}</span>
               </div>
 
-              <h3 style={{ margin: "0 0 8px 0", fontSize: "17px", fontWeight: "700", color: "#2f241d" }}>{entry.title}</h3>
-              <p style={{ margin: "0 0 20px 0", color: "#6f5848", lineHeight: "1.7", fontSize: "14px", whiteSpace: "pre-wrap" }}>{entry.notes}</p>
+              <h3 style={{ margin: "0 0 8px 0", fontSize: "17px", fontWeight: "700", color: "var(--text-primary)" }}>{entry.title}</h3>
+              <p style={{ margin: "0 0 20px 0", color: "var(--text-muted)", lineHeight: "1.7", fontSize: "14px", whiteSpace: "pre-wrap" }}>{entry.notes}</p>
 
               {isDeleting ? (
-                <div style={{ display: "flex", gap: "10px", alignItems: "center", padding: "12px 16px", background: "#fff1f2", borderRadius: "10px" }}>
+                <div style={{ display: "flex", gap: "10px", alignItems: "center", padding: "12px 16px", background: "var(--danger-soft)", borderRadius: "10px" }}>
                   <span style={{ fontSize: "13px", color: "#dc2626", fontWeight: "600", flex: 1 }}>Delete this entry?</span>
                   <button onClick={() => handleDelete(entry.log_id)} style={{ padding: "7px 16px", borderRadius: "8px", border: "none", background: "#ef4444", color: "white", fontWeight: "700", fontSize: "13px", cursor: "pointer" }}>Delete</button>
-                  <button onClick={() => setDeleteId(null)} style={{ padding: "7px 16px", borderRadius: "8px", border: "1px solid #e2d9d0", background: "white", color: "#6f5848", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
+                  <button onClick={() => setDeleteId(null)} style={{ padding: "7px 16px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text-muted)", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>Cancel</button>
                 </div>
               ) : (
                 <div style={{ display: "flex", gap: "10px" }}>
-                  <button onClick={() => startEdit(entry)} style={{ padding: "9px 20px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>Edit</button>
-                  <button onClick={() => setDeleteId(entry.log_id)} style={{ padding: "9px 20px", borderRadius: "10px", border: "1px solid #fca5a5", background: "white", color: "#dc2626", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>Delete</button>
+                  <button onClick={() => startEdit(entry)} style={{ padding: "9px 20px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text-primary)", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>Edit</button>
+                  <button onClick={() => setDeleteId(entry.log_id)} style={{ padding: "9px 20px", borderRadius: "10px", border: "1px solid #fca5a5", background: "var(--card-bg)", color: "#dc2626", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>Delete</button>
                 </div>
               )}
             </div>
@@ -266,15 +267,15 @@ export default function Journal() {
 
       {isModalOpen && (
         <div onClick={closeModal} style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.65)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px", backdropFilter: "blur(4px)" }}>
-          <div onClick={e => e.stopPropagation()} style={{ background: "white", width: "100%", maxWidth: "520px", borderRadius: "24px", padding: "36px", boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
+          <div onClick={e => e.stopPropagation()} style={{ background: "var(--card-bg)", width: "100%", maxWidth: "520px", borderRadius: "24px", padding: "36px", boxShadow: "0 24px 60px rgba(0,0,0,0.2)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
-              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "#2f241d" }}>{editingId ? "Edit Entry" : "New Journal Entry"}</h2>
-              <button onClick={closeModal} style={{ width: "32px", height: "32px", borderRadius: "50%", border: "none", background: "#f3e8de", color: "#6f5848", fontSize: "16px", cursor: "pointer" }}>✕</button>
+              <h2 style={{ margin: 0, fontSize: "20px", fontWeight: "800", color: "var(--text-primary)" }}>{editingId ? "Edit Entry" : "New Journal Entry"}</h2>
+              <button onClick={closeModal} style={{ width: "32px", height: "32px", borderRadius: "50%", border: "none", background: "#f3e8de", color: "var(--text-muted)", fontSize: "16px", cursor: "pointer" }}>✕</button>
             </div>
 
             <form onSubmit={handleSave} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               <div>
-                <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "#6f5848" }}>Entry Type</label>
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "var(--text-muted)" }}>Entry Type</label>
                 <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                   {LOG_TYPES.map(t => {
                     const active = form.log_type === t.value
@@ -289,22 +290,22 @@ export default function Journal() {
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "#6f5848" }}>Title</label>
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "var(--text-muted)" }}>Title</label>
                 <input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="e.g. First vet visit" required style={inputStyle} />
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "#6f5848" }}>Notes</label>
-                <textarea rows="4" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder={form.hint || "Write your memory here…"} required style={{ ...inputStyle, resize: "vertical", lineHeight: "1.6", color: "#2f241d" }} />
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "var(--text-muted)" }}>Notes</label>
+                <textarea rows="4" value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} placeholder={form.hint || "Write your memory here…"} required style={{ ...inputStyle, resize: "vertical", lineHeight: "1.6", color: "var(--text-primary)" }} />
               </div>
 
               <div>
-                <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "#6f5848" }}>Date</label>
+                <label style={{ display: "block", marginBottom: "6px", fontSize: "13px", fontWeight: "700", color: "var(--text-muted)" }}>Date</label>
                 <input type="date" value={form.log_date} onChange={e => setForm({ ...form, log_date: e.target.value })} required style={inputStyle} />
               </div>
 
               <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
-                <button type="button" onClick={closeModal} style={{ flex: 1, padding: "13px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>Cancel</button>
+                <button type="button" onClick={closeModal} style={{ flex: 1, padding: "13px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text-primary)", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}>Cancel</button>
                 <button type="submit" disabled={saving} style={{ flex: 1, padding: "13px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer" }}>
                   {saving ? "Saving..." : editingId ? "Update Entry" : "Save Entry"}
                 </button>

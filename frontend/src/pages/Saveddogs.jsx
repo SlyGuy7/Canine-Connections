@@ -61,7 +61,7 @@ export default function SavedDogs() {
             {savedDogs.map((dog) => {
               const photo = getPrimaryPhoto(dog)
               return (
-                <div key={dog.dog_id} className="dog-card" style={{ background: 'white', borderRadius: '20px', overflow: 'hidden', border: '1px solid #efdfd1', display: 'flex', flexDirection: 'column' }}>
+                <div key={dog.dog_id} className="dog-card" style={{ background: 'var(--card-bg)', borderRadius: '20px', overflow: 'hidden', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column' }}>
 
                   <div style={{ height: '200px', overflow: 'hidden', position: 'relative', flexShrink: 0 }}>
                     {photo ? (
@@ -71,8 +71,8 @@ export default function SavedDogs() {
                         style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                       />
                     ) : (
-                      <div style={{ height: '200px', background: '#fcedda', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: '14px', color: '#6f5848' }}>No photo available</span>
+                      <div style={{ height: '200px', background: 'var(--brand-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <span style={{ fontSize: '14px', color: 'var(--text-muted)' }}>No photo available</span>
                       </div>
                     )}
                     <button
@@ -90,10 +90,10 @@ export default function SavedDogs() {
                   </div>
 
                   <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                    <h3 style={{ margin: '0 0 8px 0', color: '#2f241d' }}>{dog.name}</h3>
-                    <p style={{ margin: '4px 0', color: '#6f5848', fontSize: '14px' }}><strong>Breed:</strong> {dog.breed}</p>
-                    <p style={{ margin: '4px 0', color: '#6f5848', fontSize: '14px' }}><strong>Size:</strong> {dog.size}</p>
-                    <p style={{ margin: '4px 0 16px 0', color: '#6f5848', fontSize: '14px' }}><strong>Age:</strong> {dog.age_years} {dog.age_years == 1 ? "year" : "years"}</p>
+                    <h3 style={{ margin: '0 0 8px 0', color: 'var(--text-primary)' }}>{dog.name}</h3>
+                    <p style={{ margin: '4px 0', color: 'var(--text-muted)', fontSize: '14px' }}><strong>Breed:</strong> {dog.breed}</p>
+                    <p style={{ margin: '4px 0', color: 'var(--text-muted)', fontSize: '14px' }}><strong>Size:</strong> {dog.size}</p>
+                    <p style={{ margin: '4px 0 16px 0', color: 'var(--text-muted)', fontSize: '14px' }}><strong>Age:</strong> {dog.age_years} {dog.age_years == 1 ? "year" : "years"}</p>
 
                     <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
                       <button
@@ -105,7 +105,7 @@ export default function SavedDogs() {
                       </button>
                       <button
                         className="btn"
-                        style={{ flex: 1, fontSize: '14px', background: 'white', border: '1px solid #d8c1af', color: '#2f241d' }}
+                        style={{ flex: 1, fontSize: '14px', background: 'var(--card-bg)', border: '1px solid #d8c1af', color: 'var(--text-primary)' }}
                         onClick={() => handleApply(dog)}
                       >
                         Apply

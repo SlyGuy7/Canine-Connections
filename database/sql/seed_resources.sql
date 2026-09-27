@@ -1,3 +1,5 @@
+USE adoption_center;
+
 -- Seed data for the resources table
 -- Run on Henil's Node2: mysql -u adoption_user -p adoption_center < seed_resources.sql
 

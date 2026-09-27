@@ -2,7 +2,7 @@
 // Shows adoption testimonials as photo cards, a stats bar, and a CTA to /browse-dogs.
 import React from "react"
 import { useNavigate } from "react-router-dom"
-import { Heart } from "lucide-react"
+import { Heart, MapPin, PawPrint } from "lucide-react"
 
 // Hard-coded adoption story data — photos are from Unsplash.
 const STORIES = [
@@ -10,7 +10,7 @@ const STORIES = [
     id: 1,
     dogName: "Biscuit",
     adopter: "The Martins",
-    location: "Toronto, ON",
+    location: "Montclair, NJ",
     date: "March 2025",
     photo: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&q=80",
     quote: "Biscuit changed our family forever. He was shy at first, but within a week he was running laps around the backyard with the kids.",
@@ -20,7 +20,7 @@ const STORIES = [
     id: 2,
     dogName: "Pepper",
     adopter: "Sarah & Luke",
-    location: "Vancouver, BC",
+    location: "Brooklyn, NY",
     date: "January 2025",
     photo: "https://images.unsplash.com/photo-1544568100-847a948585b9?w=600&q=80",
     quote: "We found Pepper through Canine Connections and the whole process was so smooth. She's our adventure partner now.",
@@ -30,7 +30,7 @@ const STORIES = [
     id: 3,
     dogName: "Mango",
     adopter: "The Nguyens",
-    location: "Calgary, AB",
+    location: "Philadelphia, PA",
     date: "December 2024",
     photo: "https://images.unsplash.com/photo-1602979677071-1781b7f40023?w=600&q=80",
     quote: "Mango had been in the shelter for 8 months. We couldn't imagine leaving without him. Best decision we ever made.",
@@ -40,7 +40,7 @@ const STORIES = [
     id: 4,
     dogName: "Luna",
     adopter: "James T.",
-    location: "Ottawa, ON",
+    location: "Hoboken, NJ",
     date: "February 2025",
     photo: "https://images.unsplash.com/photo-1518717758536-85ae29035b6d?w=600&q=80",
     quote: "I was nervous adopting my first dog as a single person. The shelter and platform made it so easy. Luna is my best friend.",
@@ -50,7 +50,7 @@ const STORIES = [
     id: 5,
     dogName: "Duke",
     adopter: "The Robinsons",
-    location: "Winnipeg, MB",
+    location: "Princeton, NJ",
     date: "April 2025",
     photo: "https://images.unsplash.com/photo-1561037404-61cd46aa615b?w=600&q=80",
     quote: "Duke came from a tough background but you'd never know it. He's the gentlest giant with our two-year-old.",
@@ -60,7 +60,7 @@ const STORIES = [
     id: 6,
     dogName: "Coco",
     adopter: "Emily & Priya",
-    location: "Halifax, NS",
+    location: "Kingston, NY",
     date: "November 2024",
     photo: "https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=600&q=80",
     quote: "Coco was listed for 3 months before we found her. She deserved every bit of love we could give. She gives it back tenfold.",
@@ -83,14 +83,14 @@ export default function SuccessStories() {
 
       {/* Header */}
       <div style={{ textAlign: "center", marginBottom: "56px" }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "#fde6cf", borderRadius: "20px", padding: "6px 16px", marginBottom: "16px" }}>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: "8px", background: "var(--brand-soft)", borderRadius: "20px", padding: "6px 16px", marginBottom: "16px" }}>
           <Heart size={14} color="#d97706" fill="#d97706" />
           <span style={{ fontSize: "13px", fontWeight: "700", color: "#8a541b" }}>Happy Tails</span>
         </div>
-        <h1 style={{ margin: "0 0 14px 0", fontSize: "36px", fontWeight: "800", color: "#2f241d", lineHeight: 1.2 }}>
+        <h1 style={{ margin: "0 0 14px 0", fontSize: "36px", fontWeight: "800", color: "var(--text-primary)", lineHeight: 1.2 }}>
           Stories That Warm Your Heart
         </h1>
-        <p style={{ margin: 0, color: "#6f5848", fontSize: "16px", maxWidth: "520px", marginLeft: "auto", marginRight: "auto", lineHeight: "1.6" }}>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "16px", maxWidth: "520px", marginLeft: "auto", marginRight: "auto", lineHeight: "1.6" }}>
           Every adoption is a story worth telling. Here are a few families whose lives were changed by rescue.
         </p>
       </div>
@@ -110,7 +110,7 @@ export default function SuccessStories() {
         {STORIES.map(story => (
           <div
             key={story.id}
-            style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1", display: "flex", flexDirection: "column", transition: "transform 0.2s, box-shadow 0.2s" }}
+            style={{ background: "var(--card-bg)", borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)", display: "flex", flexDirection: "column", transition: "transform 0.2s, box-shadow 0.2s" }}
             onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.09)" }}
             onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none" }}
           >
@@ -127,13 +127,13 @@ export default function SuccessStories() {
             </div>
 
             <div style={{ padding: "20px 22px", flex: 1, display: "flex", flexDirection: "column" }}>
-              <p style={{ margin: "0 0 16px 0", fontSize: "14px", lineHeight: "1.7", color: "#5f4a3c", fontStyle: "italic" }}>
+              <p style={{ margin: "0 0 16px 0", fontSize: "14px", lineHeight: "1.7", color: "var(--text-muted)", fontStyle: "italic" }}>
                 "{story.quote}"
               </p>
               <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontSize: "14px", fontWeight: "700", color: "#2f241d" }}>{story.adopter}</div>
-                  <div style={{ fontSize: "12px", color: "#9c7e6a" }}>📍 {story.location}</div>
+                  <div style={{ fontSize: "14px", fontWeight: "700", color: "var(--text-primary)" }}>{story.adopter}</div>
+                  <div style={{ fontSize: "12px", color: "var(--text-muted)" }}><MapPin size={15} className="inline-icon" /> {story.location}</div>
                 </div>
                 <div style={{ display: "flex", gap: "2px" }}>
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -148,7 +148,7 @@ export default function SuccessStories() {
 
       {/* CTA */}
       <div style={{ background: "linear-gradient(135deg, #2f241d 0%, #4a3728 100%)", borderRadius: "24px", padding: "48px 40px", textAlign: "center", position: "relative", overflow: "hidden" }}>
-        <div style={{ position: "absolute", right: "40px", top: "-30px", fontSize: "160px", opacity: 0.05, userSelect: "none", lineHeight: 1 }}>🐾</div>
+        <div style={{ position: "absolute", right: "40px", top: "-30px", fontSize: "160px", opacity: 0.05, userSelect: "none", lineHeight: 1 }}><PawPrint size={58} strokeWidth={1.5} /></div>
         <h2 style={{ margin: "0 0 12px 0", fontSize: "30px", fontWeight: "800", color: "white", position: "relative" }}>
           Write Your Own Story
         </h2>

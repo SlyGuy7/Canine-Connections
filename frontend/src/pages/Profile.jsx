@@ -139,8 +139,8 @@ export default function Profile() {
 
       {/* Page title */}
       <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>My Profile</h1>
-        <p style={{ margin: 0, color: "#9c7e6a", fontSize: "15px" }}>Help shelters get to know you before you apply</p>
+        <h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>My Profile</h1>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>Help shelters get to know you before you apply</p>
       </div>
 
       <div style={{ display: "flex", gap: "24px", alignItems: "flex-start" }}>
@@ -187,8 +187,8 @@ export default function Profile() {
           </div>
 
           {/* Stats card */}
-          <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", padding: "20px 24px" }}>
-            <h3 style={{ margin: "0 0 14px 0", fontSize: "14px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.06em" }}>At a glance</h3>
+          <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", padding: "20px 24px" }}>
+            <h3 style={{ margin: "0 0 14px 0", fontSize: "14px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>At a glance</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <Stat icon="🏠" label="Home" value={prefs.homeType || "—"} />
               <Stat icon="🐕" label="Experience" value={prefs.experience || "—"} />
@@ -198,18 +198,18 @@ export default function Profile() {
           </div>
 
           {/* Contact info */}
-          <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", padding: "20px 24px" }}>
-            <h3 style={{ margin: "0 0 14px 0", fontSize: "14px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.06em" }}>Contact info</h3>
+          <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", padding: "20px 24px" }}>
+            <h3 style={{ margin: "0 0 14px 0", fontSize: "14px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>Contact info</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Phone</label>
-                <div style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5ddd6", fontSize: "14px", fontFamily: "'Inter', sans-serif", color: phone ? "#2f241d" : "#b8a89a", background: "#fdfaf7", boxSizing: "border-box" }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Phone</label>
+                <div style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5ddd6", fontSize: "14px", fontFamily: "'Inter', sans-serif", color: phone ? "#2f241d" : "#b8a89a", background: "var(--bg-secondary)", boxSizing: "border-box" }}>
                   {phone || "Not provided"}
                 </div>
               </div>
               <div>
-                <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Home address</label>
-                <div style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5ddd6", fontSize: "14px", fontFamily: "'Inter', sans-serif", color: address ? "#2f241d" : "#b8a89a", background: "#fdfaf7", boxSizing: "border-box" }}>
+                <label style={{ display: "block", fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "6px" }}>Home address</label>
+                <div style={{ width: "100%", padding: "10px 12px", borderRadius: "10px", border: "1px solid #e5ddd6", fontSize: "14px", fontFamily: "'Inter', sans-serif", color: address ? "#2f241d" : "#b8a89a", background: "var(--bg-secondary)", boxSizing: "border-box" }}>
                   {address || "Not provided"}
                 </div>
               </div>
@@ -217,8 +217,8 @@ export default function Profile() {
           </div>
 
           {/* About me */}
-          <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", padding: "20px 24px" }}>
-            <h3 style={{ margin: "0 0 12px 0", fontSize: "14px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.06em" }}>About me</h3>
+          <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", padding: "20px 24px" }}>
+            <h3 style={{ margin: "0 0 12px 0", fontSize: "14px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>About me</h3>
             <textarea
               value={bio}
               onChange={e => setBio(e.target.value)}
@@ -229,7 +229,7 @@ export default function Profile() {
                 width: "100%", minHeight: "130px", padding: "12px 14px", borderRadius: "12px",
                 border: focusedField === "bio" ? "1.5px solid #d97706" : "1px solid #e5ddd6",
                 fontSize: "14px", fontFamily: "'Inter', sans-serif", resize: "vertical",
-                boxSizing: "border-box", outline: "none", color: "#2f241d", lineHeight: "1.65",
+                boxSizing: "border-box", outline: "none", color: "var(--text-primary)", lineHeight: "1.65",
                 transition: "border-color 0.15s",
               }}
             />
@@ -267,13 +267,13 @@ export default function Profile() {
 
       {blocker.state === "blocked" && (
       <div style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}>
-        <div style={{ background: "white", borderRadius: "20px", padding: "32px", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
-          <h3 style={{ margin: "0 0 10px 0", fontSize: "18px", fontWeight: "800", color: "#2f241d" }}>Unsaved changes</h3>
-          <p style={{ margin: "0 0 24px 0", color: "#78716c", fontSize: "15px" }}>You have unsaved changes on your profile. Leave without saving?</p>
+        <div style={{ background: "var(--card-bg)", borderRadius: "20px", padding: "32px", maxWidth: "400px", width: "100%", boxShadow: "0 20px 60px rgba(0,0,0,0.2)" }}>
+          <h3 style={{ margin: "0 0 10px 0", fontSize: "18px", fontWeight: "800", color: "var(--text-primary)" }}>Unsaved changes</h3>
+          <p style={{ margin: "0 0 24px 0", color: "var(--text-muted)", fontSize: "15px" }}>You have unsaved changes on your profile. Leave without saving?</p>
           <div style={{ display: "flex", gap: "10px" }}>
             <button
               onClick={() => blocker.reset()}
-              style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: "#2f241d", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
+              style={{ flex: 1, padding: "12px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: "var(--text-primary)", fontWeight: "600", fontSize: "14px", cursor: "pointer" }}
             >
               Stay
             </button>
@@ -296,11 +296,11 @@ function SectionCard({ section, prefs, onSelect }) {
   const filledCount  = fieldEntries.filter(([k]) => prefs[k]).length
 
   return (
-    <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", overflow: "hidden" }}>
+    <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", overflow: "hidden" }}>
       {/* Section header */}
       <div style={{ padding: "18px 24px 14px 24px", borderBottom: "1px solid #f5ede4", display: "flex", alignItems: "center", gap: "10px" }}>
         <span style={{ fontSize: "20px" }}>{section.icon}</span>
-        <span style={{ fontSize: "16px", fontWeight: "700", color: "#2f241d" }}>{section.title}</span>
+        <span style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-primary)" }}>{section.title}</span>
         <span style={{ marginLeft: "auto", fontSize: "12px", color: filledCount === fieldEntries.length ? "#16a34a" : "#9c7e6a", fontWeight: "600" }}>
           {filledCount}/{fieldEntries.length} set
         </span>
@@ -310,7 +310,7 @@ function SectionCard({ section, prefs, onSelect }) {
       <div style={{ padding: "16px 24px 20px 24px", display: "flex", flexDirection: "column", gap: "20px" }}>
         {fieldEntries.map(([key, field]) => (
           <div key={key}>
-            <p style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "600", color: "#6f5848", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <p style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "600", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>
               {field.label}
             </p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
@@ -323,7 +323,7 @@ function SectionCard({ section, prefs, onSelect }) {
                     style={{
                       padding: "8px 16px", borderRadius: "10px",
                       border: selected ? "2px solid #d97706" : "1.5px solid #e5ddd6",
-                      background: selected ? "#fff7ed" : "#fdfaf7",
+                      background: selected ? "var(--brand-soft)" : "var(--bg-secondary)",
                       color: selected ? "#b45309" : "#6f5848",
                       fontWeight: selected ? "700" : "500",
                       fontSize: "13.5px", cursor: "pointer",
@@ -348,8 +348,8 @@ function Stat({ icon, label, value }) {
     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
       <span style={{ fontSize: "16px", width: "22px", textAlign: "center" }}>{icon}</span>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: "11px", color: "#9c7e6a", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "1px" }}>{label}</div>
-        <div style={{ fontSize: "13px", color: "#2f241d", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{value}</div>
+        <div style={{ fontSize: "11px", color: "var(--text-muted)", fontWeight: "600", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: "1px" }}>{label}</div>
+        <div style={{ fontSize: "13px", color: "var(--text-primary)", fontWeight: "600", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{value}</div>
       </div>
     </div>
   )

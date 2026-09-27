@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useDataCache } from "../context/dataCache";
 import { useToast } from "../context/toast";
-import { History } from "lucide-react";
+import { Dog, Heart, History, Search } from "lucide-react";
 
 // Dogs shown per page in the paginated grid.
 const PAGE_SIZE = 24;
@@ -26,7 +26,7 @@ function getAgeCategory(ageYears) {
 // Animated shimmer placeholder card displayed while the dog list is loading from the cache.
 function DogCardSkeleton() {
   return (
-    <div style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
+    <div style={{ background: "var(--card-bg)", borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)" }}>
       <div style={{ height: "220px", background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
       <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
         <div style={{ height: "20px", width: "55%", borderRadius: "8px", background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
@@ -74,11 +74,11 @@ function DogCard({ dog, isSaved, onSave, onNavigate, matchScore }) {
   return (
     <div
       onClick={() => onNavigate(dog.dog_id)}
-      style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1", cursor: "pointer", transition: "transform 0.2s ease, box-shadow 0.2s ease", display: "flex", flexDirection: "column" }}
+      style={{ background: "var(--card-bg)", borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)", cursor: "pointer", transition: "transform 0.2s ease, box-shadow 0.2s ease", display: "flex", flexDirection: "column" }}
       onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.10)"; }}
       onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
     >
-      <div style={{ height: "220px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
+      <div style={{ height: "220px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
         {currentPhoto ? (
           <img
             src={currentPhoto}
@@ -90,7 +90,7 @@ function DogCard({ dog, isSaved, onSave, onNavigate, matchScore }) {
             }}
           />
         ) : (
-          <span style={{ fontSize: "64px" }}>🐕</span>
+          <span style={{ fontSize: "64px" }}><Dog size={51} strokeWidth={1.5} /></span>
         )}
         <div style={{ position: "absolute", top: "12px", left: "12px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
           <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: "rgba(0,0,0,0.45)", color: "white", backdropFilter: "blur(4px)" }}>
@@ -110,13 +110,13 @@ function DogCard({ dog, isSaved, onSave, onNavigate, matchScore }) {
           title="Save dog"
           style={{ position: "absolute", top: "10px", right: "10px", width: "36px", height: "36px", borderRadius: "50%", border: "none", background: isSaved ? "#ef4444" : "rgba(255,255,255,0.9)", color: isSaved ? "white" : "#6f5848", fontSize: "16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", transition: "all 0.2s ease" }}
         >
-          {isSaved ? "♥" : "♡"}
+          {isSaved ? <Heart size={20} /> : "♡"}
         </button>
       </div>
       <div style={{ padding: "18px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
-        <h3 style={{ margin: "0 0 6px 0", fontSize: "18px", fontWeight: "700", color: "#2f241d" }}>{dog.name}</h3>
-        <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "#78716c" }}>{dog.breed || "Unknown Breed"}</p>
-        <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "#a8a29e" }}>
+        <h3 style={{ margin: "0 0 6px 0", fontSize: "18px", fontWeight: "700", color: "var(--text-primary)" }}>{dog.name}</h3>
+        <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text-muted)" }}>{dog.breed || "Unknown Breed"}</p>
+        <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "var(--text-subtle)" }}>
           {Number(dog.age_years) || 0} {Number(dog.age_years) === 1 ? "yr" : "yrs"} old
           {dog.shelter_name ? ` · ${dog.shelter_name}` : ""}
         </p>
@@ -237,8 +237,8 @@ export default function BrowseDogs() {
   const uniqueBreeds = ["All", ...new Set(allDogs.map(d => d.breed).filter(Boolean)).values()].sort();
 
   const selectStyle = {
-    padding: "10px 16px", borderRadius: "10px", border: "1px solid #e2d9d0",
-    background: "white", color: "#2f241d", fontSize: "14px", fontWeight: "500",
+    padding: "10px 16px", borderRadius: "10px", border: "1px solid var(--border)",
+    background: "var(--card-bg)", color: "var(--text-primary)", fontSize: "14px", fontWeight: "500",
     cursor: "pointer", outline: "none", fontFamily: "'Inter', sans-serif",
   };
 
@@ -247,22 +247,22 @@ export default function BrowseDogs() {
 
       {/* Header */}
       <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Browse Dogs</h1>
-        <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>
+        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>Browse Dogs</h1>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>
           {loading ? "Loading available dogs…" : `${filteredDogs.length} dog${filteredDogs.length !== 1 ? "s" : ""} available for adoption`}
         </p>
       </div>
 
       {/* Search + Filters */}
-      <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", padding: "20px 24px", marginBottom: "28px", display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", padding: "20px 24px", marginBottom: "28px", display: "flex", gap: "12px", flexWrap: "wrap", alignItems: "center" }}>
         <div style={{ position: "relative", flex: "1 1 220px", minWidth: "180px" }}>
-          <span style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", fontSize: "16px", pointerEvents: "none" }}>🔍</span>
+          <span style={{ position: "absolute", left: "14px", top: "50%", transform: "translateY(-50%)", fontSize: "16px", pointerEvents: "none" }}><Search size={13} strokeWidth={1.5} /></span>
           <input
             ref={searchInputRef}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
             placeholder="Search by name or breed… (press / to focus)"
-            style={{ width: "100%", padding: "10px 14px 10px 40px", borderRadius: "10px", border: "1px solid #e2d9d0", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", boxSizing: "border-box", color: "#2f241d" }}
+            style={{ width: "100%", padding: "10px 14px 10px 40px", borderRadius: "10px", border: "1px solid var(--border)", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", boxSizing: "border-box", color: "var(--text-primary)" }}
           />
         </div>
         <select value={filters.breed} onChange={e => setFilters(f => ({ ...f, breed: e.target.value }))} style={selectStyle}>
@@ -285,14 +285,14 @@ export default function BrowseDogs() {
         {(searchTerm || filters.breed !== "All" || filters.size !== "All" || filters.age !== "All" || filters.compat.length > 0) && (
           <button
             onClick={() => { setSearchTerm(""); setFilters({ breed: "All", size: "All", age: "All", compat: [] }); }}
-            style={{ padding: "10px 16px", borderRadius: "10px", border: "1px solid #fca5a5", background: "#fff1f2", color: "#dc2626", fontWeight: "600", fontSize: "13px", cursor: "pointer", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
+            style={{ padding: "10px 16px", borderRadius: "10px", border: "1px solid #fca5a5", background: "var(--danger-soft)", color: "#dc2626", fontWeight: "600", fontSize: "13px", cursor: "pointer", fontFamily: "'Inter', sans-serif", whiteSpace: "nowrap" }}
           >
             Clear filters
           </button>
         )}
         {/* Compatibility row */}
         <div style={{ width: "100%", display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center", paddingTop: "4px" }}>
-          <span style={{ fontSize: "12px", fontWeight: "700", color: "#9a8070", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Compatibility</span>
+          <span style={{ fontSize: "12px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em", whiteSpace: "nowrap" }}>Compatibility</span>
           {[
             { key: "kids",      label: "Good with kids" },
             { key: "dogs",      label: "Good with dogs" },
@@ -302,7 +302,7 @@ export default function BrowseDogs() {
             const active = filters.compat.includes(key);
             return (
               <button key={key} onClick={() => setFilters(f => ({ ...f, compat: active ? f.compat.filter(c => c !== key) : [...f.compat, key] }))}
-                style={{ padding: "7px 14px", borderRadius: "20px", border: `1px solid ${active ? "#ef4444" : "#e2d9d0"}`, background: active ? "#fff1f2" : "white", color: active ? "#dc2626" : "#78716c", fontWeight: active ? "700" : "500", fontSize: "13px", cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s", display: "flex", alignItems: "center", gap: "5px" }}>
+                style={{ padding: "7px 14px", borderRadius: "20px", border: `1px solid ${active ? "#ef4444" : "#e2d9d0"}`, background: active ? "var(--danger-soft)" : "white", color: active ? "#dc2626" : "#78716c", fontWeight: active ? "700" : "500", fontSize: "13px", cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s", display: "flex", alignItems: "center", gap: "5px" }}>
                 {active && <span style={{ fontSize: "11px" }}>×</span>}{label}
               </button>
             );
@@ -315,20 +315,20 @@ export default function BrowseDogs() {
         <div style={{ marginBottom: "28px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
             <History size={16} color="#9a8070" />
-            <span style={{ fontSize: "13px", fontWeight: "700", color: "#9a8070", textTransform: "uppercase", letterSpacing: "0.05em" }}>Recently Viewed</span>
+            <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Recently Viewed</span>
           </div>
           <div style={{ display: "flex", gap: "12px", overflowX: "auto", paddingBottom: "4px" }}>
             {recentlyViewed.slice(0, 6).map(d => (
               <div key={d.dog_id} onClick={() => navigate(`/dogs/${d.dog_id}`)}
                 style={{ flexShrink: 0, width: "100px", cursor: "pointer", textAlign: "center" }}>
-                <div style={{ width: "72px", height: "72px", borderRadius: "50%", overflow: "hidden", background: "#fde6cf", margin: "0 auto 8px auto", border: "2px solid #efdfd1" }}>
+                <div style={{ width: "72px", height: "72px", borderRadius: "50%", overflow: "hidden", background: "var(--brand-soft)", margin: "0 auto 8px auto", border: "2px solid #efdfd1" }}>
                   {d.photo
                     ? <img src={d.photo} alt={d.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} onError={e => e.currentTarget.style.display = "none"} />
-                    : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px" }}>🐕</div>
+                    : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px" }}><Dog size={22} strokeWidth={1.5} /></div>
                   }
                 </div>
-                <div style={{ fontSize: "12px", fontWeight: "600", color: "#2f241d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
-                <div style={{ fontSize: "11px", color: "#9a8070", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.breed}</div>
+                <div style={{ fontSize: "12px", fontWeight: "600", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</div>
+                <div style={{ fontSize: "11px", color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.breed}</div>
               </div>
             ))}
           </div>
@@ -341,10 +341,10 @@ export default function BrowseDogs() {
           {Array.from({ length: 8 }).map((_, i) => <DogCardSkeleton key={i} />)}
         </div>
       ) : paginatedDogs.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "80px 40px", background: "white", borderRadius: "20px", border: "1px solid #efdfd1" }}>
-          <div style={{ fontSize: "64px", marginBottom: "16px" }}>🔍</div>
-          <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "700", color: "#2f241d" }}>No dogs found</h2>
-          <p style={{ margin: "0 0 24px 0", color: "#78716c" }}>Try adjusting your search or filters.</p>
+        <div style={{ textAlign: "center", padding: "80px 40px", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)" }}>
+          <div style={{ fontSize: "64px", marginBottom: "16px" }}><Search size={51} strokeWidth={1.5} /></div>
+          <h2 style={{ margin: "0 0 8px 0", fontSize: "22px", fontWeight: "700", color: "var(--text-primary)" }}>No dogs found</h2>
+          <p style={{ margin: "0 0 24px 0", color: "var(--text-muted)" }}>Try adjusting your search or filters.</p>
           <button
             onClick={() => { setSearchTerm(""); setFilters({ breed: "All", size: "All", age: "All", compat: [] }); }}
             style={{ padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}
@@ -366,7 +366,7 @@ export default function BrowseDogs() {
           <button
             onClick={() => { setPage(p => Math.max(1, p - 1)); window.scrollTo(0, 0); }}
             disabled={page === 1}
-            style={{ padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: page === 1 ? "#c4a98e" : "#2f241d", fontWeight: "600", fontSize: "14px", cursor: page === 1 ? "default" : "pointer" }}
+            style={{ padding: "10px 20px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: page === 1 ? "#c4a98e" : "#2f241d", fontWeight: "600", fontSize: "14px", cursor: page === 1 ? "default" : "pointer" }}
           >
             ← Previous
           </button>
@@ -385,7 +385,7 @@ export default function BrowseDogs() {
           <button
             onClick={() => { setPage(p => Math.min(totalPages, p + 1)); window.scrollTo(0, 0); }}
             disabled={page === totalPages}
-            style={{ padding: "10px 20px", borderRadius: "10px", border: "1px solid #e2d9d0", background: "white", color: page === totalPages ? "#c4a98e" : "#2f241d", fontWeight: "600", fontSize: "14px", cursor: page === totalPages ? "default" : "pointer" }}
+            style={{ padding: "10px 20px", borderRadius: "10px", border: "1px solid var(--border)", background: "var(--card-bg)", color: page === totalPages ? "#c4a98e" : "#2f241d", fontWeight: "600", fontSize: "14px", cursor: page === totalPages ? "default" : "pointer" }}
           >
             Next →
           </button>

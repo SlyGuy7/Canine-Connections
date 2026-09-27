@@ -5,6 +5,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/toast";
 import confetti from "canvas-confetti";
+import { Dog, UserRound } from "lucide-react"
 
 // Reads the user's saved profile preferences from localStorage and maps them to application form defaults.
 // This avoids making users re-answer questions they've already set in their profile.
@@ -39,7 +40,7 @@ function profileToFormDefaults() {
 const INPUT = {
   width: "100%", padding: "12px 14px", borderRadius: "10px",
   border: "1px solid #e5ddd6", fontSize: "15px", fontFamily: "'Inter', sans-serif",
-  color: "#2f241d", outline: "none", boxSizing: "border-box", background: "white",
+  color: "var(--text-primary)", outline: "none", boxSizing: "border-box", background: "var(--card-bg)",
 };
 const SELECT   = { ...INPUT, cursor: "pointer" };
 const TEXTAREA = { ...INPUT, resize: "vertical" };
@@ -48,7 +49,7 @@ const TEXTAREA = { ...INPUT, resize: "vertical" };
 function Field({ label, required, children }) {
   return (
     <div>
-      <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", fontSize: "14px", color: "#2f241d" }}>
+      <label style={{ display: "block", marginBottom: "8px", fontWeight: "600", fontSize: "14px", color: "var(--text-primary)" }}>
         {label}{required && <span style={{ color: "#ef4444", marginLeft: "4px" }}>*</span>}
       </label>
       {children}
@@ -60,10 +61,10 @@ function Field({ label, required, children }) {
 // Used for the four application sections (Contact, Household, Care & Lifestyle, Agreements).
 function SectionCard({ number, title, children }) {
   return (
-    <div style={{ background: "white", border: "1px solid #efdfd1", borderRadius: "20px", overflow: "hidden" }}>
+    <div style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", overflow: "hidden" }}>
       <div style={{ padding: "18px 24px", borderBottom: "1px solid #f5ede4", display: "flex", alignItems: "center", gap: "12px" }}>
         <span style={{ width: "28px", height: "28px", borderRadius: "50%", background: "#d97706", color: "white", fontSize: "13px", fontWeight: "800", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{number}</span>
-        <span style={{ fontSize: "16px", fontWeight: "700", color: "#2f241d" }}>{title}</span>
+        <span style={{ fontSize: "16px", fontWeight: "700", color: "var(--text-primary)" }}>{title}</span>
       </div>
       <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "20px" }}>
         {children}
@@ -206,14 +207,14 @@ export default function ApplicationForm() {
 
       {/* Header */}
       <div style={{ marginBottom: "28px" }}>
-<h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Adoption Application</h1>
-        <p style={{ margin: 0, color: "#9c7e6a", fontSize: "15px" }}>Complete all required fields to apply for adoption.</p>
+<h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>Adoption Application</h1>
+        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>Complete all required fields to apply for adoption.</p>
       </div>
 
       {/* Profile pre-fill notice */}
       {profileFilled && (
-        <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "14px", padding: "12px 18px", marginBottom: "24px", display: "flex", alignItems: "center", gap: "10px" }}>
-          <span style={{ fontSize: "18px" }}>👤</span>
+        <div style={{ background: "var(--brand-soft)", border: "1px solid #fed7aa", borderRadius: "14px", padding: "12px 18px", marginBottom: "24px", display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ fontSize: "18px" }}><UserRound size={14} strokeWidth={1.5} /></span>
           <span style={{ fontSize: "13px", color: "#92400e" }}>
             Some fields have been pre-filled from your profile. Review and adjust as needed.
           </span>
@@ -336,7 +337,7 @@ export default function ApplicationForm() {
                 { name: "agreeToHomeVisit", text: "I agree to a home visit if requested by the shelter" },
                 { name: "agreeToFee",       text: "I understand that an adoption fee may apply" },
               ].map(({ name, text }) => (
-                <label key={name} style={{ display: "flex", alignItems: "center", gap: "14px", cursor: "pointer", padding: "14px 18px", borderRadius: "12px", border: `1px solid ${formData[name] ? "#d97706" : "#e5ddd6"}`, background: formData[name] ? "#fff7ed" : "white", transition: "all 0.15s" }}>
+                <label key={name} style={{ display: "flex", alignItems: "center", gap: "14px", cursor: "pointer", padding: "14px 18px", borderRadius: "12px", border: `1px solid ${formData[name] ? "#d97706" : "#e5ddd6"}`, background: formData[name] ? "var(--brand-soft)" : "white", transition: "all 0.15s" }}>
                   <input type="checkbox" name={name} checked={formData[name]} onChange={handleChange} style={{ width: "18px", height: "18px", accentColor: "#d97706", flexShrink: 0 }} />
                   <span style={{ fontSize: "14px", fontWeight: "500", color: formData[name] ? "#92400e" : "#2f241d" }}>{text} <span style={{ color: "#ef4444" }}>*</span></span>
                 </label>
@@ -354,21 +355,21 @@ export default function ApplicationForm() {
 
         {/* ── Dog sidebar ── */}
         <div style={{ position: "sticky", top: "24px", display: "flex", flexDirection: "column", gap: "16px" }}>
-          <div style={{ background: "white", borderRadius: "20px", overflow: "hidden", border: "1px solid #efdfd1" }}>
+          <div style={{ background: "var(--card-bg)", borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)" }}>
             {photos[0]
               ? <img src={photos[0]} alt={targetDog.name} style={{ width: "100%", height: "180px", objectFit: "cover" }} />
-              : <div style={{ width: "100%", height: "140px", background: "#fcedda", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "52px" }}>🐕</div>
+              : <div style={{ width: "100%", height: "140px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "52px" }}><Dog size={42} strokeWidth={1.5} /></div>
             }
             <div style={{ padding: "18px 20px" }}>
-              <p style={{ margin: "0 0 2px 0", fontSize: "11px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>Applying for</p>
-              <h3 style={{ margin: "0 0 4px 0", fontSize: "20px", fontWeight: "800", color: "#2f241d" }}>{targetDog.name}</h3>
+              <p style={{ margin: "0 0 2px 0", fontSize: "11px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>Applying for</p>
+              <h3 style={{ margin: "0 0 4px 0", fontSize: "20px", fontWeight: "800", color: "var(--text-primary)" }}>{targetDog.name}</h3>
               <p style={{ margin: 0, fontSize: "13px", color: "#d97706", fontWeight: "600" }}>{targetDog.breed}</p>
             </div>
           </div>
 
-          <div style={{ background: "#fffaf5", border: "1px solid #efdfd1", borderRadius: "16px", padding: "16px 18px" }}>
-            <p style={{ margin: "0 0 8px 0", fontSize: "12px", fontWeight: "700", color: "#9c7e6a", textTransform: "uppercase", letterSpacing: "0.05em" }}>What happens next</p>
-            <ol style={{ margin: 0, paddingLeft: "18px", color: "#6f5848", fontSize: "13px", lineHeight: "2" }}>
+          <div style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: "16px", padding: "16px 18px" }}>
+            <p style={{ margin: "0 0 8px 0", fontSize: "12px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.05em" }}>What happens next</p>
+            <ol style={{ margin: 0, paddingLeft: "18px", color: "var(--text-muted)", fontSize: "13px", lineHeight: "2" }}>
               <li>Review your answers</li>
               <li>Submit the application</li>
               <li>Shelter reviews within 3–5 days</li>
@@ -384,12 +385,12 @@ export default function ApplicationForm() {
           onClick={e => { if (e.target === e.currentTarget) setShowReview(false); }}
           style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.6)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}
         >
-          <div style={{ background: "white", borderRadius: "24px", maxWidth: "580px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" }}>
+          <div style={{ background: "var(--card-bg)", borderRadius: "24px", maxWidth: "580px", width: "100%", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.25)" }}>
 
             {/* Modal header */}
             <div style={{ padding: "28px 32px 20px", borderBottom: "1px solid #f5ede4" }}>
-              <h2 style={{ margin: "0 0 4px 0", fontSize: "22px", fontWeight: "800", color: "#2f241d" }}>Confirm Your Application</h2>
-              <p style={{ margin: 0, color: "#9c7e6a", fontSize: "14px" }}>Applying for <strong style={{ color: "#2f241d" }}>{targetDog.name}</strong> — review before submitting</p>
+              <h2 style={{ margin: "0 0 4px 0", fontSize: "22px", fontWeight: "800", color: "var(--text-primary)" }}>Confirm Your Application</h2>
+              <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "14px" }}>Applying for <strong style={{ color: "var(--text-primary)" }}>{targetDog.name}</strong> — review before submitting</p>
             </div>
 
             {/* Summary */}
@@ -406,16 +407,16 @@ export default function ApplicationForm() {
                 { label: "Hours alone",   value: formData.hoursAlone },
                 { label: "Allergies",     value: formData.allergies },
               ].map(({ label, value }) => (
-                <div key={label} style={{ display: "flex", gap: "12px", padding: "10px 14px", borderRadius: "10px", background: "#fffaf5", border: "1px solid #f5ede4" }}>
-                  <span style={{ fontSize: "13px", fontWeight: "700", color: "#9c7e6a", width: "110px", flexShrink: 0 }}>{label}</span>
-                  <span style={{ fontSize: "13px", color: "#2f241d", wordBreak: "break-word" }}>{value || <em style={{ color: "#a8a29e" }}>—</em>}</span>
+                <div key={label} style={{ display: "flex", gap: "12px", padding: "10px 14px", borderRadius: "10px", background: "var(--bg-primary)", border: "1px solid #f5ede4" }}>
+                  <span style={{ fontSize: "13px", fontWeight: "700", color: "var(--text-muted)", width: "110px", flexShrink: 0 }}>{label}</span>
+                  <span style={{ fontSize: "13px", color: "var(--text-primary)", wordBreak: "break-word" }}>{value || <em style={{ color: "var(--text-subtle)" }}>—</em>}</span>
                 </div>
               ))}
             </div>
 
             {/* Actions */}
             <div style={{ padding: "20px 32px 28px", display: "flex", gap: "12px" }}>
-              <button onClick={() => setShowReview(false)} style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "1px solid #e5ddd6", background: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer", color: "#2f241d" }}>
+              <button onClick={() => setShowReview(false)} style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "1px solid #e5ddd6", background: "var(--card-bg)", fontWeight: "700", fontSize: "15px", cursor: "pointer", color: "var(--text-primary)" }}>
                 ← Edit
               </button>
               <button onClick={handleFinalSubmit} disabled={submitting} style={{ flex: 2, padding: "14px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer", boxShadow: "0 4px 12px rgba(217,119,6,0.3)", opacity: submitting ? 0.7 : 1 }}>

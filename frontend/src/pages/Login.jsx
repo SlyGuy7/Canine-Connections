@@ -163,7 +163,7 @@ export default function Login({ switchToForgot }) {
           <button
             type="button"
             onClick={() => setShowPassword(v => !v)}
-            style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-60%)", background: "none", border: "none", cursor: "pointer", color: "#9a8070", padding: "4px", display: "flex", alignItems: "center" }}
+            style={{ position: "absolute", right: "12px", top: "50%", transform: "translateY(-60%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", padding: "4px", display: "flex", alignItems: "center" }}
           >
             {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
@@ -190,7 +190,7 @@ const styles = {
     display: "block",
     marginBottom: "6px",
     fontWeight: "600",
-    color: "#4a382d",
+    color: "var(--text-primary)",
   },
   forgotLink: {
     fontSize: "13px",
@@ -204,8 +204,8 @@ const styles = {
     padding: "12px 14px",
     borderRadius: "12px",
     border: "1px solid #dcc8b7",
-    background: "#fff",
-    color: "#2f241d",
+    background: "var(--card-bg)",
+    color: "var(--text-primary)",
     fontSize: "15px",
     boxSizing: "border-box",
     marginBottom: "12px",
@@ -224,7 +224,7 @@ const styles = {
     boxShadow: "0 10px 24px rgba(217, 119, 6, 0.22)",
   },
   error: {
-    background: "#fff1f2",
+    background: "var(--danger-soft)",
     color: "#b42318",
     border: "1px solid #fecdd3",
     borderRadius: "10px",
