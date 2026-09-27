@@ -2,10 +2,10 @@
 // list from the backend (request.saved_dogs.list) on mount and syncs localStorage as a cache.
 // Removing a dog does an optimistic local update first, then fires request.saved_dogs.remove
 // to keep the database in sync. A shimmer skeleton is shown while the fetch is in flight.
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useEffectEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/toast";
 
 const SIZE_LABELS = { small: "Small", medium: "Medium", large: "Large", extra_large: "XL" };
 const SIZE_COLORS = {
@@ -32,10 +32,12 @@ export default function MyDogs() {
   const hasFetched = useRef(false);
 
   // hasFetched prevents a double-fetch when React StrictMode mounts the component twice in dev.
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadSavedDogs());
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-    loadSavedDogs();
+    onMountLoad();
   }, []);
 
   async function loadSavedDogs() {

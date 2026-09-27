@@ -1,9 +1,10 @@
 // Admin overview page — the first screen seen after admin login.
 // Fetches dogs, applications, and stories in parallel to populate four stat cards
 // and a table of the six most recent applications.
-import React, { useEffect, useState } from "react"
+import React, { useEffect, useEffectEvent, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
+import { useToast } from "../context/toast"
 import AdminSidebar from "../components/AdminSidebar"
 
 // Shared dark-theme color tokens used throughout this page.
@@ -36,13 +37,16 @@ const statusStyle = (s) => {
 }
 
 export default function AdminDashboard() {
+  const { addToast } = useToast()
   const navigate = useNavigate()
   const [stats, setStats]           = useState({ dogs: 0, applications: 0, pending: 0, stories: 0 })
   // Only the six most recent applications shown in the preview table.
   const [recentApps, setRecentApps] = useState([])
   const [loading, setLoading]       = useState(true)
 
-  useEffect(() => { loadData() }, [])
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadData())
+  useEffect(() => { onMountLoad() }, [])
 
   // Fires three RabbitMQ requests concurrently so the page loads in one round-trip.
   async function loadData() {
@@ -64,7 +68,9 @@ export default function AdminDashboard() {
       })
       // Slice to the 6 most recent for the preview table (API returns them newest-first).
       setRecentApps(apps.slice(0, 6))
-    } catch { } finally { setLoading(false) }
+    } catch {
+      addToast("Could not load dashboard data.", "error")
+    } finally { setLoading(false) }
   }
 
   const adminName = localStorage.getItem("adminFirstName") || localStorage.getItem("adminEmail") || "Admin"

@@ -12,18 +12,18 @@ import {
 // Custom hook that manages dark/light mode state.
 // Persists the preference to localStorage and applies it by toggling data-theme on <html>.
 function useDarkMode() {
-  const [dark, setDark] = useState(() => document.documentElement.getAttribute("data-theme") === "dark");
+  const [dark, setDark] = useState(() =>
+    localStorage.getItem("canine_theme") === "dark" || document.documentElement.getAttribute("data-theme") === "dark");
   const toggle = () => {
     const next = !dark;
     document.documentElement.setAttribute("data-theme", next ? "dark" : "light");
     localStorage.setItem("canine_theme", next ? "dark" : "light");
     setDark(next);
   };
+  // Apply the theme to <html> (also restores a saved dark preference on first mount).
   useEffect(() => {
-    // Restore the saved theme preference on first mount.
-    const saved = localStorage.getItem("canine_theme");
-    if (saved === "dark") { document.documentElement.setAttribute("data-theme", "dark"); setDark(true); }
-  }, []);
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "light");
+  }, [dark]);
   return [dark, toggle];
 }
 
@@ -36,15 +36,11 @@ export default function Sidebar({ isMobile = false, open = true, onClose }) {
   const navigate = useNavigate();
   const [hoveredPath, setHoveredPath] = useState(null);
   const [isLogoutHovered, setIsLogoutHovered] = useState(false);
-  // Red dot badge shown on Messages when there are unread messages in localStorage.
-  const [hasUnread, setHasUnread] = useState(false);
   const [dark, toggleDark] = useDarkMode();
 
-  // Re-check the unread flag on every route change so the badge updates after visiting Messages.
-  useEffect(() => {
-    const flag = localStorage.getItem("canine_unread_messages");
-    setHasUnread(flag === "true");
-  }, [location.pathname]);
+  // Red dot on Messages when there are unread messages. Read on every render; the sidebar
+  // re-renders on each route change, so the dot updates after visiting Messages.
+  const hasUnread = localStorage.getItem("canine_unread_messages") === "true";
 
   // Clears the session and all cached user data, then sends the user to /landing.
   const handleLogout = () => {

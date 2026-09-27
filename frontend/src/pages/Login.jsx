@@ -14,7 +14,7 @@ function formatCountdown(secs) {
   const s = (secs % 60).toString().padStart(2, "0");
   return `${m}:${s}`;
 }
-export default function Login({ switchToRegister, switchToForgot }) {
+export default function Login({ switchToForgot }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -32,9 +32,10 @@ export default function Login({ switchToRegister, switchToForgot }) {
   const navigate = useNavigate();
   // Detect the specific "verify your email" error so we can show the resend link inline.
   const isVerifyError = error.toLowerCase().includes("verify your email");
+  const isLockedOut = lockoutRemaining > 0;
   // Ticks the countdown once per second and removes the key from localStorage when it reaches 0.
   useEffect(() => {
-    if (lockoutRemaining <= 0) return;
+    if (!isLockedOut) return;
     const timer = setInterval(() => {
       setLockoutRemaining(prev => {
         if (prev <= 1) { localStorage.removeItem(LOCKOUT_KEY); return 0; }
@@ -42,7 +43,7 @@ export default function Login({ switchToRegister, switchToForgot }) {
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [lockoutRemaining > 0]);
+  }, [isLockedOut]);
   async function onSubmit(e) {
     e.preventDefault();
     if (lockoutRemaining > 0) return;
@@ -54,7 +55,7 @@ export default function Login({ switchToRegister, switchToForgot }) {
     setLoading(true);
     try {
       let clientIp = "unknown";
-      try { clientIp = await fetch("/client-ip").then(r => r.text()); } catch {}
+      try { clientIp = await fetch("/client-ip").then(r => r.text()); } catch { /* the backend handles "unknown" */ }
       const result = await sendMessage("request.auth.login", {
         email,
         password,

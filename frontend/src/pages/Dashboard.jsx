@@ -1,9 +1,9 @@
 // Main authenticated home screen. Greets the user by name and shows stats, quick actions,
 // a featured dog, quiz matches, the badge gallery, and a post-adoption journal panel.
-import React, { useEffect, useMemo, useState } from "react"
+import React, { useEffect, useMemo, useState, useEffectEvent } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
-import { useDataCache } from "../context/DataCacheContext"
+import { useDataCache } from "../context/dataCache"
 import { useIsMobile } from "../hooks/useIsMobile"
 import { Zap } from "lucide-react"
 import BadgeGallery from "../components/BadgeGallery"
@@ -37,14 +37,13 @@ export default function Dashboard() {
   const [selectedDogId, setSelectedDogId] = useState(null)     // Which adopted dog's journal is being viewed.
   const [logs, setLogs]           = useState([])               // Journal entries for the selected adopted dog.
   const [loadingLogs, setLoadingLogs] = useState(false)
-  const [logForm, setLogForm]     = useState({ log_type: "general", title: "", notes: "", log_date: new Date().toISOString().split("T")[0] })
-  const [savingLog, setSavingLog] = useState(false)
-  const [showLogForm, setShowLogForm] = useState(false)
   const [stats, setStats]         = useState({ saved: 0, applications: 0, journalCount: 0 })
   const [matchedDogs, setMatchedDogs] = useState([])           // Top 3 quiz-scored dogs.
 
   // Reload everything on each navigation so stats stay fresh when returning from other pages.
-  useEffect(() => { loadAll() }, [location])
+  // Effect event: always calls the latest version without re-running the effect.
+  const onNavigate = useEffectEvent(() => loadAll());
+  useEffect(() => { onNavigate() }, [location])
 
   async function loadAll() {
     loadUser()
@@ -65,7 +64,7 @@ export default function Dashboard() {
         .sort((a, b) => b._score - a._score)
         .slice(0, 3)
       setMatchedDogs(scored)
-    } catch {}
+    } catch { /* recommendations are optional; the section just stays hidden */ }
   }
 
   // Resolves the user's first name from localStorage in order of preference.
@@ -93,7 +92,7 @@ export default function Dashboard() {
         const result = await sendMessage("request.application.list", { user_id: parseInt(userId) })
         if (result?.success) applicationCount = (result.applications || []).length
       }
-    } catch {}
+    } catch { /* fall back to the locally cached count */ }
     setStats({ saved: saved.length, applications: applicationCount, journalCount: journalEntries.length })
   }
 
@@ -132,24 +131,6 @@ export default function Dashboard() {
 
   const handleDogSelect = (dogId) => { setSelectedDogId(dogId); loadLogs(dogId) }
 
-  const handleAddLog = async (e) => {
-    e.preventDefault()
-    if (!logForm.title.trim()) return
-    setSavingLog(true)
-    const userId = localStorage.getItem("userId")
-    try {
-      const result = await sendMessage("request.adoption.log.create", {
-        user_id: parseInt(userId), dog_id: selectedDogId,
-        log_type: logForm.log_type, title: logForm.title,
-        notes: logForm.notes, log_date: logForm.log_date,
-      })
-      if (result?.success) {
-        setLogForm({ log_type: "general", title: "", notes: "", log_date: new Date().toISOString().split("T")[0] })
-        setShowLogForm(false)
-        loadLogs(selectedDogId)
-      }
-    } catch {} finally { setSavingLog(false) }
-  }
 
   const nextSteps = useMemo(() => [
     { label: "Complete your profile",         icon: "👤", done: (() => { try { const p = JSON.parse(localStorage.getItem("userProfile") || "{}"); const keys = ["homeType","ownership","household","otherPets","activityLevel","hoursHome","experience","allergies"]; return keys.every(k => p.prefs?.[k]) && (p.bio?.trim()?.length ?? 0) > 0; } catch { return false; } })(), path: "/profile" },
@@ -178,7 +159,6 @@ export default function Dashboard() {
     ? (Array.isArray(featuredDog.photos) ? featuredDog.photos[0] : featuredDog.photos.split(",")[0])
     : null
 
-  const selectedDog = adoptedDogs.find((d) => d.dog_id === selectedDogId)
 
   const quickActions = [
     { label: "Browse Dogs",   icon: "🔍", desc: "Find your match",       path: "/browse-dogs"  },

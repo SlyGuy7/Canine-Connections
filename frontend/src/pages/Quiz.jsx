@@ -2,11 +2,11 @@
 // answers from the user's saved Profile preferences, and submits answers to request.quiz.submit.
 // On success the backend returns matched dog IDs which are cached in localStorage and the user
 // is sent to QuizResults. If the user has already completed the quiz they see a "retake" screen.
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useEffectEvent } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-import { useDataCache } from "../context/DataCacheContext";
-import { useToast } from "../context/ToastContext";
+import { useDataCache } from "../context/dataCache";
+import { useToast } from "../context/toast";
 
 // Friendlier display text for question strings returned by the database.
 // Keys are lowercase versions of the original DB strings.
@@ -167,10 +167,12 @@ export default function Quiz() {
   const profilePrefs = JSON.parse(localStorage.getItem("userProfile") || "{}").prefs || {};
   const hasProfile   = Object.keys(profilePrefs).length > 0;
 
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadQuestions());
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-    loadQuestions();
+    onMountLoad();
   }, []);
 
   async function loadQuestions() {

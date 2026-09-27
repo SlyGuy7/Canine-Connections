@@ -3,6 +3,7 @@
 // and approve, reject, or finalize adoptions.
 import React, { useEffect, useState } from "react"
 import { sendMessage } from "../services/messaging"
+import { useToast } from "../context/toast"
 import AdminSidebar from "../components/AdminSidebar"
 
 // Shared dark-theme color tokens used throughout this page.
@@ -39,6 +40,7 @@ const getName = (app) =>
   app.full_name || `${app.first_name || ''} ${app.last_name || ''}`.trim() || '—'
 
 export default function AdminApplications() {
+  const { addToast } = useToast()
   const [applications, setApplications] = useState([])
   const [loading, setLoading]           = useState(true)
   const [filterStatus, setFilterStatus] = useState("all")
@@ -79,8 +81,12 @@ export default function AdminApplications() {
           a.application_id === appId ? { ...a, status: decision === "approve" ? "approved" : "rejected" } : a
         ))
         setExpandedId(null)
+      } else {
+        addToast(result?.error || "Something went wrong. Please try again.", "error")
       }
-    } catch { } finally { setProcessing(null) }
+    } catch {
+      addToast("Could not reach the server. Please try again.", "error")
+    } finally { setProcessing(null) }
   }
 
   // Finalizes an approved adoption — marks the dog as adopted and locks the application.
@@ -98,8 +104,12 @@ export default function AdminApplications() {
           a.application_id === appId ? { ...a, status: "finalized" } : a
         ))
         setExpandedId(null)
+      } else {
+        addToast(result?.error || "Something went wrong. Please try again.", "error")
       }
-    } catch { } finally { setProcessing(null) }
+    } catch {
+      addToast("Could not reach the server. Please try again.", "error")
+    } finally { setProcessing(null) }
   }
 
   // Pre-compute per-status counts so they can be shown in the filter tab badges.

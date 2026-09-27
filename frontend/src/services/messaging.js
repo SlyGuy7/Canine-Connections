@@ -126,7 +126,7 @@ export async function sendMessage(type, payload) {
       if (finished) return;
       finished = true;
       clearTimeout(timeoutId);
-      try { subscription?.unsubscribe(); } catch {}
+      try { subscription?.unsubscribe(); } catch { /* already gone after a disconnect */ }
       resolve(result);
     }
 

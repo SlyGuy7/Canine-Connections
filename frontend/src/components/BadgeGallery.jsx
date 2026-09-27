@@ -1,42 +1,43 @@
 // Achievement badge gallery shown on the user's Dashboard and Profile pages.
 // Reads localStorage to determine which of the 12 badges have been earned.
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+
+// Works out which badges are earned from localStorage.
+function computeEarnedBadges() {
+  // No backend call needed — all signals are stored locally after user actions.
+  const earned = [];
+
+  const userEmail = localStorage.getItem("userEmail");
+  const quizDone = localStorage.getItem("quizCompleted") === "true";
+  const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
+  const apps = JSON.parse(localStorage.getItem("myApplications") || "[]");
+  const entries = JSON.parse(localStorage.getItem("journal_entries") || "[]");
+  const messages = JSON.parse(localStorage.getItem("messages") || "[]");
+  const viewedShelters = JSON.parse(localStorage.getItem("viewedShelters") || "[]");
+
+  // Each push corresponds to one of the 12 badge definitions in badgeSystem below.
+  if (userEmail) earned.push("member");
+  if (quizDone) earned.push("matching");
+  if (saved.length >= 1) earned.push("seeker");
+  if (saved.length >= 10) earned.push("collector");
+  if (apps.length > 0) earned.push("applicant");
+  if (apps.some(a => a.status === "Approved")) earned.push("approved");
+  if (entries.length >= 1) earned.push("writer");
+  if (entries.length >= 10) earned.push("biographer");
+  if (messages.length > 0) earned.push("talker");
+  if (viewedShelters.length >= 5) earned.push("explorer");
+  if (apps.length >= 3) earned.push("determined");
+  if (entries.some(e => (e.notes || e.content || "").length > 200)) earned.push("detailed");
+
+  return earned;
+}
 
 export default function BadgeGallery() {
   // Array of badge IDs the current user has unlocked (e.g. ["member", "seeker"]).
-  const [unlockedBadges, setUnlockedBadges] = useState([]);
+  const [unlockedBadges] = useState(computeEarnedBadges);
   // The badge the user clicked — drives the detail modal.
   const [selectedBadge, setSelectedBadge] = useState(null);
 
-  useEffect(() => {
-    // Check each badge condition against localStorage data on mount.
-    // No backend call needed — all signals are stored locally after user actions.
-    const earned = [];
-
-    const userEmail = localStorage.getItem("userEmail");
-    const quizDone = localStorage.getItem("quizCompleted") === "true";
-    const saved = JSON.parse(localStorage.getItem("savedDogs") || "[]");
-    const apps = JSON.parse(localStorage.getItem("myApplications") || "[]");
-    const entries = JSON.parse(localStorage.getItem("journal_entries") || "[]");
-    const messages = JSON.parse(localStorage.getItem("messages") || "[]");
-    const viewedShelters = JSON.parse(localStorage.getItem("viewedShelters") || "[]");
-
-    // Each push corresponds to one of the 12 badge definitions in badgeSystem below.
-    if (userEmail) earned.push("member");
-    if (quizDone) earned.push("matching");
-    if (saved.length >= 1) earned.push("seeker");
-    if (saved.length >= 10) earned.push("collector");
-    if (apps.length > 0) earned.push("applicant");
-    if (apps.some(a => a.status === "Approved")) earned.push("approved");
-    if (entries.length >= 1) earned.push("writer");
-    if (entries.length >= 10) earned.push("biographer");
-    if (messages.length > 0) earned.push("talker");
-    if (viewedShelters.length >= 5) earned.push("explorer");
-    if (apps.length >= 3) earned.push("determined");
-    if (entries.some(e => (e.notes || e.content || "").length > 200)) earned.push("detailed");
-
-    setUnlockedBadges(earned);
-  }, []);
 
   const badgeSystem = [
     { id: "member", title: "Pack Member", goal: "Complete initial sign-up.", icon: "🆔", color: "#3b82f6" },

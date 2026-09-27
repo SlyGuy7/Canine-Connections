@@ -3,10 +3,9 @@
 // between uncached requests to respect the rate limit). The user can enable the browser geolocation
 // API to filter the map to shelters within a chosen radius and see distances on each card.
 // Geocode results are persisted in localStorage under "shelter_geocache" to survive page refreshes.
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useEffectEvent } from "react"
 import { useNavigate } from "react-router-dom"
-import { sendMessage } from "../services/messaging"
-import { useDataCache } from "../context/DataCacheContext"
+import { useDataCache } from "../context/dataCache"
 import { MapPin, List, Navigation } from "lucide-react"
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet"
 import L from "leaflet"
@@ -40,7 +39,7 @@ const geocodeCache = (() => {
 })()
 
 function saveGeocacheToStorage() {
-  try { localStorage.setItem("shelter_geocache", JSON.stringify(geocodeCache)) } catch {}
+  try { localStorage.setItem("shelter_geocache", JSON.stringify(geocodeCache)) } catch { /* cache is an optimisation only */ }
 }
 
 async function geocode(city, state) {
@@ -58,7 +57,7 @@ async function geocode(city, state) {
       saveGeocacheToStorage()
       return coords
     }
-  } catch {}
+  } catch { /* geocoding is best effort; the shelter is shown without a map pin */ }
   return null
 }
 
@@ -78,7 +77,7 @@ const RADIUS_OPTIONS = [5, 10, 15, 25, 50]
 // Invisible Leaflet component that moves the map view whenever lat/lng/zoom props change.
 function RecenterMap({ lat, lng, zoom }) {
   const map = useMap()
-  useEffect(() => { map.setView([lat, lng], zoom) }, [lat, lng, zoom])
+  useEffect(() => { map.setView([lat, lng], zoom) }, [map, lat, lng, zoom])
   return null
 }
 
@@ -159,7 +158,9 @@ export default function Shelters() {
   const [page, setPage] = useState(1)
   const { getShelters } = useDataCache()
 
-  useEffect(() => { loadShelters() }, [])
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadShelters());
+  useEffect(() => { onMountLoad() }, [])
 
   async function loadShelters() {
     setLoading(true); setError("")

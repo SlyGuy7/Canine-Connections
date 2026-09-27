@@ -27,7 +27,8 @@ export default defineConfig([
     },
     rules: {
       // Warn on unused variables but allow UPPER_CASE constants and silently ignore caught errors.
-      'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]', caughtErrors: 'none' }],
+      // Capitalised names are React components used as JSX tags (e.g. <Icon />), which this rule can't see.
+      'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^[A-Z_]', caughtErrors: 'none' }],
       'no-empty': 'warn',
       'react-hooks/exhaustive-deps': 'warn',
       'react-hooks/set-state-in-effect': 'warn',
@@ -36,5 +37,10 @@ export default defineConfig([
       // Warn if a file exports something other than a React component (breaks fast refresh).
       'react-refresh/only-export-components': 'warn',
     },
+  },
+  {
+    // The app entry point renders the root and exports nothing, so the fast-refresh rule doesn't apply.
+    files: ['src/main.jsx'],
+    rules: { 'react-refresh/only-export-components': 'off' },
   },
 ])

@@ -1,9 +1,9 @@
 // User-facing application tracker. Shows all of the logged-in user's adoption applications
 // with a visual progress trail (Submitted → In Review → Decision) and status details.
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useEffectEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/toast";
 
 // Maps each status string to the colors, icon, label, and descriptive message shown on the card.
 const STATUS_CONFIG = {
@@ -29,13 +29,6 @@ function progressStep(status) {
   return 0;
 }
 
-// Formats a MySQL datetime string into a short US-style date.
-function formatDate(dateStr) {
-  if (!dateStr) return "Unknown date";
-  const d = new Date(dateStr.replace(" ", "T"));
-  return isNaN(d) ? dateStr : d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "America/New_York" });
-}
-
 // Placeholder card with animated shimmer bars shown while applications are loading.
 function AppSkeleton() {
   return (
@@ -57,10 +50,12 @@ export default function Applications() {
   // Prevents double-fetching when React StrictMode mounts the component twice in dev.
   const hasFetched = useRef(false);
 
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadApplications());
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-    loadApplications();
+    onMountLoad();
   }, []);
 
   async function loadApplications() {

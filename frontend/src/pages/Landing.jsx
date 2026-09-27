@@ -8,34 +8,37 @@ import { useIsMobile } from "../hooks/useIsMobile"
 import { sendMessage } from "../services/messaging"
 import AuthModal from "../components/AuthModal"
 
+// Heading and dog filter for each category preview on the landing page.
+const CATEGORIES = {
+  "Small Dogs": {
+    title: "Little Pups, Big Hearts",
+    subtitle: "These bite-sized companions are perfectly sized for any home.",
+    query: { size: "small", status: "available", limit: 4 },
+  },
+  "Large Dogs": {
+    title: "Gentle Giants",
+    subtitle: "Looking for a bigger companion? Meet our large breed dogs.",
+    query: { size: "large", status: "available", limit: 4 },
+  },
+  "Puppies": {
+    title: "Playful Puppies",
+    subtitle: "Young, energetic, and ready to join your family.",
+    query: { max_age: 1, status: "available", limit: 4 },
+  },
+}
+
 // Modal that fetches up to 4 dogs matching a clicked category (Small, Large, Puppies) and
 // displays them as a preview grid before offering a "See All" link to /browse-dogs.
 function CategoryPreviewModal({ category, close, navigate }) {
   const [previewDogs, setPreviewDogs] = React.useState([])
   const [catLoading, setCatLoading] = React.useState(true)
 
-  let title = ""
-  let subtitle = ""
-  let queryParams = {}
-
-  if (category === "Small Dogs") {
-    title = "Little Pups, Big Hearts"
-    subtitle = "These bite-sized companions are perfectly sized for any home."
-    queryParams = { size: "small", status: "available", limit: 4 }
-  } else if (category === "Large Dogs") {
-    title = "Gentle Giants"
-    subtitle = "Looking for a bigger companion? Meet our large breed dogs."
-    queryParams = { size: "large", status: "available", limit: 4 }
-  } else if (category === "Puppies") {
-    title = "Playful Puppies"
-    subtitle = "Young, energetic, and ready to join your family."
-    queryParams = { max_age: 1, status: "available", limit: 4 }
-  }
+  const { title = "", subtitle = "" } = CATEGORIES[category] ?? {}
 
   React.useEffect(() => {
     if (!category) return
     setCatLoading(true)
-    sendMessage("request.dogs.list", { ...queryParams, offset: 0 })
+    sendMessage("request.dogs.list", { ...(CATEGORIES[category]?.query ?? {}), offset: 0 })
       .then(result => {
         if (result?.success && Array.isArray(result.dogs)) {
           setPreviewDogs(result.dogs.map(dog => ({

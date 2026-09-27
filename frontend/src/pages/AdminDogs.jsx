@@ -3,6 +3,7 @@
 // and a slide-in form for adding or editing individual dog records.
 import React, { useEffect, useState } from "react"
 import { sendMessage } from "../services/messaging"
+import { useToast } from "../context/toast"
 import AdminSidebar from "../components/AdminSidebar"
 
 // Shared dark-theme color tokens used throughout this page.
@@ -107,6 +108,7 @@ function Paginator({ page, total, pageSize, onChange }) {
 }
 
 export default function AdminDogs() {
+  const { addToast } = useToast()
   const [dogs, setDogs]                 = useState([])
   const [loading, setLoading]           = useState(true)
   const [showForm, setShowForm]         = useState(false)
@@ -178,8 +180,12 @@ export default function AdminDogs() {
         setShowForm(false); setEditing(null); setFormData(EMPTY)
         loadDogs()
         setTimeout(() => setSuccessMsg(''), 4000)
+      } else {
+        addToast(result?.error || "Something went wrong. Please try again.", "error")
       }
-    } catch { } finally { setSaving(false) }
+    } catch {
+      addToast("Could not reach the server. Please try again.", "error")
+    } finally { setSaving(false) }
   }
 
   const handleStatusChange = async (dog, newStatus) => {
@@ -193,8 +199,12 @@ export default function AdminDogs() {
       })
       if (result?.success) {
         setDogs(prev => prev.map(d => d.dog_id === dog.dog_id ? { ...d, status: newStatus } : d))
+      } else {
+        addToast(result?.error || "Something went wrong. Please try again.", "error")
       }
-    } catch { } finally { setSavingStatus(null) }
+    } catch {
+      addToast("Could not reach the server. Please try again.", "error")
+    } finally { setSavingStatus(null) }
   }
 
   const counts = {

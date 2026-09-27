@@ -6,7 +6,7 @@
 import React, { useState, useRef } from 'react'
 import { useNavigate, useBlocker } from 'react-router-dom'
 import { sendMessage } from '../services/messaging'
-import { useToast } from '../context/ToastContext'
+import { useToast } from '../context/toast'
 import { useIsMobile } from '../hooks/useIsMobile'
 
 // Reusable animated toggle switch component; calls onChange with the new boolean value when clicked.
@@ -154,8 +154,14 @@ export default function Settings() {
     const userId = localStorage.getItem('userId')
     if (!userId) return
     try {
-      await sendMessage('request.profile.update', { user_id: parseInt(userId), login_notifications: val })
-    } catch {}
+      const result = await sendMessage('request.profile.update', { user_id: parseInt(userId), login_notifications: val })
+      if (!result?.success) throw new Error(result?.error)
+    } catch {
+      // Put the switch back so it reflects what is actually saved.
+      setPrivacy(p => ({ ...p, loginAlerts: !val }))
+      localStorage.setItem('loginAlerts', val ? 'false' : 'true')
+      addToast('Could not update login alerts. Please try again.', 'error')
+    }
   }
 
   const handleDeleteAccount = async () => {

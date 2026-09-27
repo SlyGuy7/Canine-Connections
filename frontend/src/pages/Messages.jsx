@@ -2,10 +2,10 @@
 // sessions; clicking one loads the history and starts a 10-second polling interval to check
 // for new messages. On mobile, tapping a session slides to a full-screen chat panel.
 // New sessions can be started via router state passed from the ShelterDetails "Message Shelter" button.
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useEffectEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/toast";
 import { useIsMobile } from "../hooks/useIsMobile";
 
 // Five rotating colours assigned to shelter avatars based on their position in the sessions list.
@@ -49,14 +49,18 @@ export default function Messages() {
   const messagesEndRef = useRef(null);
   const inputRef       = useRef(null);
 
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadSessions());
   useEffect(() => {
-    loadSessions();
+    onMountLoad();
   }, []);
 
   // Handle "Message Shelter" button from ShelterDetails
+  // Effect event: always calls the latest version without re-running the effect.
+  const onOpenFromShelter = useEffectEvent(() => openShelterChat(location.state.shelter));
   useEffect(() => {
     if (location.state?.shelterId && location.state?.shelter) {
-      openShelterChat(location.state.shelter);
+      onOpenFromShelter();
     }
   }, [location.state]);
 
@@ -72,7 +76,7 @@ export default function Messages() {
         .catch(() => {});
     }, 10000);
     return () => clearInterval(interval);
-  }, [sessionId, activeShelter]);
+  }, [sessionId, activeShelter, userId]);
 
   async function loadSessions() {
     setSessionsLoading(true);

@@ -1,10 +1,10 @@
 // Detailed profile page for a single dog, accessed via /dogs/:id.
 // Fetches dog details and the user's applications in parallel, renders a photo gallery,
 // compatibility tags, shelter info, and an Apply or Already Applied CTA.
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useEffectEvent } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/toast";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { Share2, ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -17,7 +17,7 @@ function trackRecentlyViewed(dog) {
     const filtered = existing.filter(d => d.dog_id !== dog.dog_id);
     const updated = [{ dog_id: dog.dog_id, name: dog.name, breed: dog.breed, photo: dog.photos ? (typeof dog.photos === "string" ? dog.photos.split(",")[0].trim() : "") : "" }, ...filtered].slice(0, 10);
     localStorage.setItem(key, JSON.stringify(updated));
-  } catch {}
+  } catch { /* storage full or disabled: skip the recently-viewed list */ }
 }
 
 export default function DogProfile() {
@@ -38,10 +38,12 @@ export default function DogProfile() {
   // Reset the fetch guard whenever the dog ID in the URL changes.
   useEffect(() => { hasFetched.current = false; }, [id]);
 
+  // Effect event: always calls the latest version without re-running the effect.
+  const onDogChange = useEffectEvent(() => load());
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-    load();
+    onDogChange();
   }, [id]);
 
   // Fires both the dog fetch and the application list fetch concurrently.

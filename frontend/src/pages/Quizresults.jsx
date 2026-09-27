@@ -2,10 +2,10 @@
 // dog individually via request.dogs.get in parallel, and renders the results as a card grid.
 // If no IDs were matched, it shows the user's selected preferences and offers suggestions for
 // broadening their criteria. Dogs can be saved/unsaved directly from this page.
-import React, { useState, useEffect, useRef } from "react"
+import React, { useState, useEffect, useRef, useEffectEvent } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
-import { useToast } from "../context/ToastContext"
+import { useToast } from "../context/toast"
 
 // Maps quiz answer option IDs to human-readable labels and icons for the "no matches" preferences display.
 const TRAIT_LABELS = {
@@ -52,10 +52,12 @@ export default function QuizResults() {
   const savedAnswers = JSON.parse(localStorage.getItem("quizAnswers") || "{}")
   const answerValues = Object.values(savedAnswers).map(String)
 
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadMatches());
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
-    loadMatches();
+    onMountLoad();
   }, [])
 
   async function loadMatches() {

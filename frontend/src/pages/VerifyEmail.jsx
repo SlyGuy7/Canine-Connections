@@ -9,17 +9,13 @@ import { sendMessage } from "../services/messaging"
 export default function VerifyEmail() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  // "verifying" → "success" | "error" after the backend responds.
-  const [status, setStatus] = useState("verifying")
-  const [error, setError] = useState("")
+  const token = searchParams.get("token")
+  // "verifying" → "success" | "error" after the backend responds; a link without a token fails immediately.
+  const [status, setStatus] = useState(token ? "verifying" : "error")
+  const [error, setError] = useState(token ? "" : "No verification token found in the link.")
 
   useEffect(() => {
-    const token = searchParams.get("token")
-    if (!token) {
-      setStatus("error")
-      setError("No verification token found in the link.")
-      return
-    }
+    if (!token) return
     sendMessage("request.auth.verify", { token })
       .then(result => {
         if (result?.success) {
@@ -33,7 +29,7 @@ export default function VerifyEmail() {
         setStatus("error")
         setError("Could not connect. Please try again.")
       })
-  }, [])
+  }, [token])
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "#f7efe7", padding: "20px" }}>

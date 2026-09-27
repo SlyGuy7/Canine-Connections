@@ -1,29 +1,35 @@
 // Global toast notification system. Wrap the app in ToastProvider (done in main.jsx),
 // then call useToast().addToast("message", "success"|"error") from any component.
-import React, { createContext, useState, useContext } from "react";
+import React, { useCallback, useMemo, useRef, useState } from "react";
+import { ToastContext } from "./toast";
 import "../index.css";
 
-const ToastContext = createContext();
+const TOAST_DURATION_MS = 3000;
 
 export function ToastProvider({ children }) {
   // Array of active toast objects: { id, message, type }
   const [toasts, setToasts] = useState([]);
-
-  // Creates a new toast and schedules its automatic removal after 3 seconds.
-  // type defaults to "success" which maps to the .toast-success CSS class in index.css.
-  const addToast = (message, type = "success") => {
-    const id = Date.now(); // Timestamp used as a unique key.
-    setToasts((prev) => [...prev, { id, message, type }]);
-    setTimeout(() => removeToast(id), 3000);
-  };
+  // Incrementing id, so two toasts raised in the same millisecond never share a key.
+  const nextId = useRef(0);
 
   // Filters out the toast with the given id — used both by the auto-timeout and the X button.
-  const removeToast = (id) => {
+  const removeToast = useCallback((id) => {
     setToasts((prev) => prev.filter((toast) => toast.id !== id));
-  };
+  }, []);
+
+  // Creates a new toast and schedules its automatic removal.
+  // type defaults to "success" which maps to the .toast-success CSS class in index.css.
+  const addToast = useCallback((message, type = "success") => {
+    const id = ++nextId.current;
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => removeToast(id), TOAST_DURATION_MS);
+  }, [removeToast]);
+
+  // Stable value: components using useToast() don't re-render every time a toast appears.
+  const value = useMemo(() => ({ addToast }), [addToast]);
 
   return (
-    <ToastContext.Provider value={{ addToast }}>
+    <ToastContext.Provider value={value}>
       {children}
       {/* Fixed top-right container that renders all active toasts stacked vertically. */}
       <div className="toast-container">
@@ -31,7 +37,7 @@ export function ToastProvider({ children }) {
           // The CSS class toast-success or toast-error controls background/text color (see index.css).
           <div key={toast.id} className={`toast toast-${toast.type}`}>
             <span>{toast.message}</span>
-            <button className="toast-close" onClick={() => removeToast(toast.id)}>
+            <button className="toast-close" onClick={() => removeToast(toast.id)} aria-label="Dismiss notification">
               ×
             </button>
           </div>
@@ -39,9 +45,4 @@ export function ToastProvider({ children }) {
       </div>
     </ToastContext.Provider>
   );
-}
-
-// Convenience hook — import and call useToast() in any component to access addToast.
-export function useToast() {
-  return useContext(ToastContext);
 }

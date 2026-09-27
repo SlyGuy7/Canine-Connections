@@ -2,10 +2,10 @@
 // DataCacheContext shelter list if the direct fetch fails. Tracks viewed shelter IDs in localStorage.
 // Loads up to 50 available dogs from this shelter in parallel and shows the first 12, with a
 // "Message Shelter" button that navigates to /messages with router state so chat opens immediately.
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useEffectEvent } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
-import { useDataCache } from "../context/DataCacheContext"
+import { useDataCache } from "../context/dataCache"
 
 export default function ShelterDetails() {
   const { id } = useParams()
@@ -16,9 +16,13 @@ export default function ShelterDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
+  // Effect event: always calls the latest version without re-running the effect.
+  const onShelterChangeInfo = useEffectEvent(() => loadShelter());
+  // Effect event: always calls the latest version without re-running the effect.
+  const onShelterChangeDogs = useEffectEvent(() => loadDogs());
   useEffect(() => {
-    loadShelter()
-    loadDogs()
+    onShelterChangeInfo()
+    onShelterChangeDogs()
   }, [id])
 
   async function loadShelter() {

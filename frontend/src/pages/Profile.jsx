@@ -4,10 +4,16 @@
 // handler both warn the user if they try to leave with unsaved changes.
 import React, { useState, useEffect, useRef } from "react"
 import { useBlocker } from "react-router-dom"
-import { useToast } from "../context/ToastContext"
+import { useToast } from "../context/toast"
 
 // localStorage key for persisting the user's bio and preference selections.
 const PROFILE_KEY = "userProfile"
+
+// The bio and adoption preferences saved in localStorage.
+function readStoredProfile() {
+  const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}")
+  return { bio: stored.bio || "", prefs: stored.prefs || {} }
+}
 
 const sections = [
   {
@@ -90,11 +96,12 @@ export default function Profile() {
   const phone   = localStorage.getItem("userPhone")   || ""
   const address = localStorage.getItem("userAddress") || ""
 
-  const [bio, setBio]     = useState("")
-  const [prefs, setPrefs] = useState({})
+  const [initial] = useState(readStoredProfile)
+  const [bio, setBio]     = useState(initial.bio)
+  const [prefs, setPrefs] = useState(initial.prefs)
   const [focusedField, setFocusedField] = useState(null)
   // Mirror of the last-saved state used to detect unsaved changes without an extra fetch.
-  const savedState = useRef({ bio: "", prefs: {} })
+  const savedState = useRef(initial)
   const isDirty = () =>
     bio !== savedState.current.bio ||
     JSON.stringify(prefs) !== JSON.stringify(savedState.current.prefs)
@@ -102,14 +109,6 @@ export default function Profile() {
   // Intercepts React Router navigations when there are unsaved changes; shows a confirm modal.
   const blocker = useBlocker(isDirty)
 
-  useEffect(() => {
-    const stored = JSON.parse(localStorage.getItem(PROFILE_KEY) || "{}")
-    const loadedBio   = stored.bio   || ""
-    const loadedPrefs = stored.prefs || {}
-    setBio(loadedBio)
-    setPrefs(loadedPrefs)
-    savedState.current = { bio: loadedBio, prefs: loadedPrefs }
-  }, [])
 
   useEffect(() => {
     const handler = e => {

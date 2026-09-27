@@ -2,9 +2,9 @@
 // training sessions, milestones, etc.). Entries are stored via RabbitMQ messages and cached
 // in localStorage under "journal_entries" so other parts of the app can read them without
 // an extra fetch.
-import React, { useState, useEffect } from "react"
+import React, { useState, useEffect, useEffectEvent } from "react"
 import { sendMessage } from "../services/messaging"
-import { useToast } from "../context/ToastContext"
+import { useToast } from "../context/toast"
 import { Sparkles } from "lucide-react"
 
 // Pre-written milestone prompts shown as quick-start chips when a user has fewer than 3 entries.
@@ -54,7 +54,9 @@ export default function Journal() {
 
   const userId = parseInt(localStorage.getItem("userId") || "0")
 
-  useEffect(() => { loadEntries() }, [])
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadEntries());
+  useEffect(() => { onMountLoad() }, [])
 
   async function loadEntries() {
     if (!userId) { setLoading(false); return }

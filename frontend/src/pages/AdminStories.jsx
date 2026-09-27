@@ -3,6 +3,7 @@
 // Admins approve stories to make them visible on the public SuccessStories page.
 import React, { useEffect, useState } from "react"
 import { sendMessage } from "../services/messaging"
+import { useToast } from "../context/toast"
 import AdminSidebar from "../components/AdminSidebar"
 
 // Shared dark-theme color tokens used throughout this page.
@@ -24,6 +25,7 @@ const fmt = (d) => {
 }
 
 export default function AdminStories() {
+  const { addToast } = useToast()
   const [stories, setStories]       = useState([])
   const [loading, setLoading]       = useState(true)
   // Stores the ID+action string of the button currently processing (e.g. "5approve") to show loading state.
@@ -50,8 +52,12 @@ export default function AdminStories() {
       if (result?.success) {
         // Optimistically flip the status locally so the card moves to the Published section immediately.
         setStories(prev => prev.map(s => s.story_id === storyId ? { ...s, status: 'approved' } : s))
+      } else {
+        addToast(result?.error || "Something went wrong. Please try again.", "error")
       }
-    } catch { } finally { setProcessing(null) }
+    } catch {
+      addToast("Could not reach the server. Please try again.", "error")
+    } finally { setProcessing(null) }
   }
 
   // Toggles the expanded/collapsed state of a story's text body.

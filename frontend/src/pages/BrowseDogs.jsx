@@ -1,10 +1,10 @@
 // Main dog discovery and search page.
 // Loads up to 500 dogs from the cache and lets users search, filter, and paginate through them.
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useEffectEvent } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-import { useDataCache } from "../context/DataCacheContext";
-import { useToast } from "../context/ToastContext";
+import { useDataCache } from "../context/dataCache";
+import { useToast } from "../context/toast";
 import { History } from "lucide-react";
 
 // Dogs shown per page in the paginated grid.
@@ -140,7 +140,7 @@ export default function BrowseDogs() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [savedIds, setSavedIds] = useState(() => new Set(JSON.parse(localStorage.getItem("savedDogs") || "[]").map(d => d.dog_id)));
-  const { getDogs, dogsLoading: cacheLoading } = useDataCache();
+  const { getDogs } = useDataCache();
   const userPrefs = (() => { try { return JSON.parse(localStorage.getItem("userProfile") || "{}").prefs || {}; } catch { return {}; } })();
   const [searchParams] = useSearchParams();
   const shelterIdParam = searchParams.get("shelter_id");
@@ -163,8 +163,10 @@ export default function BrowseDogs() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  // Effect event: always calls the latest version without re-running the effect.
+  const onShelterFilterChange = useEffectEvent(() => loadDogs());
   useEffect(() => {
-    loadDogs();
+    onShelterFilterChange();
   }, [shelterIdParam]);
 
   useEffect(() => { setPage(1); }, [searchTerm, filters]);

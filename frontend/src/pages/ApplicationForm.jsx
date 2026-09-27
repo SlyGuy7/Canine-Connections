@@ -1,9 +1,9 @@
 // Multi-section adoption application form for a specific dog.
 // Pre-fills fields from the user's saved profile preferences and shows a review modal before final submission.
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useEffectEvent } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
-import { useToast } from "../context/ToastContext";
+import { useToast } from "../context/toast";
 import confetti from "canvas-confetti";
 
 // Reads the user's saved profile preferences from localStorage and maps them to application form defaults.
@@ -105,9 +105,8 @@ export default function ApplicationForm() {
     agreeToFee:         false,
   });
 
-  useEffect(() => {
-    if (hasLoaded.current) return;
-    hasLoaded.current = true;
+  // Effect event: runs once on mount with the latest navigation state and helpers.
+  const onMountLoad = useEffectEvent(() => {
 
     const dogId   = location.state?.dogId   || localStorage.getItem("pendingApplicationDogId");
     const dogName = location.state?.dogName || localStorage.getItem("pendingApplicationDogName");
@@ -122,6 +121,12 @@ export default function ApplicationForm() {
     sendMessage("request.dogs.get", { dog_id: dogId })
       .then(result => { if (result?.success && result.dog) setTargetDog(result.dog); })
       .catch(() => {});
+  });
+
+  useEffect(() => {
+    if (hasLoaded.current) return;
+    hasLoaded.current = true;
+    onMountLoad();
   }, []);
 
   const handleChange = e => {

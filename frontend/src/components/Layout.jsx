@@ -1,6 +1,6 @@
 // Shared page shell wrapping all authenticated user-facing pages.
 // Handles the sidebar (desktop fixed / mobile drawer), Back button, and page-enter animation.
-import React, { useState, useEffect } from "react"
+import React, { useState } from "react"
 import { useNavigate, useLocation } from "react-router-dom"
 import Sidebar from "./Sidebar"
 import { useIsMobile } from "../hooks/useIsMobile"
@@ -15,11 +15,10 @@ export default function Layout({ children }) {
   // Only show the Back button on pages that are not top-level destinations.
   const showBack = !NO_BACK.includes(pathname)
   const isMobile = useIsMobile()
-  // Controls whether the mobile drawer sidebar is slid in or out.
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-
-  // Auto-close the mobile sidebar whenever the user navigates to a new page.
-  useEffect(() => { setSidebarOpen(false) }, [pathname])
+  // The mobile drawer remembers the page it was opened on, so it closes itself on navigation.
+  const [drawerOpenOn, setDrawerOpenOn] = useState(null)
+  const sidebarOpen = drawerOpenOn === pathname
+  const setSidebarOpen = (open) => setDrawerOpenOn(open ? pathname : null)
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg-primary)" }}>
