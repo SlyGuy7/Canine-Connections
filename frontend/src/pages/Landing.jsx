@@ -1,597 +1,393 @@
-// Public marketing landing page — visible to both logged-in and anonymous users.
-// Fetches up to 200 available dogs on mount and uses the first 6 as "featured" cards.
-// Logged-in visitors see their name in the navbar and go straight to /browse-dogs;
-// anonymous visitors are prompted to register via AuthModal when they interact with CTAs.
-import React, { useEffect, useMemo, useState } from "react"
-import { useNavigate } from "react-router-dom"
-import { useIsMobile } from "../hooks/useIsMobile"
+// Public homepage. All numbers shown (dogs available, shelters, states) are live counts
+// from the backend, never hard-coded marketing figures.
+import React, { useEffect, useEffectEvent, useMemo, useState } from "react"
+import { Link, useNavigate } from "react-router-dom"
+import {
+  ArrowRight, BadgeCheck, CircleCheck, HeartHandshake, MapPin, MessageCircle, Plus,
+  Search, ShieldCheck, Stethoscope, Wallet,
+} from "lucide-react"
+import PublicLayout from "../site/PublicLayout"
+import DogCard, { DogCardSkeleton } from "../site/DogCard"
+import { useAuthModal } from "../site/authModal"
+import { FAQS, PHOTOS, STEPS } from "../site/content"
+import { useDataCache } from "../context/dataCache"
 import { sendMessage } from "../services/messaging"
-import AuthModal from "../components/AuthModal"
-import { ArrowRight, BadgeDollarSign, Dog, Heart, HeartHandshake, MessageCircleHeart, PawPrint, ShieldCheck, Sparkles } from "lucide-react"
+import { hasUserSession } from "../services/auth"
 
-// Heading and dog filter for each category preview on the landing page.
-const CATEGORIES = {
-  "Small Dogs": {
-    title: "Little Pups, Big Hearts",
-    subtitle: "These bite-sized companions are perfectly sized for any home.",
-    query: { size: "small", status: "available", limit: 4 },
-  },
-  "Large Dogs": {
-    title: "Gentle Giants",
-    subtitle: "Looking for a bigger companion? Meet our large breed dogs.",
-    query: { size: "large", status: "available", limit: 4 },
-  },
-  "Puppies": {
-    title: "Playful Puppies",
-    subtitle: "Young, energetic, and ready to join your family.",
-    query: { max_age: 1, status: "available", limit: 4 },
-  },
-}
+const SIZE_TILES = [
+  { key: "small",  label: "Small dogs",  text: "Under 25 lb" },
+  { key: "medium", label: "Medium dogs", text: "25–60 lb" },
+  { key: "large",  label: "Large dogs",  text: "60 lb and up" },
+  { key: "puppy",  label: "Puppies",     text: "Up to a year old" },
+]
 
-// Modal that fetches up to 4 dogs matching a clicked category (Small, Large, Puppies) and
-// displays them as a preview grid before offering a "See All" link to /browse-dogs.
-function CategoryPreviewModal({ category, close, navigate }) {
-  const [previewDogs, setPreviewDogs] = React.useState([])
-  const [catLoading, setCatLoading] = React.useState(true)
+const WHY = [
+  { icon: Wallet,         title: "Free to use",           text: "No fees to browse, message shelters or apply. Shelters set their own adoption fees." },
+  { icon: Stethoscope,    title: "Health-checked dogs",    text: "Listed dogs are vaccinated and vet-checked by their shelter before they go home." },
+  { icon: ShieldCheck,    title: "Verified adopters",      text: "ID verification and a single application process give shelters confidence to say yes." },
+  { icon: HeartHandshake, title: "Support after adoption", text: "A journal for your dog's milestones and care guides for the first weeks at home." },
+]
 
-  const { title = "", subtitle = "" } = CATEGORIES[category] ?? {}
+function HomeContent() {
+  const navigate = useNavigate()
+  const { openAuth } = useAuthModal()
+  const loggedIn = hasUserSession()
+  const { getDogs, getShelters } = useDataCache()
+  const [dogs, setDogs] = useState(null)
+  const [shelters, setShelters] = useState([])
+  const [stories, setStories] = useState([])
+  const [resources, setResources] = useState([])
+  const [search, setSearch] = useState({ size: "All", age: "All", good: "" })
 
-  React.useEffect(() => {
-    if (!category) return
-    setCatLoading(true)
-    sendMessage("request.dogs.list", { ...(CATEGORIES[category]?.query ?? {}), offset: 0 })
-      .then(result => {
-        if (result?.success && Array.isArray(result.dogs)) {
-          setPreviewDogs(result.dogs.map(dog => ({
-            ...dog,
-            id: dog.dog_id,
-            image: dog.photos ? dog.photos.split(",")[0].trim() : "",
-          })))
-        }
-      })
-      .catch(() => {})
-      .finally(() => setCatLoading(false))
-  }, [category])
+  const load = useEffectEvent(async () => {
+    // Each section degrades on its own if the backend is unreachable.
+    const [d, s, st, r] = (await Promise.allSettled([
+      getDogs(), getShelters(),
+      sendMessage("request.stories.list", { limit: 3 }),
+      sendMessage("request.resources.list", { limit: 3 }),
+    ])).map(p => p.value)
+    setDogs(d || [])
+    setShelters(s || [])
+    setStories(st?.stories || [])
+    setResources((r?.resources || []).slice(0, 3))
+  })
+  useEffect(() => { load() }, [])
 
-  if (!category) return null
+  const featured = useMemo(() => (dogs || []).slice(0, 8), [dogs])
+  const states = useMemo(() => new Set(shelters.map(s => s.state).filter(Boolean)).size, [shelters])
+  // One photo per size tile, never reusing a dog already shown on another tile.
+  const tilePhotos = useMemo(() => {
+    const used = new Set()
+    const pick = (test) => {
+      const dog = (dogs || []).find(d => d.image && !used.has(d.dog_id) && test(d))
+      if (dog) used.add(dog.dog_id)
+      return dog?.image || null
+    }
+    const puppy = pick(d => Number(d.age_years) <= 1)
+    return { puppy, small: pick(d => d.size === "small"), medium: pick(d => d.size === "medium"), large: pick(d => d.size === "large" || d.size === "extra_large") }
+  }, [dogs])
+  const tilePhoto = (key) => tilePhotos[key]
+
+  function submitSearch(e) {
+    e.preventDefault()
+    const params = new URLSearchParams()
+    if (search.size !== "All") params.set("size", search.size)
+    if (search.age !== "All") params.set("age", search.age)
+    if (search.good) params.set("compat", search.good)
+    navigate(`/browse-dogs${params.size ? `?${params}` : ""}`)
+  }
+
+  const startQuiz = () => (loggedIn ? navigate("/quiz") : openAuth("register"))
 
   return (
-    <div
-      onClick={close}
-      style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: "860px", background: "var(--bg-primary)", borderRadius: "24px", padding: "40px", position: "relative", boxShadow: "0 24px 70px rgba(0,0,0,0.28)", maxHeight: "90vh", overflowY: "auto" }}
-      >
-        <button
-          onClick={close}
-          style={{ position: "absolute", top: "16px", right: "20px", background: "none", border: "none", fontSize: "26px", cursor: "pointer", color: "var(--text-muted)", lineHeight: 1, padding: "4px 8px", borderRadius: "8px" }}
-        >
-          ×
-        </button>
-        <h2 style={{ marginTop: 0, color: "var(--text-primary)", fontSize: "28px", fontWeight: "800" }}>{title}</h2>
-        <p style={{ color: "var(--text-muted)", marginBottom: "28px", fontSize: "15px" }}>{subtitle}</p>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))", gap: "16px", marginBottom: "32px" }}>
-          {previewDogs.length > 0 ? previewDogs.map((dog) => (
-            <div key={dog.id} style={{ border: "1px solid var(--border)", borderRadius: "16px", overflow: "hidden", background: "var(--card-bg)", boxShadow: "0 2px 8px rgba(0,0,0,0.05)" }}>
-              {dog.image ? (
-                <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "140px", objectFit: "cover" }} />
-              ) : (
-                <div style={{ width: "100%", height: "140px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "44px" }}><Dog size={35} strokeWidth={1.5} /></div>
-              )}
-              <div style={{ padding: "14px" }}>
-                <h4 style={{ margin: "0 0 4px 0", color: "var(--text-primary)", fontSize: "16px", fontWeight: "700" }}>{dog.name}</h4>
-                <p style={{ margin: 0, fontSize: "12px", color: "#d97706", fontWeight: "600" }}>{dog.breed}</p>
+    <>
+      {/* ── Hero ── */}
+      <section className="s-hero">
+        <div className="s-container s-hero__grid">
+          <div>
+            <span className="s-eyebrow">Rescue dog adoption</span>
+            <h1 className="s-h1">Find the dog that fits your life.</h1>
+            <p className="s-lead">
+              Every adoptable dog from our partner shelters, in one place. Search by what matters to
+              you, take a two-minute match quiz, and apply online for free.
+            </p>
+
+            <form className="s-search" onSubmit={submitSearch} aria-label="Search dogs">
+              <div className="s-search__row">
+                <div className="s-field">
+                  <label htmlFor="q-size">Size</label>
+                  <select id="q-size" className="s-select" value={search.size} onChange={e => setSearch(s => ({ ...s, size: e.target.value }))}>
+                    <option value="All">Any size</option>
+                    <option value="small">Small</option>
+                    <option value="medium">Medium</option>
+                    <option value="large">Large</option>
+                    <option value="extra_large">Extra large</option>
+                  </select>
+                </div>
+                <div className="s-field">
+                  <label htmlFor="q-age">Age</label>
+                  <select id="q-age" className="s-select" value={search.age} onChange={e => setSearch(s => ({ ...s, age: e.target.value }))}>
+                    <option value="All">Any age</option>
+                    <option value="Puppy">Puppy</option>
+                    <option value="Young">Young</option>
+                    <option value="Adult">Adult</option>
+                    <option value="Senior">Senior</option>
+                  </select>
+                </div>
+                <div className="s-field">
+                  <label htmlFor="q-good">Good with</label>
+                  <select id="q-good" className="s-select" value={search.good} onChange={e => setSearch(s => ({ ...s, good: e.target.value }))}>
+                    <option value="">Anyone</option>
+                    <option value="kids">Children</option>
+                    <option value="dogs">Other dogs</option>
+                    <option value="cats">Cats</option>
+                    <option value="apartment">Apartment living</option>
+                  </select>
+                </div>
+                <button type="submit" className="btn btn-primary btn-lg"><Search size={18} /> Search</button>
               </div>
-            </div>
-          )) : (
-            <div style={{ gridColumn: "1/-1", textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
-              {catLoading ? "Loading..." : "No dogs found in this category."}
-            </div>
-          )}
-        </div>
-        <button
-          style={{ width: "100%", fontSize: "17px", padding: "16px", background: "#d97706", color: "white", border: "none", borderRadius: "12px", fontWeight: "700", cursor: "pointer" }}
-          onClick={() => { close(); navigate("/browse-dogs") }}
-        >
-          See All {category}
-        </button>
-      </div>
-    </div>
-  )
-}
+              <p className="s-search__hint">Not sure what you're looking for? <button type="button" onClick={startQuiz} className="s-link" style={{ background: "none", border: 0, padding: 0, fontSize: 13 }}>Take the match quiz</button></p>
+            </form>
 
-// Quick-view modal shown when a user clicks a featured dog card. Save and Apply buttons
-// call requireAuth() instead of navigating so anonymous users are nudged to register.
-function DogModal({ dog, close, requireAuth }) {
-  if (!dog) return null
-  return (
-    <div
-      onClick={close}
-      style={{ position: "fixed", inset: 0, background: "rgba(47,36,29,0.65)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: "20px" }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: "520px", background: "var(--card-bg)", borderRadius: "24px", overflow: "hidden", boxShadow: "0 24px 60px rgba(0,0,0,0.25)", position: "relative" }}
-      >
-        <button
-          onClick={close}
-          style={{ position: "absolute", top: "12px", right: "16px", background: "rgba(0,0,0,0.35)", border: "none", borderRadius: "50%", width: "32px", height: "32px", cursor: "pointer", fontSize: "18px", color: "white", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 10, lineHeight: 1 }}
-        >
-          ×
-        </button>
-        {dog.image ? (
-          <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "300px", objectFit: "cover" }} />
-        ) : (
-          <div style={{ width: "100%", height: "300px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "80px" }}><Dog size={58} strokeWidth={1.5} /></div>
-        )}
-        <div style={{ padding: "28px" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "16px" }}>
-            <div>
-              <h2 style={{ fontSize: "28px", color: "var(--text-primary)", margin: "0 0 4px 0", fontWeight: "800" }}>{dog.name}</h2>
-              <p style={{ color: "#d97706", fontWeight: "700", margin: 0, fontSize: "16px" }}>{dog.breed}</p>
+            <div className="s-trust">
+              <span className="s-trust__item"><BadgeCheck size={18} /> Free to apply</span>
+              <span className="s-trust__item"><ShieldCheck size={18} /> Verified shelters</span>
+              <span className="s-trust__item"><MessageCircle size={18} /> Message shelters directly</span>
             </div>
-            {(dog.age_years || dog.size) && (
-              <div style={{ textAlign: "right" }}>
-                {dog.age_years && <p style={{ margin: "0 0 2px 0", fontSize: "13px", color: "var(--text-muted)" }}>{dog.age_years} yr</p>}
-                {dog.size && <p style={{ margin: 0, fontSize: "13px", color: "var(--text-muted)" }}>{dog.size}</p>}
+          </div>
+
+          <div className="s-hero__media">
+            <img className="s-hero__photo" src={PHOTOS.hero} alt="A corgi and a terrier running down a trail at sunset" />
+            {dogs && dogs.length > 0 && (
+              <div className="s-hero__badge">
+                <span className="s-hero__badge-icon"><HeartHandshake size={22} /></span>
+                <div><strong>{dogs.length} dogs</strong><span>looking for a home right now</span></div>
               </div>
             )}
           </div>
-          <p style={{ margin: "0 0 24px 0", lineHeight: "1.6", color: "var(--text-muted)", fontSize: "15px" }}>
-            {dog.description || `${dog.name} is a wonderful ${dog.breed} looking for a forever home. They are fully vetted, microchipped, and ready to meet their new family.`}
-          </p>
-          <div style={{ display: "flex", gap: "12px" }}>
-            <button
-              onClick={requireAuth}
-              style={{ flex: 1, padding: "14px", borderRadius: "12px", border: "1px solid var(--border)", background: "var(--card-bg)", cursor: "pointer", fontWeight: "700", fontSize: "15px", color: "var(--text-primary)" }}
-            >
-              <Heart size={15} className="inline-icon" /> Save
-            </button>
-            <button
-              onClick={requireAuth}
-              style={{ flex: 2, padding: "14px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", cursor: "pointer", fontWeight: "700", fontSize: "15px" }}
-            >
-              Apply to Adopt
-            </button>
+        </div>
+      </section>
+
+      {/* ── Live numbers ── */}
+      <section className="s-section--tight" style={{ paddingTop: 0 }}>
+        <div className="s-container">
+          <div className="s-stats">
+            <div className="s-stat"><div className="s-stat__value">{dogs ? dogs.length : "—"}</div><div className="s-stat__label">Dogs available now</div></div>
+            <div className="s-stat"><div className="s-stat__value">{shelters.length || "—"}</div><div className="s-stat__label">Partner shelters</div></div>
+            <div className="s-stat"><div className="s-stat__value">{states || "—"}</div><div className="s-stat__label">States covered</div></div>
+            <div className="s-stat"><div className="s-stat__value">$0</div><div className="s-stat__label">To browse and apply</div></div>
           </div>
         </div>
-      </div>
-    </div>
-  )
-}
+      </section>
 
-const IconSmallDog = () => (
-  <svg width="44" height="44" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="26" cy="38" rx="16" ry="13" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
-    <circle cx="26" cy="20" r="10" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
-    <ellipse cx="16" cy="14" rx="5" ry="7" fill="#fde6cf" stroke="#d97706" strokeWidth="2" />
-    <ellipse cx="36" cy="14" rx="4" ry="6" fill="#fde6cf" stroke="#d97706" strokeWidth="2" transform="rotate(20 36 14)"/>
-    <circle cx="23" cy="20" r="1.5" fill="#d97706"/>
-    <circle cx="29" cy="20" r="1.5" fill="#d97706"/>
-    <path d="M24 24 Q26 26 28 24" stroke="#d97706" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-    <line x1="42" y1="36" x2="54" y2="32" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"/>
-  </svg>
-)
-
-const IconLargeDog = () => (
-  <svg width="44" height="44" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="28" cy="40" rx="18" ry="14" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
-    <circle cx="28" cy="20" r="12" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
-    <ellipse cx="16" cy="12" rx="4" ry="7" fill="#fde6cf" stroke="#d97706" strokeWidth="2" transform="rotate(-15 16 12)"/>
-    <ellipse cx="40" cy="12" rx="4" ry="7" fill="#fde6cf" stroke="#d97706" strokeWidth="2" transform="rotate(15 40 12)"/>
-    <circle cx="24" cy="20" r="2" fill="#d97706"/>
-    <circle cx="32" cy="20" r="2" fill="#d97706"/>
-    <path d="M25 25 Q28 28 31 25" stroke="#d97706" strokeWidth="2" strokeLinecap="round" fill="none"/>
-    <line x1="46" y1="38" x2="58" y2="33" stroke="#d97706" strokeWidth="2.5" strokeLinecap="round"/>
-  </svg>
-)
-
-const IconPaw = () => (
-  <svg width="44" height="44" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <ellipse cx="32" cy="42" rx="14" ry="11" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
-    <ellipse cx="32" cy="42" rx="8" ry="6" fill="#d97706" opacity="0.3"/>
-    <ellipse cx="14" cy="32" rx="7" ry="9" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5" transform="rotate(-20 14 32)"/>
-    <ellipse cx="50" cy="32" rx="7" ry="9" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5" transform="rotate(20 50 32)"/>
-    <ellipse cx="22" cy="22" rx="6" ry="8" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5" transform="rotate(-10 22 22)"/>
-    <ellipse cx="42" cy="22" rx="6" ry="8" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5" transform="rotate(10 42 22)"/>
-  </svg>
-)
-
-const IconShelter = () => (
-  <svg width="44" height="44" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8 30 L32 8 L56 30" stroke="#d97706" strokeWidth="2.5" strokeLinejoin="round" fill="#fde6cf"/>
-    <rect x="12" y="30" width="40" height="26" rx="2" fill="#fde6cf" stroke="#d97706" strokeWidth="2.5"/>
-    <rect x="26" y="40" width="12" height="16" rx="2" fill="#d97706" opacity="0.4" stroke="#d97706" strokeWidth="2"/>
-    <rect x="16" y="34" width="8" height="8" rx="1" fill="#d97706" opacity="0.4" stroke="#d97706" strokeWidth="1.5"/>
-    <rect x="40" y="34" width="8" height="8" rx="1" fill="#d97706" opacity="0.4" stroke="#d97706" strokeWidth="1.5"/>
-  </svg>
-)
-
-const SHIMMER = {
-  background: "linear-gradient(90deg,#f3e8de 25%,#faf0e8 50%,#f3e8de 75%)",
-  backgroundSize: "200% 100%",
-  animation: "shimmer 1.4s infinite",
-}
-
-export default function Landing() {
-  const navigate = useNavigate()
-  const isMobile = useIsMobile()
-  const [modalMode, setModalMode] = useState(null)
-  const [selectedDog, setSelectedDog] = useState(null)
-  const [previewCategory, setPreviewCategory] = useState(null)
-  const [dogs, setDogs] = useState([])
-  const [dogsLoading, setDogsLoading] = useState(true)
-
-  const isLoggedIn = !!localStorage.getItem("userId")
-  const displayName = localStorage.getItem("userFullName") || localStorage.getItem("userFirstName") || "User"
-  // Derive two-letter initials for the avatar chip shown in the navbar when logged in.
-  const initials = displayName.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
-
-  // Main call-to-action: sends logged-in users to /browse-dogs, prompts anonymous users to register.
-  function handleCTA() {
-    if (isLoggedIn) navigate("/browse-dogs")
-    else setModalMode("register")
-  }
-
-  // Load up to 200 available dogs on mount; the first 6 become the "featured" row via useMemo below.
-  useEffect(() => {
-    sendMessage("request.dogs.list", { limit: 200 })
-      .then((result) => {
-        if (result?.success && Array.isArray(result.dogs) && result.dogs.length > 0) {
-          setDogs(result.dogs.map((dog) => ({
-            ...dog,
-            id: dog.dog_id,
-            image: dog.photos ? dog.photos.split(",")[0].trim() : "",
-            size: dog.size === "small" ? "Small" : dog.size === "medium" ? "Medium" : (dog.size === "large" || dog.size === "extra_large") ? "Large" : "Medium",
-            ageGroup: Number(dog.age_years) <= 1 ? "Puppy" : "Adult",
-          })))
-        }
-      })
-      .catch(() => {})
-      .finally(() => setDogsLoading(false))
-  }, [])
-
-  // Slice once so re-renders that don't change the dogs array don't recreate the featured list.
-  const featuredDogs = useMemo(() => dogs.slice(0, 7), [dogs])
-
-  // Closes any open dog modal and forces the register flow — called by DogModal action buttons.
-  function requireAuth() {
-    setSelectedDog(null)
-    setModalMode("register")
-  }
-
-  // "Shelters" category routes directly to /shelters instead of opening a preview modal.
-  const categories = [
-    { label: "Small Dogs", icon: <IconSmallDog />, key: "Small Dogs" },
-    { label: "Large Dogs", icon: <IconLargeDog />, key: "Large Dogs" },
-    { label: "Puppies",    icon: <IconPaw />,      key: "Puppies"    },
-    { label: "Shelters",   icon: <IconShelter />,  key: "shelters"   },
-  ]
-
-  const steps = [
-    { number: "01", title: "Browse Dogs", desc: "Search our network of partner shelters to find dogs that match your lifestyle and home." },
-    { number: "02", title: "Apply Online", desc: "Submit your adoption application directly through our platform — fast, simple, and free." },
-    { number: "03", title: "Meet & Adopt", desc: "Schedule a meet & greet, make a connection, and bring your new best friend home." },
-  ]
-
-  return (
-    <div className="landing-page" id="home">
-
-      {/* ── Navbar ── */}
-      <nav className="landing-nav">
-        <a href="/landing" className="brand-mark" aria-label="Canine Connections home">
-          <span className="brand-mark__icon"><PawPrint size={18} strokeWidth={2.5} /></span>
-          <span>Canine Connections</span>
-        </a>
-        <div className="landing-nav__actions">
-          {isLoggedIn ? (
-            <>
-              {!isMobile && (
-                <div className="nav-user">
-                  <span className="nav-user__avatar">{initials}</span>
-                  <span className="nav-user__name">{displayName}</span>
-                </div>
-              )}
-              <button className="btn btn-primary" onClick={() => navigate("/dashboard")}>
-                {isMobile ? "Dashboard" : "Go to Dashboard"}
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="btn btn-glass" onClick={() => setModalMode("login")}>Log in</button>
-              <button className="btn btn-primary" onClick={() => setModalMode("register")}>Sign up</button>
-            </>
-          )}
-        </div>
-      </nav>
-
-      {/* ── Hero ── */}
-      <header className="hero">
-        <div className="hero__content">
-          <span className="hero__eyebrow"><Sparkles size={14} /> Free to apply · Partner shelters near you</span>
-          <h1 className="hero__title">Find your <em>new best friend.</em></h1>
-          <p className="hero__subtitle">
-            Browse rescue dogs from local shelters, take a two-minute compatibility quiz,
-            and apply to adopt — all in one place.
-          </p>
-          <div className="hero__actions">
-            <button className="btn btn-primary btn-lg" onClick={handleCTA}>
-              {isLoggedIn ? "Browse dogs" : "Get started — it's free"} <ArrowRight size={18} />
-            </button>
-            <button className="btn btn-glass btn-lg" onClick={() => (isLoggedIn ? navigate("/quiz") : setModalMode("register"))}>
-              Take the match quiz
-            </button>
-          </div>
-        </div>
-      </header>
-
-      {/* ── Stats Strip ── */}
-      <div style={{ background: "#2f241d", padding: "28px 20px" }}>
-        <div style={{ display: "flex", justifyContent: "center", gap: "64px", flexWrap: "wrap", maxWidth: "900px", margin: "0 auto" }}>
-          {[
-            { value: "200+", label: "Dogs Adopted" },
-            { value: "15+",  label: "Partner Shelters" },
-            { value: "100%", label: "Free to Apply" },
-            { value: "5★",   label: "Adoption Support" },
-          ].map(stat => (
-            <div key={stat.label} style={{ textAlign: "center" }}>
-              <div style={{ fontSize: "30px", fontWeight: "800", color: "#d97706", lineHeight: 1 }}>{stat.value}</div>
-              <div style={{ fontSize: "13px", color: "rgba(255,255,255,0.7)", marginTop: "4px", fontWeight: "500" }}>{stat.label}</div>
+      {/* ── Featured dogs ── */}
+      <section className="s-section" style={{ paddingTop: 48 }}>
+        <div className="s-container">
+          <div className="s-section-head">
+            <div>
+              <span className="s-eyebrow">Available now</span>
+              <h2 className="s-h2">Meet some of our dogs</h2>
+              <p className="s-lead">Each one is waiting at a partner shelter near you.</p>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Category Cards ── */}
-      <div style={{ background: "var(--bg-secondary)", paddingTop: "64px", paddingBottom: "20px" }}>
-        <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <h2 style={{ fontSize: "34px", fontWeight: "800", color: "var(--text-primary)", margin: "0 0 10px 0" }}>Browse by Category</h2>
-          <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: 0 }}>Find the perfect match for your home and lifestyle.</p>
-        </div>
-        <nav className="category-container" style={{ marginTop: 0 }}>
-          {categories.map(cat => (
-            <div
-              key={cat.key}
-              className="category-card"
-              onClick={() => cat.key === "shelters" ? navigate("/shelters") : setPreviewCategory(cat.key)}
-              style={{ minWidth: "160px", padding: "28px 32px" }}
-            >
-              <div className="category-icon" style={{ fontSize: "unset", marginBottom: "14px" }}>{cat.icon}</div>
-              <h3 style={{ margin: 0, fontSize: "15px", fontWeight: "700" }}>{cat.label}</h3>
-            </div>
-          ))}
-        </nav>
-      </div>
-
-      {/* ── How It Works ── */}
-      <section id="how-it-works" style={{ background: "var(--card-bg)", padding: "80px 20px" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "56px" }}>
-            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "var(--text-primary)", margin: "0 0 10px 0" }}>How It Works</h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: 0 }}>Three simple steps to finding your forever companion.</p>
+            <Link to="/browse-dogs" className="s-link">View all {dogs?.length || ""} dogs <ArrowRight size={16} /></Link>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "32px" }}>
-            {steps.map((step, i) => (
-              <div key={i} style={{ background: "var(--bg-primary)", border: "1px solid var(--border)", borderRadius: "20px", padding: "36px 32px", position: "relative", overflow: "hidden" }}>
-                <div style={{ fontSize: "64px", fontWeight: "900", color: "#fde6cf", position: "absolute", top: "12px", right: "20px", lineHeight: 1, userSelect: "none" }}>{step.number}</div>
-                <div style={{ width: "48px", height: "48px", background: "#d97706", borderRadius: "14px", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: "20px" }}>
-                  <span style={{ color: "white", fontWeight: "800", fontSize: "18px" }}>{parseInt(step.number)}</span>
-                </div>
-                <h3 style={{ fontSize: "20px", fontWeight: "700", color: "var(--text-primary)", margin: "0 0 12px 0" }}>{step.title}</h3>
-                <p style={{ color: "var(--text-muted)", fontSize: "15px", lineHeight: "1.6", margin: 0 }}>{step.desc}</p>
+          <div className="s-grid s-grid--4">
+            {dogs === null
+              ? Array.from({ length: 8 }, (_, i) => <DogCardSkeleton key={i} />)
+              : featured.map(dog => <DogCard key={dog.dog_id} dog={dog} />)}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Browse by size ── */}
+      <section className="s-section s-section--tint">
+        <div className="s-container">
+          <div className="s-section-head">
+            <div>
+              <span className="s-eyebrow">Browse</span>
+              <h2 className="s-h2">Start with the right size</h2>
+            </div>
+          </div>
+          <div className="s-grid s-grid--4">
+            {SIZE_TILES.map(tile => (
+              <Link key={tile.key} className="s-tile" to={tile.key === "puppy" ? "/browse-dogs?age=Puppy" : `/browse-dogs?size=${tile.key}`}>
+                {tilePhoto(tile.key) ? <img src={tilePhoto(tile.key)} alt="" loading="lazy" /> : <div className="s-skeleton" style={{ width: "100%", height: "100%" }} />}
+                <div className="s-tile__label"><strong>{tile.label}</strong><span>{tile.text}</span></div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── How it works ── */}
+      <section className="s-section" id="how-it-works">
+        <div className="s-container">
+          <div className="s-section-head">
+            <div>
+              <span className="s-eyebrow">How it works</span>
+              <h2 className="s-h2">From first look to forever home</h2>
+            </div>
+            <Link to="/how-it-works" className="s-link">Learn more <ArrowRight size={16} /></Link>
+          </div>
+          <div className="s-steps">
+            {STEPS.map((step, i) => (
+              <div className="s-step" key={step.title}>
+                <div className="s-step__num">{i + 1}</div>
+                <h3 className="s-h3">{step.title}</h3>
+                <p>{step.text}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Dog of the Week ── */}
-      {/* Picks a dog deterministically by using the current weekday index mod the total dog count,
-          so every visitor sees the same dog on a given day without any extra backend logic. */}
-      {dogs.length > 0 && (() => {
-        const dotw = dogs[new Date().getDay() % dogs.length]
-        const dotwPhoto = dotw?.photos ? dotw.photos.split(",")[0].trim() : null
-        return dotw ? (
-          <section style={{ background: "var(--card-bg)", padding: "80px 20px" }}>
-            <div style={{ maxWidth: "900px", margin: "0 auto", display: "flex", gap: "48px", alignItems: "center", flexWrap: "wrap" }}>
-              <div style={{ width: "340px", height: "340px", borderRadius: "24px", overflow: "hidden", background: "var(--brand-soft)", flexShrink: 0, position: "relative" }}>
-                {dotwPhoto
-                  ? <img src={dotwPhoto} alt={dotw.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  : <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "100px" }}><Dog size={58} strokeWidth={1.5} /></div>
-                }
-                <div style={{ position: "absolute", top: "16px", left: "16px", background: "#d97706", color: "white", fontSize: "12px", fontWeight: "800", padding: "6px 14px", borderRadius: "20px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  <Sparkles size={15} className="inline-icon" /> Dog of the Week
-                </div>
-              </div>
-              <div style={{ flex: 1, minWidth: "260px" }}>
-                <p style={{ margin: "0 0 10px 0", fontSize: "13px", fontWeight: "700", color: "#d97706", textTransform: "uppercase", letterSpacing: "2px" }}>Dog of the Week</p>
-                <h2 style={{ margin: "0 0 8px 0", fontSize: "40px", fontWeight: "800", color: "var(--text-primary)", lineHeight: 1.1 }}>{dotw.name}</h2>
-                <p style={{ margin: "0 0 8px 0", fontSize: "17px", color: "#d97706", fontWeight: "700" }}>{dotw.breed}</p>
-                <p style={{ margin: "0 0 8px 0", fontSize: "14px", color: "var(--text-muted)" }}>
-                  {dotw.age_years} yr · {dotw.size} · {dotw.gender}
-                </p>
-                <p style={{ margin: "0 0 28px 0", color: "var(--text-muted)", lineHeight: "1.7", fontSize: "15px" }}>
-                  {dotw.description || `${dotw.name} is a wonderful ${dotw.breed} looking for a forever home.`}
-                </p>
-                <button
-                  onClick={handleCTA}
-                  style={{ padding: "14px 32px", borderRadius: "12px", border: "none", background: "#d97706", color: "white", fontWeight: "800", fontSize: "16px", cursor: "pointer", boxShadow: "0 4px 16px rgba(217,119,6,0.3)", transition: "transform 0.2s" }}
-                  onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-                  onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-                >
-                  Meet {dotw.name} →
-                </button>
-              </div>
-            </div>
-          </section>
-        ) : null
-      })()}
-
-      {/* ── Why Adopt? ── */}
-      <section style={{ background: "var(--bg-secondary)", padding: "80px 20px" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "56px" }}>
-            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "var(--text-primary)", margin: "0 0 10px 0" }}>Why Adopt?</h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: 0 }}>Adopting a rescue dog changes both of your lives.</p>
+      {/* ── Match quiz ── */}
+      <section className="s-section s-section--tint">
+        <div className="s-container s-split">
+          <div className="s-split__media"><img src={PHOTOS.quiz} alt="An Australian Shepherd looking at the camera on a beach" loading="lazy" /></div>
+          <div>
+            <span className="s-eyebrow">Match quiz</span>
+            <h2 className="s-h2">Not sure where to start? Let us suggest a few dogs.</h2>
+            <p className="s-lead">Five questions about your home, schedule and household. We compare your answers with every available dog and show you the best fits.</p>
+            <ul className="s-checklist">
+              <li><CircleCheck size={20} /> Takes about two minutes</li>
+              <li><CircleCheck size={20} /> Matches on energy, size, space and who you live with</li>
+              <li><CircleCheck size={20} /> Save your matches and compare them later</li>
+            </ul>
+            <button className="btn btn-dark btn-lg" onClick={startQuiz}>Take the quiz <ArrowRight size={18} /></button>
           </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "24px" }}>
-            {[
-              { icon: HeartHandshake, title: "Save a Life", desc: "Rescue dogs are waiting for a second chance. Your adoption directly saves a life and frees shelter space for another dog in need." },
-              { icon: BadgeDollarSign, title: "Free to Apply", desc: "Our platform charges nothing. Submit your application, connect with shelters, and find your match at zero cost." },
-              { icon: ShieldCheck, title: "Vet Checked", desc: "Every dog in our network is health-checked, vaccinated, and microchipped before adoption, giving you peace of mind." },
-              { icon: MessageCircleHeart, title: "Ongoing Support", desc: "Our adoption support team is here before, during, and after your adoption to help you and your new dog settle in." },
-            ].map(item => (
-              <div key={item.title} style={{ background: "var(--card-bg)", border: "1px solid var(--border)", borderRadius: "20px", padding: "28px", boxShadow: "var(--shadow-sm)" }}>
-                <div className="icon-tile"><item.icon size={22} strokeWidth={2} /></div>
-                <h3 style={{ fontSize: "18px", fontWeight: "700", color: "var(--text-primary)", margin: "0 0 10px 0" }}>{item.title}</h3>
-                <p style={{ color: "var(--text-muted)", fontSize: "14px", lineHeight: "1.7", margin: 0 }}>{item.desc}</p>
+        </div>
+      </section>
+
+      {/* ── Why ── */}
+      <section className="s-section">
+        <div className="s-container">
+          <div className="s-section-head">
+            <div>
+              <span className="s-eyebrow">Why Canine Connections</span>
+              <h2 className="s-h2">Adoption, without the runaround</h2>
+            </div>
+          </div>
+          <div className="s-grid s-grid--2" style={{ gap: 40 }}>
+            {WHY.map(item => (
+              <div className="s-feature" key={item.title}>
+                <span className="s-feature__icon"><item.icon size={22} /></span>
+                <div><h3 className="s-h3">{item.title}</h3><p>{item.text}</p></div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── CTA Banner ── */}
-      <section style={{ background: "#d97706", padding: "72px 20px", textAlign: "center" }}>
-        <h2 style={{ fontSize: "38px", fontWeight: "800", color: "white", margin: "0 0 12px 0" }}>
-          {isLoggedIn ? `Welcome back, ${displayName.split(" ")[0]}!` : "Ready to Meet Your Match?"}
-        </h2>
-        <p style={{ color: "rgba(255,255,255,0.85)", fontSize: "17px", margin: "0 0 36px 0" }}>
-          {isLoggedIn ? "Pick up where you left off — your perfect match is waiting." : "Create a free account and start browsing hundreds of dogs looking for their forever home."}
-        </p>
-        <button
-          onClick={handleCTA}
-          style={{ padding: "18px 48px", borderRadius: "12px", border: "none", background: "var(--card-bg)", color: "#d97706", fontWeight: "800", fontSize: "18px", cursor: "pointer", boxShadow: "0 4px 20px rgba(0,0,0,0.15)", transition: "transform 0.2s" }}
-          onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
-          onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-        >
-          {isLoggedIn ? "Browse Dogs" : "Get Started — It's Free"}
-        </button>
-      </section>
-
-      {/* ── Featured Dogs ── */}
-      <section style={{ background: "var(--bg-secondary)", padding: "80px 20px" }}>
-        <div style={{ maxWidth: "1200px", margin: "0 auto" }}>
-          <div style={{ textAlign: "center", marginBottom: "48px" }}>
-            <h2 style={{ fontSize: "34px", fontWeight: "800", color: "var(--text-primary)", margin: "0 0 10px 0" }}>Dogs Available for Adoption</h2>
-            <p style={{ color: "var(--text-muted)", fontSize: "16px", margin: 0 }}>Every dog deserves a loving home. Could yours be next?</p>
-          </div>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
-            {dogsLoading ? (
-              Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} style={{ background: "var(--card-bg)", borderRadius: "16px", overflow: "hidden", border: "1px solid var(--border)" }}>
-                  <div style={{ height: "200px", ...SHIMMER }} />
-                  <div style={{ padding: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                    <div style={{ height: "16px", borderRadius: "8px", width: "60%", ...SHIMMER }} />
-                    <div style={{ height: "12px", borderRadius: "8px", width: "40%", ...SHIMMER }} />
-                    <div style={{ height: "12px", borderRadius: "8px", width: "55%", ...SHIMMER }} />
-                  </div>
-                </div>
-              ))
-            ) : featuredDogs.length > 0 ? (
-              featuredDogs.map(dog => (
-                <div
-                  key={dog.id}
-                  onClick={() => setSelectedDog(dog)}
-                  style={{ background: "var(--card-bg)", borderRadius: "16px", overflow: "hidden", border: "1px solid var(--border)", cursor: "pointer", transition: "transform 0.2s, box-shadow 0.2s", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}
-                  onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 28px rgba(0,0,0,0.1)" }}
-                  onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "0 2px 8px rgba(0,0,0,0.04)" }}
-                >
-                  {dog.image ? (
-                    <img src={dog.image} alt={dog.name} style={{ width: "100%", height: "200px", objectFit: "cover" }} onError={e => { e.currentTarget.style.display = "none" }} />
-                  ) : (
-                    <div style={{ height: "200px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "56px" }}><Dog size={45} strokeWidth={1.5} /></div>
-                  )}
-                  <div style={{ padding: "16px" }}>
-                    <h3 style={{ margin: "0 0 4px 0", fontSize: "17px", fontWeight: "700", color: "var(--text-primary)" }}>{dog.name}</h3>
-                    <p style={{ margin: "0 0 2px 0", fontSize: "13px", color: "#d97706", fontWeight: "600" }}>{dog.breed}</p>
-                    {(dog.age_years || dog.size) && (
-                      <p style={{ margin: 0, fontSize: "12px", color: "var(--text-subtle)" }}>
-                        {[dog.age_years && `${dog.age_years} yr`, dog.size, dog.gender].filter(Boolean).join(" · ")}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : null}
-
-            {/* See More Card */}
-            <div
-              onClick={handleCTA}
-              style={{ background: "#2f241d", borderRadius: "16px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "32px 20px", cursor: "pointer", textAlign: "center", minHeight: "280px", transition: "transform 0.2s" }}
-              onMouseEnter={e => e.currentTarget.style.transform = "translateY(-4px)"}
-              onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}
-            >
-              <div style={{ fontSize: "40px", marginBottom: "12px" }}><PawPrint size={32} strokeWidth={1.5} /></div>
-              <h3 style={{ color: "white", fontWeight: "700", fontSize: "18px", margin: "0 0 8px 0" }}>See All Dogs</h3>
-              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px", margin: "0 0 20px 0" }}>Browse our full network of available dogs</p>
-              <div style={{ background: "#d97706", color: "white", padding: "10px 24px", borderRadius: "10px", fontWeight: "700", fontSize: "14px" }}>
-                {isLoggedIn ? "Browse Now →" : "Get Started →"}
+      {/* ── Stories ── */}
+      {stories.length > 0 && (
+        <section className="s-section s-section--tint">
+          <div className="s-container">
+            <div className="s-section-head">
+              <div>
+                <span className="s-eyebrow">Success stories</span>
+                <h2 className="s-h2">Families who found their match</h2>
               </div>
+              <Link to="/success-stories" className="s-link">Read more stories <ArrowRight size={16} /></Link>
+            </div>
+            <div className="s-grid s-grid--3">
+              {stories.map(story => {
+                const name = [story.first_name, story.last_name].filter(Boolean).join(" ") || "Adopter"
+                return (
+                  <figure className="s-quote" key={story.story_id} style={{ margin: 0 }}>
+                    <h3 className="s-h3" style={{ margin: 0 }}>{story.title}</h3>
+                    <blockquote>“{story.story}”</blockquote>
+                    <figcaption className="s-quote__who">
+                      <span className="s-avatar">{name.charAt(0)}</span>
+                      <div><strong>{name}</strong><span>Adopted through Canine Connections</span></div>
+                    </figcaption>
+                  </figure>
+                )
+              })}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* ── Footer ── */}
-      <footer style={{ background: "#1a120c", padding: "48px 20px 32px" }}>
-        <div style={{ maxWidth: "1100px", margin: "0 auto" }}>
-          <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "32px", marginBottom: "40px" }}>
-            <div style={{ maxWidth: "280px" }}>
-              <div style={{ color: "white", fontSize: "20px", fontWeight: "800", marginBottom: "12px" }}><PawPrint size={15} className="inline-icon" /> Canine Connections</div>
-              <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", lineHeight: "1.6", margin: 0 }}>
-                Connecting rescue dogs with loving families across the Northeast. Every adoption changes two lives.
-              </p>
+      {/* ── Shelters ── */}
+      {shelters.length > 0 && (
+        <section className="s-section">
+          <div className="s-container">
+            <div className="s-section-head">
+              <div>
+                <span className="s-eyebrow">Partner shelters</span>
+                <h2 className="s-h2">The rescues behind every listing</h2>
+                <p className="s-lead">Independent shelters and foster networks across {states} states.</p>
+              </div>
+              <Link to="/shelters" className="s-link">See all shelters <ArrowRight size={16} /></Link>
             </div>
-            <div style={{ display: "flex", gap: "60px", flexWrap: "wrap" }}>
-              {[
-                { heading: "Adopt", links: ["Browse Dogs", "Shelters", "How It Works", "Success Stories"] },
-                { heading: "Account", links: ["Login", "Register", "Forgot Password"] },
-              ].map(col => (
-                <div key={col.heading}>
-                  <h4 style={{ color: "white", fontWeight: "700", fontSize: "14px", margin: "0 0 16px 0" }}>{col.heading}</h4>
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {col.links.map(link => (
-                      <li key={link}>
-                        <span
-                          style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", cursor: "pointer" }}
-                          onClick={() => {
-                            if (link === "Login") setModalMode("login")
-                            else if (link === "Register") setModalMode("register")
-                            else if (link === "Browse Dogs") handleCTA()
-                            else if (link === "Shelters") navigate("/shelters")
-                            else if (link === "How It Works") document.getElementById("how-it-works").scrollIntoView({ behavior: "smooth" })
-                            else if (link === "Success Stories") navigate("/success-stories")
-                            else if (link === "Forgot Password") setModalMode("forgot-password")
-                          }}
-                        >{link}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            <div className="s-grid s-grid--3">
+              {shelters.slice(0, 6).map(s => (
+                <Link key={s.shelter_id} to={`/shelters/${s.shelter_id}`} className="s-card">
+                  <div className="s-card__body">
+                    <h3 className="s-h3" style={{ marginBottom: 2 }}>{s.name}</h3>
+                    <span className="s-muted" style={{ fontSize: 14, display: "flex", alignItems: "center", gap: 6 }}><MapPin size={14} /> {[s.city, s.state].filter(Boolean).join(", ")}</span>
+                    {s.description && <p className="s-muted" style={{ margin: "10px 0 0", fontSize: 14.5, lineHeight: 1.6 }}>{s.description}</p>}
+                  </div>
+                </Link>
               ))}
             </div>
           </div>
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.08)", paddingTop: "24px", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
-            <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "13px", margin: 0 }}>© 2026 Canine Connections. All rights reserved.</p>
-            <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "13px", margin: 0 }}>Made with care for rescue dogs everywhere.</p>
+        </section>
+      )}
+
+      {/* ── Resources ── */}
+      {resources.length > 0 && (
+        <section className="s-section s-section--tint">
+          <div className="s-container">
+            <div className="s-section-head">
+              <div>
+                <span className="s-eyebrow">Care guides</span>
+                <h2 className="s-h2">Get ready for day one</h2>
+              </div>
+              <Link to="/resources" className="s-link">All guides <ArrowRight size={16} /></Link>
+            </div>
+            <div className="s-grid s-grid--3">
+              {resources.map(r => (
+                <a key={r.resource_id} href={r.url} target="_blank" rel="noreferrer" className="s-card">
+                  <div className="s-card__body">
+                    <span className="s-chip" style={{ alignSelf: "flex-start", textTransform: "capitalize" }}>{r.category}</span>
+                    <h3 className="s-h3" style={{ marginTop: 8 }}>{r.title}</h3>
+                    <p className="s-muted" style={{ margin: 0, fontSize: 14.5, lineHeight: 1.6 }}>{r.description}</p>
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── FAQ ── */}
+      <section className="s-section">
+        <div className="s-container s-container--narrow">
+          <div className="s-section-head s-section-head--center">
+            <span className="s-eyebrow">FAQ</span>
+            <h2 className="s-h2">Questions, answered</h2>
+          </div>
+          <div className="s-faq">
+            {FAQS.slice(0, 5).map(item => (
+              <details key={item.q}>
+                <summary>{item.q}<Plus size={20} /></summary>
+                <p>{item.a}</p>
+              </details>
+            ))}
+          </div>
+          <p style={{ textAlign: "center", marginTop: 28 }}><Link to="/faq" className="s-link">See all questions <ArrowRight size={16} /></Link></p>
+        </div>
+      </section>
+
+      {/* ── Call to action ── */}
+      <section className="s-section" style={{ paddingTop: 0 }}>
+        <div className="s-container">
+          <div className="s-cta">
+            <div>
+              <h2 className="s-h2">Ready to meet your match?</h2>
+              <p>Create a free account to save dogs, take the quiz and apply in minutes.</p>
+            </div>
+            <div className="s-cta__actions">
+              {loggedIn ? (
+                <button className="btn btn-light btn-lg" onClick={() => navigate("/dashboard")}>Go to my dashboard</button>
+              ) : (
+                <button className="btn btn-light btn-lg" onClick={() => openAuth("register")}>Create free account</button>
+              )}
+              <button className="btn btn-outline-light btn-lg" onClick={() => navigate("/browse-dogs")}>Browse dogs</button>
+            </div>
           </div>
         </div>
-      </footer>
+      </section>
+    </>
+  )
+}
 
-      {/* ── Modals ── */}
-      {previewCategory && (
-        <CategoryPreviewModal category={previewCategory} close={() => setPreviewCategory(null)} navigate={navigate} />
-      )}
-      {selectedDog && (
-        <DogModal dog={selectedDog} close={() => setSelectedDog(null)} requireAuth={requireAuth} />
-      )}
-      {modalMode && (
-        <AuthModal mode={modalMode} close={() => setModalMode(null)} switchMode={setModalMode} />
-      )}
-    </div>
+export default function Landing() {
+  return (
+    <PublicLayout>
+      <HomeContent />
+    </PublicLayout>
   )
 }

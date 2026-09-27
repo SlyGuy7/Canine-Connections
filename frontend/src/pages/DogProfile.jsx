@@ -7,6 +7,8 @@ import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/toast";
 import { useIsMobile } from "../hooks/useIsMobile";
 import { ChevronLeft, ChevronRight, Dog, Heart, Mail, MapPin, PawPrint, Phone, Share2, Zap } from "lucide-react";
+import { hasUserSession } from "../services/auth";
+import { useAuthModal } from "../site/authModal";
 
 // Adds the current dog to the front of the "recently viewed" list in localStorage (capped at 10).
 // Used by BrowseDogs.jsx to render the "Recently Viewed" row when no filters are active.
@@ -21,6 +23,7 @@ function trackRecentlyViewed(dog) {
 }
 
 export default function DogProfile() {
+  const { openAuth } = useAuthModal();
   const { id }       = useParams();      // Dog ID from the URL (e.g. /dogs/42 → id = "42")
   const navigate     = useNavigate();
   const { addToast } = useToast();
@@ -45,7 +48,8 @@ export default function DogProfile() {
     try {
       const [dogResult, appResult] = await Promise.all([
         sendMessage("request.dogs.get",         { dog_id: parseInt(id, 10) }),
-        sendMessage("request.application.list", { user_id: parseInt(localStorage.getItem("userId") || "0") }),
+        // Only logged-in visitors have applications to check.
+        hasUserSession() ? sendMessage("request.application.list", {}) : Promise.resolve(null),
       ]);
       if (dogResult?.success && dogResult.dog) {
         setDog(dogResult.dog);
@@ -83,6 +87,7 @@ export default function DogProfile() {
   // Optimistic save/unsave: flips the heart and updates localStorage immediately, then fires
   // the backend call in the background so the change persists across devices.
   const handleSave = () => {
+    if (!hasUserSession()) { openAuth("register"); return; }
     const userId = parseInt(localStorage.getItem("userId") || "0");
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
     if (isSaved) {
@@ -295,7 +300,7 @@ export default function DogProfile() {
             </div>
           ) : (
             <button
-              onClick={() => navigate("/apply", { state: { dogId: dog.dog_id, dogName: dog.name } })}
+              onClick={() => (hasUserSession() ? navigate("/apply", { state: { dogId: dog.dog_id, dogName: dog.name } }) : openAuth("register"))}
               style={{ width: "100%", padding: "16px", borderRadius: "14px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "17px", cursor: "pointer", boxShadow: "0 4px 16px rgba(217,119,6,0.3)", transition: "opacity 0.15s" }}
               onMouseEnter={e => (e.target.style.opacity = "0.88")}
               onMouseLeave={e => (e.target.style.opacity = "1")}

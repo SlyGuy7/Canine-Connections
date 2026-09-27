@@ -77,6 +77,20 @@ describe("sendMessage", () => {
     expect(printed).toContain("a@b.c");
   });
 
+  it("leaves logged-out visitors where they are when a request needs an account", async () => {
+    localStorage.setItem("canine_theme", "dark");
+    window.history.pushState({}, "", "/dogs/3");
+    const { sendMessage } = await freshMessaging();
+
+    const pending = sendMessage("request.saved_dogs.list", {});
+    await vi.waitFor(() => expect(broker.published).toHaveLength(1));
+    broker.reply({ success: false, code: "auth_required", error: "Please log in to continue." });
+
+    await expect(pending).resolves.toMatchObject({ code: "auth_required" });
+    expect(window.location.pathname).toBe("/dogs/3");
+    expect(localStorage.getItem("canine_theme")).toBe("dark");
+  });
+
   it("logs the user out when the backend rejects the session", async () => {
     localStorage.setItem("authToken", "expired-token");
     localStorage.setItem("userId", "5");

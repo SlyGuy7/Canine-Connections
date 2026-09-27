@@ -5,14 +5,16 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useDataCache } from "../context/dataCache";
 import { useToast } from "../context/toast";
-import { Dog, Heart, History, Search } from "lucide-react";
+import { Dog, Heart, History, MapPin, Search } from "lucide-react";
+import { hasUserSession } from "../services/auth";
+import { useAuthModal } from "../site/authModal";
+import { DogCardSkeleton } from "../site/DogCard";
 
 // Dogs shown per page in the paginated grid.
 const PAGE_SIZE = 24;
 
 // Display labels and badge colors for each dog size value stored in the database.
-const SIZE_LABELS = { small: "Small", medium: "Medium", large: "Large", extra_large: "XL" };
-const SIZE_COLORS = { small: { bg: "#eff6ff", color: "#1d4ed8" }, medium: { bg: "#f0fdf4", color: "#15803d" }, large: { bg: "#fefce8", color: "#a16207" }, extra_large: { bg: "#fdf4ff", color: "#7e22ce" } };
+const SIZE_LABELS = { small: "Small", medium: "Medium", large: "Large", extra_large: "Extra large" };
 
 // Converts a numeric age to a human-readable category used in filter chips and badges.
 function getAgeCategory(ageYears) {
@@ -24,20 +26,6 @@ function getAgeCategory(ageYears) {
 }
 
 // Animated shimmer placeholder card displayed while the dog list is loading from the cache.
-function DogCardSkeleton() {
-  return (
-    <div style={{ background: "var(--card-bg)", borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)" }}>
-      <div style={{ height: "220px", background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
-      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "10px" }}>
-        <div style={{ height: "20px", width: "55%", borderRadius: "8px", background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
-        <div style={{ height: "14px", width: "75%", borderRadius: "8px", background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
-        <div style={{ height: "14px", width: "45%", borderRadius: "8px", background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
-        <div style={{ height: "40px", borderRadius: "10px", marginTop: "6px", background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
-      </div>
-    </div>
-  );
-}
-
 // Calculates a rough compatibility score (60–99) between a dog and the user's quiz preferences.
 // Returns null when no preferences have been saved so the badge is hidden for first-time visitors.
 function calcMatchScore(dog, prefs) {
@@ -54,95 +42,63 @@ function calcMatchScore(dog, prefs) {
   return Math.min(score, 99);
 }
 
+
+// Same card design as the homepage, plus a save button and the quiz match score.
 function DogCard({ dog, isSaved, onSave, onNavigate, matchScore }) {
   const [imgError, setImgError] = useState(false);
-  const [imgIndex, setImgIndex] = useState(0);
-
-  const ageLabel = getAgeCategory(dog.age_years);
-  const sizeKey = (dog.size || "").toLowerCase().replace(" ", "_");
-  const sizeStyle = SIZE_COLORS[sizeKey] || { bg: "#f3f4f6", color: "#374151" };
-  const sizeLabel = SIZE_LABELS[sizeKey] || dog.size || "—";
-
-  const handleSave = (e) => {
-    e.stopPropagation();
-    onSave(dog);
-  };
-
-  const photos = dog.photoList || [];
-  const currentPhoto = !imgError && photos[imgIndex] ? photos[imgIndex] : null;
+  const photo = !imgError ? (dog.photoList || [])[0] : null;
 
   return (
-    <div
+    <div className="s-card s-dog" role="link" tabIndex={0} style={{ cursor: "pointer" }}
       onClick={() => onNavigate(dog.dog_id)}
-      style={{ background: "var(--card-bg)", borderRadius: "20px", overflow: "hidden", border: "1px solid var(--border)", cursor: "pointer", transition: "transform 0.2s ease, box-shadow 0.2s ease", display: "flex", flexDirection: "column" }}
-      onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 12px 32px rgba(0,0,0,0.10)"; }}
-      onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; }}
-    >
-      <div style={{ height: "220px", background: "var(--brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden" }}>
-        {currentPhoto ? (
-          <img
-            src={currentPhoto}
-            alt={dog.name}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }}
-            onError={() => {
-              if (imgIndex + 1 < photos.length) setImgIndex(i => i + 1);
-              else setImgError(true);
-            }}
-          />
-        ) : (
-          <span style={{ fontSize: "64px" }}><Dog size={51} strokeWidth={1.5} /></span>
+      onKeyDown={e => { if (e.key === "Enter") onNavigate(dog.dog_id); }}>
+      <div className="s-dog__photo">
+        {photo
+          ? <img src={photo} alt={`${dog.name}, a ${dog.breed}`} loading="lazy" onError={() => setImgError(true)} />
+          : <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", color: "var(--text-subtle)" }}><Dog size={48} strokeWidth={1.5} /></div>}
+        {matchScore !== null && matchScore !== undefined && (
+          <span className="s-chip" style={{ position: "absolute", top: 12, left: 12, background: "var(--brand)", color: "#fff" }}>{matchScore}% match</span>
         )}
-        <div style={{ position: "absolute", top: "12px", left: "12px", display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: "rgba(0,0,0,0.45)", color: "white", backdropFilter: "blur(4px)" }}>
-            {ageLabel}
-          </span>
-          <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: sizeStyle.bg, color: sizeStyle.color }}>
-            {sizeLabel}
-          </span>
-          {matchScore !== null && matchScore !== undefined && (
-            <span style={{ padding: "4px 10px", borderRadius: "20px", fontSize: "11px", fontWeight: "700", background: "#d97706", color: "white" }}>
-              {matchScore}% match
-            </span>
-          )}
-        </div>
         <button
-          onClick={handleSave}
-          title="Save dog"
-          style={{ position: "absolute", top: "10px", right: "10px", width: "36px", height: "36px", borderRadius: "50%", border: "none", background: isSaved ? "#ef4444" : "rgba(255,255,255,0.9)", color: isSaved ? "white" : "#6f5848", fontSize: "16px", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", transition: "all 0.2s ease" }}
+          onClick={e => { e.stopPropagation(); onSave(dog); }}
+          aria-label={isSaved ? `Remove ${dog.name} from saved dogs` : `Save ${dog.name}`}
+          aria-pressed={isSaved}
+          style={{ position: "absolute", top: 10, right: 10, width: 38, height: 38, borderRadius: "50%", border: "none", display: "grid", placeItems: "center", cursor: "pointer", background: "rgba(255,255,255,0.94)", color: isSaved ? "#dc2626" : "#5f4a3c", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
         >
-          {isSaved ? <Heart size={20} /> : "♡"}
+          <Heart size={18} fill={isSaved ? "currentColor" : "none"} />
         </button>
       </div>
-      <div style={{ padding: "18px 20px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
-        <h3 style={{ margin: "0 0 6px 0", fontSize: "18px", fontWeight: "700", color: "var(--text-primary)" }}>{dog.name}</h3>
-        <p style={{ margin: "0 0 4px 0", fontSize: "14px", color: "var(--text-muted)" }}>{dog.breed || "Unknown Breed"}</p>
-        <p style={{ margin: "0 0 16px 0", fontSize: "13px", color: "var(--text-subtle)" }}>
-          {Number(dog.age_years) || 0} {Number(dog.age_years) === 1 ? "yr" : "yrs"} old
-          {dog.shelter_name ? ` · ${dog.shelter_name}` : ""}
-        </p>
-        <button
-          onClick={e => { e.stopPropagation(); onNavigate(dog.dog_id); }}
-          style={{ marginTop: "auto", width: "100%", padding: "11px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "14px", cursor: "pointer", transition: "background 0.15s ease" }}
-          onMouseEnter={e => e.currentTarget.style.background = "#b45309"}
-          onMouseLeave={e => e.currentTarget.style.background = "#d97706"}
-        >
-          View Profile
-        </button>
+      <div className="s-card__body">
+        <span className="s-dog__name">{dog.name}</span>
+        <span className="s-dog__breed">{dog.breed || "Mixed breed"}</span>
+        <div className="s-dog__meta">
+          <span className="s-chip">{getAgeCategory(dog.age_years)}</span>
+          {dog.size && <span className="s-chip">{SIZE_LABELS[dog.size] || dog.size}</span>}
+          {dog.gender && <span className="s-chip" style={{ textTransform: "capitalize" }}>{dog.gender}</span>}
+        </div>
+        {dog.shelter_name && <span className="s-dog__place"><MapPin size={14} /> {dog.shelter_name}</span>}
       </div>
     </div>
   );
 }
 
 export default function BrowseDogs() {
+  const { openAuth } = useAuthModal();
   const [allDogs, setAllDogs] = useState([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filters, setFilters] = useState({ breed: "All", size: "All", age: "All", compat: [] });
+  const [searchParams] = useSearchParams();
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get("q") || "");
+  // Initial filters can come from the URL, e.g. /browse-dogs?size=small&age=Puppy&compat=good_with_kids
+  const [filters, setFilters] = useState(() => ({
+    breed: "All",
+    size: searchParams.get("size") || "All",
+    age: searchParams.get("age") || "All",
+    compat: (searchParams.get("compat") || "").split(",").filter(Boolean),
+  }));
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [savedIds, setSavedIds] = useState(() => new Set(JSON.parse(localStorage.getItem("savedDogs") || "[]").map(d => d.dog_id)));
   const { getDogs } = useDataCache();
   const userPrefs = (() => { try { return JSON.parse(localStorage.getItem("userProfile") || "{}").prefs || {}; } catch { return {}; } })();
-  const [searchParams] = useSearchParams();
   const shelterIdParam = searchParams.get("shelter_id");
 
   const navigate = useNavigate();
@@ -199,6 +155,7 @@ export default function BrowseDogs() {
     // Optimistic save/unsave: updates localStorage and the heart icon immediately, then fires
   // the backend call in the background so the change persists across devices.
   const handleSaveDog = (dog) => {
+    if (!hasUserSession()) { openAuth("register"); return; }
     const userId = parseInt(localStorage.getItem("userId") || "0");
     const savedDogs = JSON.parse(localStorage.getItem("savedDogs") || "[]");
     const isSaved = savedIds.has(dog.dog_id);
@@ -261,7 +218,7 @@ export default function BrowseDogs() {
             ref={searchInputRef}
             value={searchTerm}
             onChange={e => setSearchTerm(e.target.value)}
-            placeholder="Search by name or breed… (press / to focus)"
+            placeholder="Search by name or breed"
             style={{ width: "100%", padding: "10px 14px 10px 40px", borderRadius: "10px", border: "1px solid var(--border)", fontSize: "14px", fontFamily: "'Inter', sans-serif", outline: "none", boxSizing: "border-box", color: "var(--text-primary)" }}
           />
         </div>
@@ -302,7 +259,7 @@ export default function BrowseDogs() {
             const active = filters.compat.includes(key);
             return (
               <button key={key} onClick={() => setFilters(f => ({ ...f, compat: active ? f.compat.filter(c => c !== key) : [...f.compat, key] }))}
-                style={{ padding: "7px 14px", borderRadius: "20px", border: `1px solid ${active ? "#ef4444" : "#e2d9d0"}`, background: active ? "var(--danger-soft)" : "white", color: active ? "#dc2626" : "#78716c", fontWeight: active ? "700" : "500", fontSize: "13px", cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s", display: "flex", alignItems: "center", gap: "5px" }}>
+                style={{ padding: "7px 14px", borderRadius: "20px", border: `1px solid ${active ? "var(--brand)" : "var(--border)"}`, background: active ? "var(--brand-soft)" : "var(--card-bg)", color: active ? "var(--brand-strong)" : "var(--text-muted)", fontWeight: active ? "700" : "500", fontSize: "13px", cursor: "pointer", fontFamily: "'Inter', sans-serif", transition: "all 0.15s", display: "flex", alignItems: "center", gap: "5px" }}>
                 {active && <span style={{ fontSize: "11px" }}>×</span>}{label}
               </button>
             );

@@ -111,7 +111,7 @@ export async function sendMessage(type, payload) {
   // The check is a build-time constant, so normal builds don't include the demo backend.
   if (import.meta.env.VITE_DEMO === "true") {
     const { demoRequest } = await import("./demoBackend");
-    return demoRequest(type, payload);
+    return demoRequest(type, payload, tokenForCurrentPage());
   }
 
   console.log(`%c[MQ →] ${type}`, "color:#b45309;font-weight:600", redact(payload));
@@ -159,7 +159,8 @@ export async function sendMessage(type, payload) {
       (message) => {
         try {
           const result = JSON.parse(message.body);
-          if (result?.code === "auth_required") handleExpiredSession();
+          // Only a session the browser actually sent can have expired; logged-out visitors stay put.
+          if (result?.code === "auth_required" && body._token) handleExpiredSession();
           if (result?.success === false) {
             console.warn(`%c[MQ ←] ${type} FAILED`, "color:#b45309;font-weight:600", result?.error ?? result);
           } else {

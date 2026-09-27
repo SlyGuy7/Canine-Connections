@@ -3,6 +3,7 @@ import React, { Suspense, lazy } from "react"
 import ReactDOM from "react-dom/client"
 import { createBrowserRouter, RouterProvider, Navigate } from "react-router-dom"
 import "./index.css"
+import "./site/site.css"
 import ProtectedRoute from "./components/ProtectedRoute.jsx"
 import AdminGuard from "./components/AdminGuard.jsx"
 import Layout from "./components/Layout.jsx"
@@ -33,6 +34,12 @@ const ShelterDetails  = lazy(() => import("./pages/ShelterDetails.jsx"))
 const Resources       = lazy(() => import("./pages/Resources.jsx"))
 const SuccessStories  = lazy(() => import("./pages/SuccessStories.jsx"))
 const AdminLogin      = lazy(() => import("./pages/AdminLogin.jsx"))
+const HowItWorks      = lazy(() => import("./pages/info/HowItWorks.jsx"))
+const About           = lazy(() => import("./pages/info/About.jsx"))
+const Faq             = lazy(() => import("./pages/info/Faq.jsx"))
+const Contact         = lazy(() => import("./pages/info/Contact.jsx"))
+const Privacy         = lazy(() => import("./pages/info/Legal.jsx").then(m => ({ default: m.Privacy })))
+const Terms           = lazy(() => import("./pages/info/Legal.jsx").then(m => ({ default: m.Terms })))
 const AdminDashboard  = lazy(() => import("./pages/AdminDashboard.jsx"))
 const AdminUsers      = lazy(() => import("./pages/AdminUsers.jsx"))
 const AdminApplications = lazy(() => import("./pages/AdminApplications.jsx"))
@@ -58,6 +65,12 @@ const router = createBrowserRouter([
   { path: "/",               element: <Navigate to="/landing" replace /> },
   { path: "/landing",        element: <Landing /> },
   { path: "/register-success", element: <RegisterSuccess /> },
+  { path: "/how-it-works",   element: <HowItWorks /> },
+  { path: "/about",          element: <About /> },
+  { path: "/faq",            element: <Faq /> },
+  { path: "/contact",        element: <Contact /> },
+  { path: "/privacy",        element: <Privacy /> },
+  { path: "/terms",          element: <Terms /> },
   { path: "/admin",          element: <AdminLogin /> },
   { path: "/verify-email",   element: <VerifyEmail /> },
   { path: "/reset-password", element: <ResetPassword /> },

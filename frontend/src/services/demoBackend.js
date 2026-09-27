@@ -221,9 +221,19 @@ const handlers = {
   "request.enquiry.send": () => ok({ session_id: 1 }),
 };
 
-// Mimics the network: a short delay, then the handler's answer.
-export async function demoRequest(type, payload = {}) {
+// Requests anyone may make without logging in (mirrors backend/src/Security/AccessPolicy.php).
+const PUBLIC = new Set([
+  "request.auth.register", "request.auth.login", "request.auth.verify", "request.auth.forgotPassword",
+  "request.auth.setNewPassword", "request.auth.resendVerification", "request.shelters.list", "request.shelters.get",
+  "request.dogs.list", "request.dogs.get", "request.quiz.questions", "request.parks.list", "request.resources.list",
+  "request.resources.get", "request.stories.list", "request.badges.list",
+]);
+
+// Mimics the network: a short delay, then the handler's answer. Like the real backend, requests
+// that need an account are refused when no session token is sent.
+export async function demoRequest(type, payload = {}, token = null) {
   await new Promise(r => setTimeout(r, 120 + Math.random() * 180));
+  if (!token && !PUBLIC.has(type)) return { success: false, code: "auth_required", error: "Please log in to continue." };
   const handler = handlers[type];
   return handler ? handler(payload) : { success: true };
 }

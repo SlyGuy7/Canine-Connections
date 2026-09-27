@@ -5,11 +5,20 @@ import { useNavigate, useLocation } from "react-router-dom"
 import Sidebar from "./Sidebar"
 import { useIsMobile } from "../hooks/useIsMobile"
 import { PawPrint, Menu } from "lucide-react"
+import PublicLayout from "../site/PublicLayout"
+import { hasUserSession } from "../services/auth"
 
 // These are "top-level" pages — navigating back from them would leave the app, so we hide the Back button.
 const NO_BACK = ["/dashboard", "/browse-dogs", "/shelters", "/resources"]
 
+// Logged-out visitors on public pages (browse, dog profiles, shelters, resources, stories) see the
+// website header and footer; logged-in users get the app with its sidebar.
 export default function Layout({ children }) {
+  if (!hasUserSession()) return <PublicLayout contained>{children}</PublicLayout>
+  return <AppLayout>{children}</AppLayout>
+}
+
+function AppLayout({ children }) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
   // Only show the Back button on pages that are not top-level destinations.
