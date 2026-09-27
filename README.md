@@ -34,8 +34,18 @@ Canine Connections is a full-stack dog adoption platform that connects prospecti
 
 ## 🛡️ Security Features
 
+### Sessions and access control
+- Logging in returns a **signed session token** (HMAC-SHA256 keyed from `APP_KEY`, valid 7 days). The frontend sends it with every request.
+- The frontend worker checks every request before handling it (`backend/src/Security/AccessPolicy.php`). Public requests are listed explicitly; everything else requires a valid session, and admin actions require an admin role.
+- The user's identity (`user_id`, `sender_id`, `reviewed_by`, email) always comes from the token, never from the request, so users can only read and change their own data. The database worker also filters every per-user query by `user_id`.
+- Password-reset links are signed, expire after an hour, work once, and always point at `APP_URL`.
+- All SQL uses prepared statements (`database/src/QueryHandler.php`).
+
+### Restricted broker access
+Browsers log in to RabbitMQ as a limited user that can only publish to the `canine.requests` exchange and read their own `reply.*` queues (`infra/rabbitmq/setup_web_user.sh`). The internal `bridge.*` and `db.*` queues are unreachable from the browser.
+
 ### Brute-Force Protection (Fail2Ban + nginx-deny)
-Login attempts are processed exclusively on the load balancer. Failed attempts are logged and monitored by **Fail2Ban**. After **5 failed attempts**, the client IP is banned for **1 hour** via an nginx `deny` rule.
+Login attempts are processed exclusively on the load balancer. After **5 failed attempts** a login is locked for **1 hour**, both for the client IP and for the account, so rotating IPs does not help. Failures are also logged for **Fail2Ban**, which bans the IP via an nginx `deny` rule.
 
 - Works with Cloudflare Tunnel (iptables-based bans don't — nginx-deny does)
 - Real client IP is extracted from the `CF-Connecting-IP` header
@@ -119,12 +129,12 @@ All frontend-to-backend communication uses **RabbitMQ STOMP over WebSocket** (`w
 ```
 Canine-Connections/
 ├── frontend/                  # React + Vite app (npm install / npm run dev)
-│   ├── src/
+│   ├── src/                   # *.test.js(x) files next to the code run with Vitest
 │   │   ├── pages/             # One component per route (Landing, Dashboard, Admin*, ...)
 │   │   ├── components/        # Shared UI (Layout, Sidebar, AuthModal, guards)
 │   │   ├── context/           # Toast + data-cache providers
 │   │   ├── hooks/
-│   │   └── services/          # messaging.js (RabbitMQ STOMP client), api.js
+│   │   └── services/          # messaging.js (RabbitMQ STOMP client), auth.js (session token)
 │   ├── public/
 │   └── vite.config.js
 │
@@ -132,20 +142,23 @@ Canine-Connections/
 │   ├── frontend.php           # Entry point → canine-frontend service
 │   ├── dbridge.php            # Entry point → canine-dbridge service
 │   ├── notification_worker.php
-│   ├── src/                   # App\ namespace: Workers, Services, Http, Security, ...
+│   ├── src/                   # App\ namespace: Workers, Services, Security (sessions, access policy), ...
+│   ├── tests/                 # PHPUnit
 │   ├── public/                # HTTP entry (php -S ... -t public)
 │   ├── start_backend.sh / stop_backend.sh
 │   └── .env.example
 │
 ├── database/                  # MySQL + DB worker (composer install)
 │   ├── db_worker.php          # Entry point → canine-db-worker service
-│   ├── sql/                   # schema.sql, seeds, resource seed + patch
+│   ├── src/QueryHandler.php   # Every db.* query (prepared statements)
+│   ├── tests/                 # PHPUnit, run against a real MySQL
+│   ├── sql/                   # schema.sql (fresh installs only), seeds, migrations/
 │   └── scripts/               # start_db.sh, Reboot_Clusters.sh, start_db_worker_if_primary.sh
 │
 ├── infra/                     # Server config files
 │   ├── nginx/                 # Load balancer site config
 │   ├── fail2ban/              # jail.local + canine-auth jail
-│   └── rabbitmq/              # rabbitmq.conf, send.py smoke test
+│   └── rabbitmq/              # rabbitmq.conf, setup_web_user.sh, send.py smoke test
 │
 ├── scripts/                   # Ops tooling
 │   ├── deploy.sh              # Zero-downtime deployment
@@ -156,7 +169,7 @@ Canine-Connections/
 │   ├── rejoin_rabbitmq.sh
 │   └── importers/             # RescueGroups / Dog API import + shelter sync
 │
-└── .github/workflows/ci.yml   # Lint + build the frontend
+└── .github/workflows/ci.yml   # Lint, tests and audits for every component
 ```
 
 ---
@@ -186,6 +199,12 @@ Zero-downtime rolling deploy:
 
 Runs `composer install` for the right component and (re)writes the systemd unit with the correct paths.
 
+### Upgrading existing servers to this version
+1. **RabbitMQ:** run `sudo infra/rabbitmq/setup_web_user.sh` on a broker node, put that user in `frontend/.env`, then change the admin password (it was previously shipped to browsers).
+2. **backend/.env:** make sure `APP_KEY` is set (same value on every node) and add `APP_URL=https://canineconnections.org`.
+3. **Database:** run `database/sql/migrations/001_create_saved_dogs.sql` (safe if the table exists).
+4. Deploy the backend and frontend together (`./scripts/deploy.sh`) and re-run `./scripts/setup_services.sh <role>` on each VM so `composer install` picks up the updated dependencies. Existing browser sessions will be asked to log in again.
+
 ### Configuration / secrets
 
 No credentials are committed. Each component reads a gitignored env file; copy the template and fill it in on each machine:
@@ -200,6 +219,16 @@ No credentials are committed. Each component reads a gitignored env file; copy t
 
 ---
 
+## 🧪 Tests
+
+```bash
+cd frontend && npm run lint && npm test     # ESLint (zero warnings) + Vitest
+cd backend  && composer install && vendor/bin/phpunit
+cd database && composer install && vendor/bin/phpunit   # needs a MySQL 8 server; see phpunit.xml for TEST_DB_*
+```
+
+GitHub Actions runs all of these, plus dependency audits and syntax checks, on every push and pull request.
+
 ## 💻 Local Development
 
 ```bash
@@ -209,7 +238,7 @@ npm install
 npm run dev
 ```
 
-The Vite dev server proxies `/ws`, `/client-ip`, and API calls to the live load balancer via `vite.config.js`. No local RabbitMQ or PHP setup needed.
+The Vite dev server proxies `/ws` and `/client-ip` to the live load balancer via `vite.config.js`, so no local RabbitMQ or PHP setup is needed. Use the restricted web user (see `infra/rabbitmq/setup_web_user.sh`) in `frontend/.env`.
 
 ---
 
