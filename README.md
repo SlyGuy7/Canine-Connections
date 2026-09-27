@@ -117,36 +117,46 @@ All frontend-to-backend communication uses **RabbitMQ STOMP over WebSocket** (`w
 ## 📁 Project Structure
 
 ```
-workstation/
-├── src/                             # React frontend
-│   ├── pages/
-│   │   ├── Landing.jsx              # Home page with hero, browse, how-it-works
-│   │   ├── Dashboard.jsx            # Logged-in home feed
-│   │   ├── DogProfile.jsx           # Individual dog page
-│   │   ├── Quiz.jsx                 # Compatibility quiz
-│   │   ├── ApplicationForm.jsx      # Adoption application
-│   │   ├── Applications.jsx         # User's applications list
-│   │   ├── Saveddogs.jsx            # Bookmarked dogs
-│   │   ├── Messages.jsx             # In-app messaging
-│   │   ├── Journal.jsx              # Adoption journal
-│   │   ├── Resources.jsx            # Care articles
-│   │   ├── Shelters.jsx             # Shelter directory
-│   │   ├── Profile.jsx              # User profile settings
-│   │   ├── AdminDogs.jsx            # Admin: manage dog listings
-│   │   ├── AdminApplications.jsx    # Admin: review applications
-│   │   └── AdminUsers.jsx           # Admin: user management
-│   ├── components/
-│   │   └── AuthModal.jsx            # Login / Register modal
-│   └── services/
-│       └── messaging.js             # RabbitMQ STOMP client
-├── can_con/adoption/backend/
-│   └── src/Workers/
-│       └── FrontendWorker.php       # Auth, login rate-limiting, registration
-├── database/
-│   └── db_worker.php                # All DB operations via RabbitMQ
-├── deploy.sh                        # Zero-downtime deployment script
-├── deploy.json                      # Tracks currently active node
-└── vite.config.js
+Canine-Connections/
+├── frontend/                  # React + Vite app (npm install / npm run dev)
+│   ├── src/
+│   │   ├── pages/             # One component per route (Landing, Dashboard, Admin*, ...)
+│   │   ├── components/        # Shared UI (Layout, Sidebar, AuthModal, guards)
+│   │   ├── context/           # Toast + data-cache providers
+│   │   ├── hooks/
+│   │   └── services/          # messaging.js (RabbitMQ STOMP client), api.js
+│   ├── public/
+│   └── vite.config.js
+│
+├── backend/                   # PHP workers (composer install)
+│   ├── frontend.php           # Entry point → canine-frontend service
+│   ├── dbridge.php            # Entry point → canine-dbridge service
+│   ├── notification_worker.php
+│   ├── src/                   # App\ namespace: Workers, Services, Http, Security, ...
+│   ├── public/                # HTTP entry (php -S ... -t public)
+│   ├── start_backend.sh / stop_backend.sh
+│   └── .env.example
+│
+├── database/                  # MySQL + DB worker (composer install)
+│   ├── db_worker.php          # Entry point → canine-db-worker service
+│   ├── sql/                   # schema.sql, seeds, resource seed + patch
+│   └── scripts/               # start_db.sh, Reboot_Clusters.sh, start_db_worker_if_primary.sh
+│
+├── infra/                     # Server config files
+│   ├── nginx/                 # Load balancer site config
+│   ├── fail2ban/              # jail.local + canine-auth jail
+│   └── rabbitmq/              # rabbitmq.conf, send.py smoke test
+│
+├── scripts/                   # Ops tooling
+│   ├── deploy.sh              # Zero-downtime deployment
+│   ├── deploy.json            # Tracks currently active node
+│   ├── setup_services.sh      # Installs systemd services for a VM's role
+│   ├── dev.sh                 # Remote dev environment / tunnels
+│   ├── security.sh            # Fail2Ban rollout + status
+│   ├── rejoin_rabbitmq.sh
+│   └── importers/             # RescueGroups / Dog API import + shelter sync
+│
+└── .github/workflows/ci.yml   # Lint + build the frontend
 ```
 
 ---
@@ -154,25 +164,47 @@ workstation/
 ## 🚀 Deployment
 
 ```bash
-./deploy.sh
+./scripts/deploy.sh
 ```
 
 Zero-downtime rolling deploy:
 1. Pull latest from `main`
-2. Build the React frontend (`npm run build`)
+2. Build the React frontend (`frontend/`, `npm run build`)
 3. Drain traffic from the inactive node
 4. Deploy to inactive node
 5. Switch traffic to newly updated node
 6. Deploy to previously active node
 7. Re-enable both nodes
 8. Push build to the load balancer and restart backend workers
-9. Commit the updated `deploy.json` (records new active node)
+9. Commit the updated `scripts/deploy.json` (records new active node)
+
+### Setting up a VM's services
+
+```bash
+./scripts/setup_services.sh frontend   # or: dbridge | db
+```
+
+Runs `composer install` for the right component and (re)writes the systemd unit with the correct paths.
+
+### Configuration / secrets
+
+No credentials are committed. Each component reads a gitignored env file; copy the template and fill it in on each machine:
+
+| Template | Copy to | Used by |
+|---|---|---|
+| `frontend/.env.example` | `frontend/.env` | Vite build (STOMP login) |
+| `backend/.env.example` | `backend/.env` | PHP workers |
+| `database/.env.example` | `database/.env` | `db_worker.php`, cluster scripts |
+| `scripts/.env.example` | `scripts/.env` | `dev.sh`, `security.sh`, `rejoin_rabbitmq.sh` |
+| `scripts/importers/.env.import.example` | `scripts/importers/.env.import` | Importers |
 
 ---
 
 ## 💻 Local Development
 
 ```bash
+cd frontend
+cp .env.example .env   # then fill in VITE_MQ_LOGIN / VITE_MQ_PASSCODE
 npm install
 npm run dev
 ```

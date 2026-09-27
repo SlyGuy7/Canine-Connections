@@ -10,7 +10,7 @@ jobs:
   frontend:
     runs-on: ubuntu-latest
     env:
-      FRONTEND_DIR: workstation
+      FRONTEND_DIR: frontend
     defaults:
       run:
         working-directory: ${{ env.FRONTEND_DIR }}
