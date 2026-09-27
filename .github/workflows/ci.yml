@@ -6,31 +6,99 @@ on:
   pull_request:
     branches: [ main ]
 
+permissions:
+  contents: read
+
 jobs:
   frontend:
     runs-on: ubuntu-latest
-    env:
-      FRONTEND_DIR: frontend
     defaults:
       run:
-        working-directory: ${{ env.FRONTEND_DIR }}
-
+        working-directory: frontend
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
 
-      - name: Install
-        run: npm ci
-
-      - name: Lint
-        run: npm run lint --if-present
-
-      - name: Test
-        run: npm test --if-present
-
+      - run: npm ci
+      - name: Lint (no warnings allowed)
+        run: npm run lint
+      - name: Unit tests
+        run: npm test
       - name: Build
         run: npm run build
+      - name: Audit production dependencies
+        run: npm audit --omit=dev --audit-level=high
+
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, sockets, pcntl, openssl
+          tools: composer:v2
+          coverage: none
+
+      - run: composer install --no-interaction --no-progress
+      - name: Unit tests
+        run: vendor/bin/phpunit
+      - name: Syntax-check every PHP file in the repo
+        working-directory: .
+        run: git ls-files '*.php' | xargs -n1 php -l > /dev/null
+      - name: Audit dependencies
+        run: composer audit
+
+  database:
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    defaults:
+      run:
+        working-directory: database
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mysqli, mbstring, sockets
+          tools: composer:v2
+          coverage: none
+
+      - run: composer install --no-interaction --no-progress
+      - name: Query tests against a database built from sql/schema.sql
+        env:
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: 3306
+          TEST_DB_USER: root
+          TEST_DB_PASS: root
+        run: vendor/bin/phpunit
+      - name: Audit dependencies
+        run: composer audit
+
+  scripts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Syntax-check shell scripts
+        run: git ls-files '*.sh' | xargs -n1 bash -n
