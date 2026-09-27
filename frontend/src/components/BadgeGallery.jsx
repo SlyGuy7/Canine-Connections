@@ -63,15 +63,15 @@ export default function BadgeGallery() {
   const progress = (unlockedBadges.length / badgeSystem.length) * 100;
 
   return (
-    <div style={{ background: 'var(--card-bg)', padding: '40px', borderRadius: '28px', boxShadow: '0 12px 40px rgba(47, 36, 29, 0.08)', border: '1px solid var(--border)' }}>
+    <div style={{ background: 'white', padding: '40px', borderRadius: '28px', boxShadow: '0 12px 40px rgba(47, 36, 29, 0.08)', border: '1px solid #efdfd1' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '40px' }}>
         <div>
-          <h2 style={{ fontSize: '28px', color: 'var(--text-primary)', margin: 0 }}>Pack Milestones</h2>
-          <p style={{ color: 'var(--text-muted)', fontSize: '15px', marginTop: '6px' }}>Click a milestone to view requirement details.</p>
+          <h2 style={{ fontSize: '28px', color: '#2f241d', margin: 0 }}>Pack Milestones</h2>
+          <p style={{ color: '#6f5848', fontSize: '15px', marginTop: '6px' }}>Click a milestone to view requirement details.</p>
         </div>
         <div style={{ textAlign: 'right' }}>
           <div style={{ fontSize: '14px', fontWeight: '800', color: '#d97706', marginBottom: '8px' }}>{unlockedBadges.length} / {badgeSystem.length} UNLOCKED</div>
-          <div style={{ width: '200px', height: '12px', background: '#f5f5f4', borderRadius: '6px', overflow: 'hidden', border: '1px solid var(--border)' }}>
+          <div style={{ width: '200px', height: '12px', background: '#f5f5f4', borderRadius: '6px', overflow: 'hidden', border: '1px solid #efdfd1' }}>
             <div style={{ width: `${progress}%`, height: '100%', background: 'linear-gradient(90deg, #d97706, #f59e0b)', transition: 'width 1.2s ease' }} />
           </div>
         </div>
@@ -102,10 +102,10 @@ export default function BadgeGallery() {
               }}>
                 {badge.icon}
               </div>
-              <h3 style={{ fontSize: '17px', fontWeight: 'bold', color: 'var(--text-primary)', margin: '0 0 10px 0' }}>{badge.title}</h3>
+              <h3 style={{ fontSize: '17px', fontWeight: 'bold', color: '#2f241d', margin: '0 0 10px 0' }}>{badge.title}</h3>
               <div style={{ 
                 fontSize: '12px', padding: '6px 14px', borderRadius: '12px',
-                background: isUnlocked ? 'var(--success-soft)' : '#f5f5f4',
+                background: isUnlocked ? '#f0fdf4' : '#f5f5f4',
                 color: isUnlocked ? '#166534' : '#6f5848',
                 fontWeight: '600'
               }}>
@@ -118,7 +118,7 @@ export default function BadgeGallery() {
 
       {selectedBadge && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(47, 36, 29, 0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: '20px' }}>
-          <div style={{ background: 'var(--card-bg)', padding: '40px', borderRadius: '28px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', textAlign: 'center' }}>
+          <div style={{ background: 'white', padding: '40px', borderRadius: '28px', maxWidth: '500px', width: '100%', boxShadow: '0 20px 40px rgba(0,0,0,0.3)', textAlign: 'center' }}>
             
             <div style={{ 
               fontSize: '60px', marginBottom: '24px', width: '120px', height: '120px',
@@ -130,19 +130,19 @@ export default function BadgeGallery() {
               {selectedBadge.icon}
             </div>
             
-            <h2 style={{ fontSize: '28px', color: 'var(--text-primary)', marginBottom: '12px' }}>{selectedBadge.title}</h2>
+            <h2 style={{ fontSize: '28px', color: '#2f241d', marginBottom: '12px' }}>{selectedBadge.title}</h2>
             
             <div style={{ 
               display: 'inline-block', fontSize: '12px', padding: '6px 14px', borderRadius: '12px', 
-              background: unlockedBadges.includes(selectedBadge.id) ? 'var(--success-soft)' : '#fef2f2', 
+              background: unlockedBadges.includes(selectedBadge.id) ? '#f0fdf4' : '#fef2f2', 
               color: unlockedBadges.includes(selectedBadge.id) ? '#166534' : '#991b1b', 
               fontWeight: '700', marginBottom: '32px' 
             }}>
               {unlockedBadges.includes(selectedBadge.id) ? "COMPLETED" : "LOCKED"}
             </div>
 
-            <div style={{ background: '#fafaf9', padding: '24px', borderRadius: '20px', marginBottom: '32px', fontSize: '15px', color: 'var(--text-muted)', lineHeight: '1.8', border: '1px solid var(--border)' }}>
-              <p style={{ margin: '0 0 8px 0', fontWeight: 'bold', color: 'var(--text-primary)' }}>Requirement:</p>
+            <div style={{ background: '#fafaf9', padding: '24px', borderRadius: '20px', marginBottom: '32px', fontSize: '15px', color: '#6f5848', lineHeight: '1.8', border: '1px solid #efdfd1' }}>
+              <p style={{ margin: '0 0 8px 0', fontWeight: 'bold', color: '#2f241d' }}>Requirement:</p>
               <span style={{ fontSize: '16px' }}>{selectedBadge.goal}</span>
             </div>
 

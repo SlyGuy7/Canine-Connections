@@ -1,9 +1,0 @@
-.git
-**/node_modules
-**/vendor
-**/dist
-**/dist-demo
-**/.env
-**/.env.import
-**/.phpunit.cache
-**/.phpunit.result.cache

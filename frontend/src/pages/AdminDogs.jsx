@@ -5,7 +5,6 @@ import React, { useEffect, useState } from "react"
 import { sendMessage } from "../services/messaging"
 import { useToast } from "../context/toast"
 import AdminSidebar from "../components/AdminSidebar"
-import { PawPrint } from "lucide-react"
 
 // Shared dark-theme color tokens used throughout this page.
 const A = {
@@ -13,7 +12,7 @@ const A = {
   card:   '#111111',
   card2:  '#141414',
   border: '#1a1a1a',
-  red:    '#d97706',
+  red:    '#dc2626',
   text:   '#f0f0f0',
   muted:  '#777777',
   subtle: '#444444',
@@ -345,16 +344,16 @@ export default function AdminDogs() {
                   key={tab.key}
                   onClick={() => setFilterStatus(tab.key)}
                   style={{
-                    background: active ? '#1f1405' : 'transparent',
+                    background: active ? '#1a0000' : 'transparent',
                     border: `1px solid ${active ? A.red : A.border}`,
                     borderRadius:'8px', padding:'7px 14px', cursor:'pointer',
-                    color: active ? '#fbbf24' : A.muted,
+                    color: active ? '#f87171' : A.muted,
                     fontSize:'12px', fontWeight: active ? '700' : '400',
                     display:'flex', alignItems:'center', gap:'6px', transition:'all 0.15s',
                   }}
                 >
                   {tab.label}
-                  <span style={{ background: active ? 'rgba(217,119,6,0.2)' : '#1a1a1a', color: active ? '#fbbf24' : A.subtle, padding:'1px 7px', borderRadius:'10px', fontSize:'11px', fontWeight:'700' }}>
+                  <span style={{ background: active ? 'rgba(220,38,38,0.2)' : '#1a1a1a', color: active ? '#f87171' : A.subtle, padding:'1px 7px', borderRadius:'10px', fontSize:'11px', fontWeight:'700' }}>
                     {loading ? '—' : tab.count}
                   </span>
                 </button>
@@ -383,7 +382,7 @@ export default function AdminDogs() {
             </div>
           ) : filtered.length === 0 ? (
             <div style={{ textAlign:'center', padding:'80px', color: A.muted }}>
-              <div style={{ fontSize:'36px', marginBottom:'12px', opacity:0.3 }}><PawPrint size={16} /></div>
+              <div style={{ fontSize:'36px', marginBottom:'12px', opacity:0.3 }}>🐾</div>
               <p style={{ margin:0, fontSize:'14px' }}>No dogs found.</p>
             </div>
           ) : (

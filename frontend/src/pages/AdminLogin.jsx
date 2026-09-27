@@ -4,7 +4,6 @@ import React, { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { sendMessage } from "../services/messaging"
 import { ADMIN_ROLES, setAdminToken } from "../services/auth"
-import { PawPrint } from "lucide-react"
 
 export default function AdminLogin() {
   const navigate = useNavigate()
@@ -57,8 +56,8 @@ export default function AdminLogin() {
       <div style={{ background:'#141414', border:'1px solid #1f1f1f', borderRadius:'16px', padding:'48px', width:'100%', maxWidth:'420px' }}>
 
         <div style={{ textAlign:'center', marginBottom:'36px' }}>
-          <div style={{ width:'52px', height:'52px', background:'#d97706', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
-            <PawPrint size={24} color="white" strokeWidth={2.5} />
+          <div style={{ width:'52px', height:'52px', background:'#dc2626', borderRadius:'12px', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px' }}>
+            <span style={{ color:'white', fontSize:'18px', fontWeight:'800' }}>CC</span>
           </div>
           <h1 style={{ margin:'0 0 8px 0', fontSize:'22px', fontWeight:'700', color:'white' }}>Admin Portal</h1>
           <p style={{ margin:0, color:'#555', fontSize:'13px' }}>Canine Connections Shelter Management</p>
@@ -102,7 +101,7 @@ export default function AdminLogin() {
           <button
             type="submit"
             disabled={loading}
-            style={{ background:'#d97706', border:'none', borderRadius:'8px', padding:'13px', color:'white', fontWeight:'700', fontSize:'15px', cursor:'pointer', marginTop:'8px', opacity: loading ? 0.7 : 1 }}
+            style={{ background:'#dc2626', border:'none', borderRadius:'8px', padding:'13px', color:'white', fontWeight:'700', fontSize:'15px', cursor:'pointer', marginTop:'8px', opacity: loading ? 0.7 : 1 }}
           >
             {loading ? "Signing in..." : "Sign In"}
           </button>
@@ -110,7 +109,7 @@ export default function AdminLogin() {
 
         <p style={{ textAlign:'center', marginTop:'24px', fontSize:'12px', color:'#333' }}>
           Not an admin?{" "}
-          <span style={{ color:'#d97706', cursor:'pointer', fontWeight:'600' }} onClick={() => navigate("/landing")}>
+          <span style={{ color:'#dc2626', cursor:'pointer', fontWeight:'600' }} onClick={() => navigate("/landing")}>
             Return to main site
           </span>
         </p>

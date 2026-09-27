@@ -136,7 +136,7 @@ export default function Sidebar({ isMobile = false, open = true, onClose }) {
                 textDecoration: "none",
                 borderRadius: "12px",
                 color: isActive || isHovered ? "#d97706" : "var(--text-muted)",
-                backgroundColor: isActive ? "var(--brand-soft)" : isHovered ? "var(--bg-secondary)" : "transparent",
+                backgroundColor: isActive ? "#fcedda" : isHovered ? "var(--bg-secondary)" : "transparent",
                 transition: "all 0.15s ease",
                 position: "relative",
               }}
@@ -177,7 +177,7 @@ export default function Sidebar({ isMobile = false, open = true, onClose }) {
           onClick={handleLogout}
           onMouseEnter={() => setIsLogoutHovered(true)}
           onMouseLeave={() => setIsLogoutHovered(false)}
-          style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px", border: "none", background: isLogoutHovered ? "var(--danger-soft)" : "transparent", color: "#e11d48", cursor: "pointer", transition: "all 0.15s ease", textAlign: "left" }}
+          style={{ width: "100%", display: "flex", alignItems: "center", gap: "12px", padding: "11px 14px", borderRadius: "12px", border: "none", background: isLogoutHovered ? "#fff1f2" : "transparent", color: "#e11d48", cursor: "pointer", transition: "all 0.15s ease", textAlign: "left" }}
         >
           <LogOut size={18} strokeWidth={2} />
           <span style={{ fontWeight: "600", fontSize: "14px" }}>Log Out</span>

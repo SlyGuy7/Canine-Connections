@@ -7,7 +7,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useToast } from "../context/toast";
 import { useIsMobile } from "../hooks/useIsMobile";
-import { MessageCircle } from "lucide-react"
 
 // Five rotating colours assigned to shelter avatars based on their position in the sessions list.
 const AVATAR_COLORS = ["#d97706", "#059669", "#7c3aed", "#db2777", "#0891b2"];
@@ -175,8 +174,8 @@ export default function Messages() {
     <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "0 0 40px 0", display: "flex", flexDirection: "column", height: isMobile ? "calc(100vh - 160px)" : "calc(100vh - 80px)" }}>
 
       <div style={{ marginBottom: "20px", flexShrink: 0 }}>
-        <h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>Messages</h1>
-        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>Your conversations with rescue shelters.</p>
+        <h1 style={{ margin: "0 0 4px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Messages</h1>
+        <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>Your conversations with rescue shelters.</p>
       </div>
 
       <div style={{ flex: 1, display: "flex", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", overflow: "hidden", boxShadow: "0 4px 24px rgba(47,36,29,0.07)", minHeight: 0 }}>
@@ -184,20 +183,20 @@ export default function Messages() {
         {/* Sidebar */}
         {(!isMobile || !mobileShowChat) && <div style={{ width: isMobile ? "100%" : "300px", borderRight: isMobile ? "none" : "1px solid var(--border)", display: "flex", flexDirection: "column", flexShrink: 0 }}>
           <div style={{ padding: "18px 20px", borderBottom: "1px solid var(--border)", background: "var(--bg-primary)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <h3 style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em" }}>
+            <h3 style={{ margin: 0, fontSize: "13px", fontWeight: "700", color: "#78716c", textTransform: "uppercase", letterSpacing: "0.06em" }}>
               Conversations {!sessionsLoading && sessions.length > 0 && `· ${sessions.length}`}
             </h3>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto" }}>
             {sessionsLoading ? (
-              <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--text-subtle)", fontSize: "14px" }}>Loading…</div>
+              <div style={{ padding: "40px 20px", textAlign: "center", color: "#a8a29e", fontSize: "14px" }}>Loading…</div>
             ) : sessions.length === 0 ? (
               <div style={{ padding: "40px 20px", textAlign: "center" }}>
-                <p style={{ fontSize: "24px", margin: "0 0 8px" }}><MessageCircle size={19} strokeWidth={1.5} /></p>
-                <p style={{ color: "var(--text-muted)", fontSize: "14px", fontWeight: "600", margin: "0 0 6px" }}>No conversations yet</p>
-                <p style={{ color: "var(--text-subtle)", fontSize: "13px", margin: "0 0 16px" }}>Visit a shelter to start chatting</p>
-                <button onClick={() => navigate("/shelters")} style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-primary)", color: "#d97706", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>
+                <p style={{ fontSize: "24px", margin: "0 0 8px" }}>💬</p>
+                <p style={{ color: "#78716c", fontSize: "14px", fontWeight: "600", margin: "0 0 6px" }}>No conversations yet</p>
+                <p style={{ color: "#a8a29e", fontSize: "13px", margin: "0 0 16px" }}>Visit a shelter to start chatting</p>
+                <button onClick={() => navigate("/shelters")} style={{ padding: "8px 16px", borderRadius: "8px", border: "1px solid #efdfd1", background: "#fffaf5", color: "#d97706", fontWeight: "600", fontSize: "13px", cursor: "pointer" }}>
                   Browse Shelters
                 </button>
               </div>
@@ -209,7 +208,7 @@ export default function Messages() {
                   <div
                     key={session.session_id}
                     onClick={() => handleSelectSession(session)}
-                    style={{ padding: "15px 20px", borderBottom: "1px solid var(--border)", cursor: "pointer", background: isActive ? "var(--brand-soft)" : "var(--card-bg)", display: "flex", alignItems: "center", gap: "12px", transition: "background 0.15s" }}
+                    style={{ padding: "15px 20px", borderBottom: "1px solid var(--border)", cursor: "pointer", background: isActive ? "#fcedda" : "var(--card-bg)", display: "flex", alignItems: "center", gap: "12px", transition: "background 0.15s" }}
                     onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "var(--bg-primary)"; }}
                     onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = "var(--card-bg)"; }}
                   >
@@ -217,10 +216,10 @@ export default function Messages() {
                       {getInitials(session.shelter_name)}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <p style={{ margin: "0 0 2px 0", fontSize: "14px", fontWeight: "600", color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{ margin: "0 0 2px 0", fontSize: "14px", fontWeight: "600", color: "#2f241d", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {session.shelter_name}
                       </p>
-                      <p style={{ margin: 0, fontSize: "12px", color: "var(--text-subtle)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <p style={{ margin: 0, fontSize: "12px", color: "#a8a29e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {session.last_message || [session.city, session.state].filter(Boolean).join(", ") || "No messages yet"}
                       </p>
                     </div>
@@ -236,9 +235,9 @@ export default function Messages() {
 
         {/* Chat panel */}
         {(!isMobile || mobileShowChat) && (!activeShelter ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "12px", color: "var(--text-subtle)", background: "var(--bg-secondary)" }}>
-            <span style={{ fontSize: "48px" }}><MessageCircle size={38} strokeWidth={1.5} /></span>
-            <p style={{ margin: 0, fontSize: "16px", fontWeight: "600", color: "var(--text-muted)" }}>Select a conversation</p>
+          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: "12px", color: "#a8a29e", background: "var(--bg-secondary)" }}>
+            <span style={{ fontSize: "48px" }}>💬</span>
+            <p style={{ margin: 0, fontSize: "16px", fontWeight: "600", color: "#78716c" }}>Select a conversation</p>
             <p style={{ margin: 0, fontSize: "13px" }}>Or visit a shelter page to start a new one</p>
           </div>
         ) : (
@@ -254,8 +253,8 @@ export default function Messages() {
                 {getInitials(activeShelter.name)}
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <h3 style={{ margin: "0 0 2px 0", fontSize: "16px", fontWeight: "700", color: "var(--text-primary)" }}>{activeShelter.name}</h3>
-                <p style={{ margin: 0, fontSize: "12px", color: "var(--text-subtle)" }}>
+                <h3 style={{ margin: "0 0 2px 0", fontSize: "16px", fontWeight: "700", color: "#2f241d" }}>{activeShelter.name}</h3>
+                <p style={{ margin: 0, fontSize: "12px", color: "#a8a29e" }}>
                   {[activeShelter.city, activeShelter.state].filter(Boolean).join(", ")}
                   {activeShelter.phone ? ` · ${activeShelter.phone}` : ""}
                 </p>
@@ -264,7 +263,7 @@ export default function Messages() {
                 <button
                   onClick={() => navigate(`/shelters/${activeShelter.shelter_id}`)}
                   style={{ padding: "7px 14px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--bg-secondary)", color: "var(--text-muted)", fontWeight: "600", fontSize: "12px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
-                  onMouseEnter={e => e.currentTarget.style.background = "var(--brand-soft)"}
+                  onMouseEnter={e => e.currentTarget.style.background = "#fcedda"}
                   onMouseLeave={e => e.currentTarget.style.background = "var(--bg-secondary)"}
                 >
                   View Shelter →
@@ -274,14 +273,14 @@ export default function Messages() {
 
             <div style={{ flex: 1, padding: "20px 24px", overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", background: "var(--bg-secondary)" }}>
               {chatLoading ? (
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, color: "var(--text-subtle)", fontSize: "14px", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flex: 1, color: "#a8a29e", fontSize: "14px", gap: "10px" }}>
                   <div style={{ width: "20px", height: "20px", border: "2px solid #e2d9d0", borderTopColor: "#d97706", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
                   Loading conversation…
                 </div>
               ) : messages.length === 0 ? (
-                <div style={{ textAlign: "center", margin: "auto", color: "var(--text-subtle)" }}>
-                  <MessageCircle size={32} strokeWidth={1.5} style={{ marginBottom: "8px" }} />
-                  <p style={{ fontSize: "15px", fontWeight: "600", color: "var(--text-muted)", margin: "0 0 4px" }}>No messages yet</p>
+                <div style={{ textAlign: "center", margin: "auto", color: "#a8a29e" }}>
+                  <p style={{ fontSize: "32px", margin: "0 0 8px" }}>👋</p>
+                  <p style={{ fontSize: "15px", fontWeight: "600", color: "#78716c", margin: "0 0 4px" }}>No messages yet</p>
                   <p style={{ fontSize: "13px", margin: 0 }}>Send a message to start the conversation.</p>
                 </div>
               ) : (

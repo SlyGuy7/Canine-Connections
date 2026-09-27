@@ -7,7 +7,6 @@ import { useNavigate, Link } from "react-router-dom";
 import { sendMessage } from "../services/messaging";
 import { useDataCache } from "../context/dataCache";
 import { useToast } from "../context/toast";
-import { Lightbulb, PawPrint, Puzzle, UserRound } from "lucide-react"
 
 // Friendlier display text for question strings returned by the database.
 // Keys are lowercase versions of the original DB strings.
@@ -133,7 +132,7 @@ function buildPreFill(questions, prefs) {
 // Placeholder shimmer card shown while questions are loading.
 function QuestionSkeleton() {
   return (
-    <div style={{ background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)", padding: "28px", display: "flex", flexDirection: "column", gap: "14px" }}>
+    <div style={{ background: "white", borderRadius: "20px", border: "1px solid #efdfd1", padding: "28px", display: "flex", flexDirection: "column", gap: "14px" }}>
       <div style={{ height: "16px", width: "70%", borderRadius: "8px", background: "linear-gradient(90deg, #f3e8de 25%, #faf0e8 50%, #f3e8de 75%)", backgroundSize: "200% 100%", animation: "shimmer 1.4s infinite" }} />
       <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginTop: "4px" }}>
         {[80, 65, 75, 55].map((w, i) => (
@@ -262,14 +261,14 @@ export default function Quiz() {
     return (
       <div style={{ maxWidth: "720px", margin: "0 auto", padding: "0 0 60px 0" }}>
         <div style={{ marginBottom: "28px" }}>
-          <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>Compatibility Quiz</h1>
+          <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Compatibility Quiz</h1>
         </div>
-        <div style={{ background: "var(--card-bg)", borderRadius: "24px", border: "1px solid var(--border)", padding: "56px 40px", textAlign: "center" }}>
-          <div style={{ fontSize: "64px", marginBottom: "20px" }}><PawPrint size={51} strokeWidth={1.5} /></div>
-          <h2 style={{ margin: "0 0 10px 0", fontSize: "22px", fontWeight: "800", color: "var(--text-primary)" }}>
+        <div style={{ background: "white", borderRadius: "24px", border: "1px solid #efdfd1", padding: "56px 40px", textAlign: "center" }}>
+          <div style={{ fontSize: "64px", marginBottom: "20px" }}>🐾</div>
+          <h2 style={{ margin: "0 0 10px 0", fontSize: "22px", fontWeight: "800", color: "#2f241d" }}>
             You've already taken the quiz!
           </h2>
-          <p style={{ margin: "0 0 36px 0", color: "var(--text-muted)", fontSize: "15px", lineHeight: "1.6" }}>
+          <p style={{ margin: "0 0 36px 0", color: "#78716c", fontSize: "15px", lineHeight: "1.6" }}>
             Your matches are saved. Would you like to view them, or start fresh with a new quiz?
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "320px", margin: "0 auto" }}>
@@ -281,7 +280,7 @@ export default function Quiz() {
             </button>
             <button
               onClick={handleRetake}
-              style={{ padding: "14px 28px", borderRadius: "14px", border: "2px solid #e2d9d0", background: "var(--card-bg)", color: "var(--text-muted)", fontWeight: "600", fontSize: "15px", cursor: "pointer" }}
+              style={{ padding: "14px 28px", borderRadius: "14px", border: "2px solid #e2d9d0", background: "white", color: "#78716c", fontWeight: "600", fontSize: "15px", cursor: "pointer" }}
             >
               Take It Again
             </button>
@@ -296,16 +295,16 @@ export default function Quiz() {
 
       {/* Header */}
       <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "var(--text-primary)" }}>Compatibility Quiz</h1>
-        <p style={{ margin: 0, color: "var(--text-muted)", fontSize: "15px" }}>
+        <h1 style={{ margin: "0 0 6px 0", fontSize: "28px", fontWeight: "800", color: "#2f241d" }}>Compatibility Quiz</h1>
+        <p style={{ margin: 0, color: "#78716c", fontSize: "15px" }}>
           {loading ? "Loading questions…" : `Answer all ${questions.length} questions to find your ideal match.`}
         </p>
       </div>
 
       {/* Profile pre-fill banner */}
       {!loading && !error && hasProfile && prefilledCount > 0 && (
-        <div style={{ background: "var(--brand-soft)", border: "1px solid #fed7aa", borderRadius: "16px", padding: "14px 20px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "12px" }}>
-          <span style={{ fontSize: "20px", flexShrink: 0 }}><UserRound size={16} strokeWidth={1.5} /></span>
+        <div style={{ background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "16px", padding: "14px 20px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "12px" }}>
+          <span style={{ fontSize: "20px", flexShrink: 0 }}>👤</span>
           <div style={{ flex: 1 }}>
             <span style={{ fontSize: "14px", fontWeight: "700", color: "#92400e" }}>
               {prefilledCount} answer{prefilledCount !== 1 ? "s" : ""} pre-filled from your profile.
@@ -323,7 +322,7 @@ export default function Quiz() {
       {/* No profile nudge */}
       {!loading && !error && !hasProfile && (
         <div style={{ background: "#f9fafb", border: "1px solid #e5e7eb", borderRadius: "16px", padding: "14px 20px", marginBottom: "20px", display: "flex", alignItems: "center", gap: "12px" }}>
-          <span style={{ fontSize: "18px", flexShrink: 0 }}><Lightbulb size={14} strokeWidth={1.5} /></span>
+          <span style={{ fontSize: "18px", flexShrink: 0 }}>💡</span>
           <span style={{ fontSize: "13px", color: "#6b7280" }}>
             <Link to="/profile" style={{ color: "#d97706", fontWeight: "700", textDecoration: "none" }}>Complete your profile</Link>
             {" "}to have relevant answers pre-filled automatically next time.
@@ -333,8 +332,8 @@ export default function Quiz() {
 
       {/* Progress bar */}
       {!loading && !error && questions.length > 0 && (
-        <div style={{ background: "var(--card-bg)", borderRadius: "16px", padding: "16px 24px", border: "1px solid var(--border)", marginBottom: "28px", display: "flex", alignItems: "center", gap: "16px" }}>
-          <span style={{ fontSize: "13px", fontWeight: "600", color: "var(--text-muted)", whiteSpace: "nowrap" }}>
+        <div style={{ background: "white", borderRadius: "16px", padding: "16px 24px", border: "1px solid #efdfd1", marginBottom: "28px", display: "flex", alignItems: "center", gap: "16px" }}>
+          <span style={{ fontSize: "13px", fontWeight: "600", color: "#78716c", whiteSpace: "nowrap" }}>
             {answered} / {questions.length}
           </span>
           <div style={{ flex: 1, height: "8px", background: "#f3e8de", borderRadius: "99px", overflow: "hidden" }}>
@@ -355,10 +354,10 @@ export default function Quiz() {
 
       {/* Error state */}
       {!loading && error && (
-        <div style={{ textAlign: "center", padding: "80px 40px", background: "var(--card-bg)", borderRadius: "20px", border: "1px solid var(--border)" }}>
-          <div style={{ fontSize: "64px", marginBottom: "16px" }}><Puzzle size={51} strokeWidth={1.5} /></div>
-          <h2 style={{ margin: "0 0 8px 0", fontSize: "20px", fontWeight: "700", color: "var(--text-primary)" }}>Quiz unavailable</h2>
-          <p style={{ margin: "0 0 28px 0", color: "var(--text-muted)", fontSize: "15px" }}>{error}</p>
+        <div style={{ textAlign: "center", padding: "80px 40px", background: "white", borderRadius: "20px", border: "1px solid #efdfd1" }}>
+          <div style={{ fontSize: "64px", marginBottom: "16px" }}>🧩</div>
+          <h2 style={{ margin: "0 0 8px 0", fontSize: "20px", fontWeight: "700", color: "#2f241d" }}>Quiz unavailable</h2>
+          <p style={{ margin: "0 0 28px 0", color: "#78716c", fontSize: "15px" }}>{error}</p>
           <button
             onClick={() => { hasFetched.current = false; loadQuestions(); }}
             style={{ padding: "12px 28px", borderRadius: "10px", border: "none", background: "#d97706", color: "white", fontWeight: "700", fontSize: "15px", cursor: "pointer" }}
@@ -380,7 +379,7 @@ export default function Quiz() {
                 <div
                   key={question.question_id}
                   style={{
-                    background: "var(--card-bg)", borderRadius: "20px", padding: "24px 28px",
+                    background: "white", borderRadius: "20px", padding: "24px 28px",
                     border: isAnswered ? "2px solid #d97706" : "1px solid #efdfd1",
                     transition: "border 0.2s ease",
                   }}
@@ -390,12 +389,12 @@ export default function Quiz() {
                       {isAnswered ? "✓" : index + 1}
                     </span>
                     <div style={{ flex: 1 }}>
-                      <p style={{ margin: 0, fontWeight: "700", color: "var(--text-primary)", fontSize: "16px", lineHeight: "1.5" }}>
+                      <p style={{ margin: 0, fontWeight: "700", color: "#2f241d", fontSize: "16px", lineHeight: "1.5" }}>
                         {displayQuestion(question.question_text)}
                       </p>
                       {fromProfile && (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "6px", fontSize: "11px", fontWeight: "700", color: "#b45309", background: "var(--brand-soft)", border: "1px solid #fed7aa", borderRadius: "20px", padding: "2px 10px" }}>
-                          <UserRound size={15} className="inline-icon" /> Pre-filled from your profile
+                        <span style={{ display: "inline-flex", alignItems: "center", gap: "4px", marginTop: "6px", fontSize: "11px", fontWeight: "700", color: "#b45309", background: "#fff7ed", border: "1px solid #fed7aa", borderRadius: "20px", padding: "2px 10px" }}>
+                          👤 Pre-filled from your profile
                         </span>
                       )}
                     </div>
@@ -408,11 +407,11 @@ export default function Quiz() {
                         <div
                           key={option.option_id}
                           onClick={() => handleAnswer(question.question_id, option.option_id)}
-                          style={{ display: "flex", alignItems: "center", gap: "12px", padding: "13px 18px", borderRadius: "12px", cursor: "pointer", border: selected ? "2px solid #d97706" : "1px solid #e2d9d0", background: selected ? "var(--brand-soft)" : "white", transition: "all 0.15s ease" }}
+                          style={{ display: "flex", alignItems: "center", gap: "12px", padding: "13px 18px", borderRadius: "12px", cursor: "pointer", border: selected ? "2px solid #d97706" : "1px solid #e2d9d0", background: selected ? "#fff7ed" : "white", transition: "all 0.15s ease" }}
                           onMouseEnter={e => { if (!selected) e.currentTarget.style.background = "#fffaf5"; }}
                           onMouseLeave={e => { if (!selected) e.currentTarget.style.background = "white"; }}
                         >
-                          <div style={{ width: "18px", height: "18px", borderRadius: "50%", flexShrink: 0, border: selected ? "5px solid #d97706" : "2px solid #d0c4b8", background: "var(--card-bg)", transition: "all 0.15s ease" }} />
+                          <div style={{ width: "18px", height: "18px", borderRadius: "50%", flexShrink: 0, border: selected ? "5px solid #d97706" : "2px solid #d0c4b8", background: "white", transition: "all 0.15s ease" }} />
                           <span style={{ fontSize: "14px", fontWeight: selected ? "600" : "400", color: selected ? "#92400e" : "#2f241d", lineHeight: "1.4" }}>
                             {displayOption(option.option_text)}
                           </span>
@@ -428,7 +427,7 @@ export default function Quiz() {
           {/* Submit */}
           <div style={{ marginTop: "28px" }}>
             {!allAnswered && (
-              <p style={{ textAlign: "center", fontSize: "13px", color: "var(--text-subtle)", marginBottom: "12px" }}>
+              <p style={{ textAlign: "center", fontSize: "13px", color: "#a8a29e", marginBottom: "12px" }}>
                 {questions.length - answered} question{questions.length - answered !== 1 ? "s" : ""} remaining
               </p>
             )}

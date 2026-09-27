@@ -32,8 +32,8 @@ export default function ForgotPassword({ switchToLogin }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px", fontFamily: "sans-serif" }}>
       <div>
-        <h2 style={{ margin: "0 0 6px 0", fontSize: "20px", fontWeight: "700", color: "var(--text-primary)" }}>Forgot Password</h2>
-        <p style={{ margin: 0, fontSize: "14px", color: "var(--text-muted)" }}>
+        <h2 style={{ margin: "0 0 6px 0", fontSize: "20px", fontWeight: "700", color: "#2f241d" }}>Forgot Password</h2>
+        <p style={{ margin: 0, fontSize: "14px", color: "#78716c" }}>
           Enter your email and we'll send you a link to reset your password.
         </p>
       </div>
@@ -41,7 +41,7 @@ export default function ForgotPassword({ switchToLogin }) {
       {status && (
         <div style={{
           padding: "12px 16px", borderRadius: "10px", fontSize: "14px", fontWeight: "600",
-          background: status.type === "success" ? "#d4edda" : "var(--danger-soft)",
+          background: status.type === "success" ? "#d4edda" : "#fff1f2",
           color:      status.type === "success" ? "#155724" : "#b42318",
           border:     `1px solid ${status.type === "success" ? "#c3e6cb" : "#fecdd3"}`,
         }}>
@@ -52,7 +52,7 @@ export default function ForgotPassword({ switchToLogin }) {
       {status?.type !== "success" && (
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div>
-            <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", color: "var(--text-primary)", fontSize: "13px" }}>
+            <label style={{ display: "block", marginBottom: "6px", fontWeight: "600", color: "#4a382d", fontSize: "13px" }}>
               Email Address
             </label>
             <input
@@ -61,7 +61,7 @@ export default function ForgotPassword({ switchToLogin }) {
               onChange={e => setEmail(e.target.value)}
               required
               autoComplete="email"
-              style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid #dcc8b7", fontSize: "15px", boxSizing: "border-box", color: "var(--text-primary)" }}
+              style={{ width: "100%", padding: "12px 14px", borderRadius: "12px", border: "1px solid #dcc8b7", fontSize: "15px", boxSizing: "border-box", color: "#2f241d" }}
             />
           </div>
           <button
