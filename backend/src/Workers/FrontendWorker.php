@@ -2,6 +2,7 @@
 
 namespace App\Workers;
 
+use App\Infrastructure\Messaging\MessageBus;
 use App\Infrastructure\Messaging\RabbitMqClient;
 use App\Security\AccessPolicy;
 use App\Security\Encryption;
@@ -10,86 +11,99 @@ use App\Security\SessionToken;
 use App\Services\Mailer;
 
 // FrontendWorker is the frontend-facing backend worker.
-// It consumes request.* queues, validates request data, performs security preparation, and forwards work to bridge.* queues.
+// It consumes request.* queues, checks access (AccessPolicy), validates input, encrypts personal
+// data, and forwards work to the bridge.* queues. Each request runs in a forked child process so a
+// slow request never blocks the consumer loop.
 final class FrontendWorker
 {
-    // Encryption service is used for password hashing and personal data encryption/decryption.
     private Encryption $enc;
+    private LoginThrottle $throttle;
 
-    // The RabbitMqClient is injected so this worker can consume frontend requests and publish backend messages.
-    public function __construct(private RabbitMqClient $mq)
-    {
-        $this->enc = new Encryption();
+    // $forkRequests=false handles requests inline on $mq (used by the tests; pcntl is Linux-only).
+    public function __construct(
+        private MessageBus $mq,
+        private bool $forkRequests = true,
+        ?LoginThrottle $throttle = null,
+    ) {
+        $this->enc      = new Encryption();
+        $this->throttle = $throttle ?? new LoginThrottle();
     }
 
-    // Registers all frontend-facing request consumers and starts the RabbitMQ event loop.
     public function run(bool &$running = true): void
     {
         echo "[FrontendWorker] Registering consumers...\n";
-
-        // Authentication request queues handle registration, login, verification, and password flows.
-        $this->on('request.auth.register',       'handleRegister');
-        $this->on('request.auth.login',          'handleLogin');
-        $this->on('request.auth.verify',         'handleVerifyEmail');
-        $this->on('request.auth.resetPassword',  'handleResetPassword');
-        $this->on('request.auth.forgotPassword',         'handleForgotPassword');
-        $this->on('request.auth.setNewPassword',         'handleSetNewPassword');
-        $this->on('request.auth.resendVerification',     'handleResendVerification');
-        // Application feature queues handle profile, shelters, dogs, applications, adoption, content, chat, and notifications.
-        $this->on('request.profile.update',      'handleProfileUpdate');
-        $this->on('request.account.delete',      'handleAccountDelete');
-        $this->on('request.shelters.list',       'handleSheltersList');
-        $this->on('request.shelters.get',        'handleSheltersGet');
-        $this->on('request.api.key.get',         'handleApiKeyGet');
-        $this->on('request.api.key.regenerate',  'handleApiKeyRegenerate');
-        $this->on('request.api.logs',            'handleApiLogs');
-        $this->on('request.dogs.list',           'handleDogsList');
-        $this->on('request.dogs.get',            'handleDogsGet');
-        $this->on('request.api.dog.upsert',      'handleApiDogUpsert');
-        $this->on('request.application.submit',  'handleApplicationSubmit');
-        $this->on('request.application.status',  'handleApplicationStatus');
-        $this->on('request.application.list',    'handleApplicationList');
-        $this->on('request.application.approve', 'handleApplicationApprove');
-        $this->on('request.application.reject',  'handleApplicationReject');
-        $this->on('request.adoptions.list',      'handleAdoptionsList');
-        $this->on('request.adoptions.get',       'handleAdoptionsGet');
-        $this->on('request.adoptions.finalize',  'handleAdoptionsFinalize');
-        $this->on('request.quiz.questions',      'handleQuizQuestions');
-        $this->on('request.quiz.submit',         'handleQuiz');
-        $this->on('request.quiz.results',        'handleQuizResults');
-        $this->on('request.adoption.log.create', 'handleAdoptionLogCreate');
-        $this->on('request.adoption.log.list',   'handleAdoptionLogList');
-        $this->on('request.adoption.log.delete', 'handleAdoptionLogDelete');
-        $this->on('request.foster.apply',        'handleFosterApply');
-        $this->on('request.foster.list',         'handleFosterList');
-        $this->on('request.foster.cancel',       'handleFosterCancel');
-        $this->on('request.parks.list',          'handleParksList');
-        $this->on('request.resources.list',      'handleResourcesList');
-        $this->on('request.resources.get',       'handleResourcesGet');
-        $this->on('request.stories.list',        'handleStoriesList');
-        $this->on('request.stories.submit',      'handleStoriesSubmit');
-        $this->on('request.stories.approve',     'handleStoriesApprove');
-        $this->on('request.badges.list',         'handleBadgesList');
-        $this->on('request.badges.mine',         'handleBadgesMine');
-        $this->on('request.enquiry.send',        'handleEnquiry');
-        $this->on('request.chat.start',          'handleChatStart');
-        $this->on('request.chat.message',        'handleChatMessage');
-        $this->on('request.chat.history',        'handleChatHistory');
-        $this->on('request.chat.sessions',       'handleChatSessions');
-        $this->on('request.meetgreet.schedule',  'handleMeetGreetSchedule');
-        $this->on('request.meetgreet.list',      'handleMeetGreetList');
-        $this->on('request.meetgreet.cancel',    'handleMeetGreetCancel');
-        $this->on('request.notifications.list',  'handleNotificationsList');
-        $this->on('request.notifications.read',  'handleNotificationsRead');
-        $this->on('request.saved_dogs.list',     'handleSavedDogsList');
-        $this->on('request.saved_dogs.add',      'handleSavedDogsAdd');
-        $this->on('request.saved_dogs.remove',   'handleSavedDogsRemove');
-
+        $this->registerConsumers();
         echo "[FrontendWorker] All consumers registered — listening\n";
-
-        // Keeps the frontend worker alive while RabbitMQ delivers frontend request messages.
         $this->mq->wait($running);
     }
+
+    public function registerConsumers(): void
+    {
+        // Authentication
+        $this->on('request.auth.register',           'handleRegister');
+        $this->on('request.auth.login',              'handleLogin');
+        $this->on('request.auth.verify',             'handleVerifyEmail');
+        $this->on('request.auth.resetPassword',      'handleResetPassword');
+        $this->on('request.auth.forgotPassword',     'handleForgotPassword');
+        $this->on('request.auth.setNewPassword',     'handleSetNewPassword');
+        $this->on('request.auth.resendVerification', 'handleResendVerification');
+        // Account
+        $this->on('request.profile.update',          'handleProfileUpdate');
+        $this->on('request.account.delete',          'handleAccountDelete');
+        // Shelters & dogs
+        $this->on('request.shelters.list',           'handleSheltersList');
+        $this->on('request.shelters.get',            'handleSheltersGet');
+        $this->on('request.api.key.get',             'handleApiKeyGet');
+        $this->on('request.api.key.regenerate',      'handleApiKeyRegenerate');
+        $this->on('request.api.logs',                'handleApiLogs');
+        $this->on('request.dogs.list',               'handleDogsList');
+        $this->on('request.dogs.get',                'handleDogsGet');
+        $this->on('request.api.dog.upsert',          'handleApiDogUpsert');
+        // Applications & adoptions
+        $this->on('request.application.submit',      'handleApplicationSubmit');
+        $this->on('request.application.status',      'handleApplicationStatus');
+        $this->on('request.application.list',        'handleApplicationList');
+        $this->on('request.application.approve',     'handleApplicationApprove');
+        $this->on('request.application.reject',      'handleApplicationReject');
+        $this->on('request.adoptions.list',          'handleAdoptionsList');
+        $this->on('request.adoptions.get',           'handleAdoptionsGet');
+        $this->on('request.adoptions.finalize',      'handleAdoptionsFinalize');
+        // Quiz & journal
+        $this->on('request.quiz.questions',          'handleQuizQuestions');
+        $this->on('request.quiz.submit',             'handleQuiz');
+        $this->on('request.quiz.results',            'handleQuizResults');
+        $this->on('request.adoption.log.create',     'handleAdoptionLogCreate');
+        $this->on('request.adoption.log.list',       'handleAdoptionLogList');
+        $this->on('request.adoption.log.delete',     'handleAdoptionLogDelete');
+        // Fostering, parks, content
+        $this->on('request.foster.apply',            'handleFosterApply');
+        $this->on('request.foster.list',             'handleFosterList');
+        $this->on('request.foster.cancel',           'handleFosterCancel');
+        $this->on('request.parks.list',              'handleParksList');
+        $this->on('request.resources.list',          'handleResourcesList');
+        $this->on('request.resources.get',           'handleResourcesGet');
+        $this->on('request.stories.list',            'handleStoriesList');
+        $this->on('request.stories.submit',          'handleStoriesSubmit');
+        $this->on('request.stories.approve',         'handleStoriesApprove');
+        $this->on('request.badges.list',             'handleBadgesList');
+        $this->on('request.badges.mine',             'handleBadgesMine');
+        // Messaging, meet & greets, notifications, saved dogs
+        $this->on('request.enquiry.send',            'handleEnquiry');
+        $this->on('request.chat.start',              'handleChatStart');
+        $this->on('request.chat.message',            'handleChatMessage');
+        $this->on('request.chat.history',            'handleChatHistory');
+        $this->on('request.chat.sessions',           'handleChatSessions');
+        $this->on('request.meetgreet.schedule',      'handleMeetGreetSchedule');
+        $this->on('request.meetgreet.list',          'handleMeetGreetList');
+        $this->on('request.meetgreet.cancel',        'handleMeetGreetCancel');
+        $this->on('request.notifications.list',      'handleNotificationsList');
+        $this->on('request.notifications.read',      'handleNotificationsRead');
+        $this->on('request.saved_dogs.list',         'handleSavedDogsList');
+        $this->on('request.saved_dogs.add',          'handleSavedDogsAdd');
+        $this->on('request.saved_dogs.remove',       'handleSavedDogsRemove');
+    }
+
+    // ── Plumbing ────────────────────────────────────────────────────────────
 
     // Registers a consumer whose messages pass through AccessPolicy before reaching the handler.
     // Unauthenticated or unauthorized requests are answered here and never reach the bridge layer.
@@ -111,35 +125,14 @@ final class FrontendWorker
         });
     }
 
-    // Creates a fresh RabbitMQ connection for child processes and tries all configured broker hosts.
-    private function newMq(): RabbitMqClient
-    {
-        $hosts = array_filter([
-            $_ENV['RABBITMQ_HOST']  ?? null,
-            $_ENV['RABBITMQ_HOST2'] ?? null,
-            $_ENV['RABBITMQ_HOST3'] ?? null,
-        ]);
-        $lastErr = null;
-        foreach ($hosts as $host) {
-            try {
-                return new RabbitMqClient(
-                    $host,
-                    (int)$_ENV['RABBITMQ_PORT'],
-                    $_ENV['RABBITMQ_USER'],
-                    $_ENV['RABBITMQ_PASS'],
-                    false
-                );
-            } catch (\Throwable $e) {
-                $lastErr = $e;
-            }
-        }
-        throw $lastErr;
-    }
-
-    // Forks each request into a child process so long-running work does not block the main consumer loop.
+    // Runs $fn in a forked child with its own broker connection, then acks the message.
     private function fork(callable $fn, $msg): void
     {
-        echo "[FrontendWorker][FORK] Attempting fork...\n";
+        if (!$this->forkRequests) {
+            $fn($this->mq);
+            $msg->ack();
+            return;
+        }
         $pid = pcntl_fork();
         if ($pid === -1) {
             echo "[FrontendWorker][ERROR] Fork failed\n";
@@ -147,973 +140,700 @@ final class FrontendWorker
             return;
         }
         if ($pid === 0) {
-            echo "[FrontendWorker][FORK] Child process started (PID: " . getmypid() . ")\n";
-            // Child processes must not share the parent RabbitMQ socket.
+            // Child processes must not share the parent's RabbitMQ socket.
             $this->mq->afterFork();
             try {
-                echo "[FrontendWorker][FORK] Child connecting to RabbitMQ...\n";
                 $mq = $this->newMq();
-                echo "[FrontendWorker][FORK] Child connected — executing handler\n";
                 $fn($mq);
                 $mq->close();
-                echo "[FrontendWorker][FORK] Child done\n";
             } catch (\Throwable $e) {
                 echo "[FrontendWorker][ERROR] Child exception: " . $e->getMessage() . "\n";
-                echo "[FrontendWorker][ERROR] " . $e->getTraceAsString() . "\n";
             }
             exit(0);
         }
-        echo "[FrontendWorker][FORK] Parent acking message, child PID: {$pid}\n";
         $msg->ack();
         pcntl_waitpid(-1, $status, WNOHANG);
     }
 
-    // Extracts the reply_to queue from the incoming RabbitMQ message.
+    // Creates a fresh RabbitMQ connection for a child process, trying each configured broker host.
+    private function newMq(): MessageBus
+    {
+        $hosts = array_filter([$_ENV['RABBITMQ_HOST'] ?? null, $_ENV['RABBITMQ_HOST2'] ?? null, $_ENV['RABBITMQ_HOST3'] ?? null]);
+        $lastErr = new \RuntimeException('No RABBITMQ_HOST configured');
+        foreach ($hosts as $host) {
+            try {
+                return new RabbitMqClient($host, (int)$_ENV['RABBITMQ_PORT'], $_ENV['RABBITMQ_USER'], $_ENV['RABBITMQ_PASS'], false);
+            } catch (\Throwable $e) {
+                $lastErr = $e;
+            }
+        }
+        throw $lastErr;
+    }
+
     private function replyTo($msg): string
     {
         $props = $msg->get_properties();
-        if (isset($props['reply_to']) && $props['reply_to'] !== '') {
-            return (string)$props['reply_to'];
-        }
-        return '';
+        return isset($props['reply_to']) && $props['reply_to'] !== '' ? (string)$props['reply_to'] : '';
     }
 
-    // Sends a response to the reply_to queue when present, otherwise uses a fallback response queue.
-    private function respond(RabbitMqClient $mq, string $fallbackQueue, string $replyTo, array $payload, ?string $corrId): void
+    // Publishes to the request's reply-to queue, or to $fallbackQueue when there is none.
+    private function respond(MessageBus $mq, string $fallbackQueue, string $replyTo, array $payload, ?string $corrId): void
     {
-        $queue = $fallbackQueue;
-        if ($replyTo !== '') {
-            $queue = str_starts_with($replyTo, '/queue/')
-                ? substr($replyTo, strlen('/queue/'))
-                : $replyTo;
-        }
+        $queue = $replyTo === '' ? $fallbackQueue
+            : (str_starts_with($replyTo, '/queue/') ? substr($replyTo, strlen('/queue/')) : $replyTo);
         $mq->publish($queue, $payload, $corrId);
     }
 
-    // Handler methods below receive frontend requests, validate inputs, call bridge queues, and send responses back.
-    public function handleAccountDelete(array $data, $msg, ?string $corrId): void
+    // Handles a request in a child process. $work(MessageBus $mq, callable $after) returns the
+    // response payload; tasks passed to $after (emails, notifications) run once the response is sent,
+    // so a slow mail server never delays the browser. A null result or an exception is answered
+    // with ['success' => false, 'error' => $error].
+    private function handle($msg, ?string $corrId, string $responseQueue, string $error, callable $work): void
     {
         $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleAccountDelete: user_id=" . ($data['user_id'] ?? 'none') . "\n";
+        $this->fork(function (MessageBus $mq) use ($work, $responseQueue, $replyTo, $corrId, $error) {
+            $afterResponse = [];
+            $after = function (callable $task) use (&$afterResponse) { $afterResponse[] = $task; };
             try {
-                if (empty($data['user_id'])) {
-                    $this->respond($mq, 'response.account.delete', $replyTo, ['success' => false, 'error' => 'user_id is required'], $corrId);
-                    return;
-                }
-                $result = $mq->publishAndWait('bridge.account.delete', ['user_id' => $data['user_id']], $corrId);
-                $this->respond($mq, 'response.account.delete', $replyTo, $result ?? ['success' => false, 'error' => 'Could not delete account'], $corrId);
+                $result = $work($mq, $after);
             } catch (\Throwable $e) {
-                echo "[FrontendWorker][ERROR] handleAccountDelete: {$e->getMessage()}\n";
-                $this->respond($mq, 'response.account.delete', $replyTo, ['success' => false, 'error' => 'Could not delete account'], $corrId);
+                echo "[FrontendWorker][ERROR] {$responseQueue}: {$e->getMessage()}\n";
+                $result = null;
+            }
+            $this->respond($mq, $responseQueue, $replyTo, $result ?? self::fail($error), $corrId);
+            foreach ($afterResponse as $task) {
+                try {
+                    $task();
+                } catch (\Throwable $e) {
+                    echo "[FrontendWorker][ERROR] {$responseQueue} follow-up: {$e->getMessage()}\n";
+                }
             }
         }, $msg);
     }
 
-    // Handles registration by validating input, hashing the password, encrypting personal fields, and requesting account creation.
+    // The common case: forward $payload to $bridgeQueue and send back whatever it returns.
+    private function relay($msg, ?string $corrId, string $bridgeQueue, array $payload, string $responseQueue, string $error): void
+    {
+        $this->handle($msg, $corrId, $responseQueue, $error,
+            fn (MessageBus $mq) => $mq->publishAndWait($bridgeQueue, $payload, (string)$corrId));
+    }
+
+    // Answers immediately without contacting the bridge (input validation failures).
+    private function reject($msg, ?string $corrId, string $responseQueue, string $error): void
+    {
+        $this->handle($msg, $corrId, $responseQueue, $error, fn () => self::fail($error));
+    }
+
+    private static function fail(string $error): array
+    {
+        return ['success' => false, 'error' => $error];
+    }
+
+    // ── Authentication ──────────────────────────────────────────────────────
+
+    // Validates input, hashes the password, encrypts personal fields and creates the account.
     public function handleRegister(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleRegister: " . ($data['email'] ?? 'no email') . "\n";
-            try {
-                // Email and password are required before the registration request can continue.
-                if (empty($data['email']) || empty($data['password'])) {
-                    $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'email and password are required'], $corrId);
-                    return;
-                }
-                // Email format is validated before forwarding to the bridge layer.
-                if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
-                    $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'Please enter a valid email address'], $corrId);
-                    return;
-                }
-                $firstName = $data['firstName'] ?? $data['first_name'] ?? '';
-                $lastName  = $data['lastName']  ?? $data['last_name']  ?? '';
-                // Sensitive data is transformed before being sent to the bridge layer.
-                $result = $mq->publishAndWait('bridge.auth.register', [
-                    'email'         => $data['email'],
-                    'password_hash' => $this->enc->hashPassword($data['password']),
-                    'first_name'    => $this->encryptIfPresent($firstName),
-                    'last_name'     => $this->encryptIfPresent($lastName),
-                    'phone'         => $this->encryptIfPresent($data['phone']    ?? ''),
-                    'address'       => $this->encryptIfPresent($data['address']  ?? ''),
-                    'role'          => 'adopter',
-                    'id_one_b64'    => $data['id_one_b64']  ?? null,
-                    'id_one_name'   => $data['id_one_name'] ?? null,
-                    'id_two_b64'    => $data['id_two_b64']  ?? null,
-                    'id_two_name'   => $data['id_two_name'] ?? null,
-                ], $corrId);
-                if (!$result || empty($result['success'])) {
-                    $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'Registration failed'], $corrId);
-                    return;
-                }
-                $this->respond($mq, 'response.auth.register', $replyTo, [
-                    'success'    => true,
-                    'user_id'    => $result['user_id'] ?? null,
-                    'email'      => $data['email'],
-                    'first_name' => $firstName,
-                    'last_name'  => $lastName,
-                    'role'       => 'adopter',
-                ], $corrId);
-                $token  = $result['verification_token'] ?? null;
-                $appUrl = $this->appUrl();
-                if ($token) {
-                    Mailer::verifyEmail($data['email'], $firstName, "{$appUrl}/verify-email?token={$token}");
-                }
-            } catch (\Throwable $e) {
-                echo "[FrontendWorker][ERROR] handleRegister: {$e->getMessage()}\n";
-                $this->respond($mq, 'response.auth.register', $replyTo, ['success' => false, 'error' => 'Registration failed'], $corrId);
+        $this->handle($msg, $corrId, 'response.auth.register', 'Registration failed', function (MessageBus $mq, callable $after) use ($data, $corrId) {
+            if (empty($data['email']) || empty($data['password'])) return self::fail('email and password are required');
+            if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) return self::fail('Please enter a valid email address');
+            if (strlen((string)$data['password']) < 8) return self::fail('Password must be at least 8 characters');
+
+            $firstName = (string)($data['firstName'] ?? $data['first_name'] ?? '');
+            $lastName  = (string)($data['lastName']  ?? $data['last_name']  ?? '');
+            $result = $mq->publishAndWait('bridge.auth.register', [
+                'email'         => $data['email'],
+                'password_hash' => $this->enc->hashPassword((string)$data['password']),
+                'first_name'    => $this->enc($firstName),
+                'last_name'     => $this->enc($lastName),
+                'phone'         => $this->enc((string)($data['phone'] ?? '')),
+                'address'       => $this->enc((string)($data['address'] ?? '')),
+                'id_one_b64'    => $data['id_one_b64']  ?? null,
+                'id_one_name'   => $data['id_one_name'] ?? null,
+                'id_two_b64'    => $data['id_two_b64']  ?? null,
+                'id_two_name'   => $data['id_two_name'] ?? null,
+            ], (string)$corrId);
+            if (!$result || empty($result['success'])) return self::fail($result['error'] ?? 'Registration failed');
+
+            if (!empty($result['verification_token'])) {
+                $link = $this->appUrl() . '/verify-email?token=' . $result['verification_token'];
+                $after(fn () => Mailer::verifyEmail((string)$data['email'], $firstName, $link));
             }
-        }, $msg);
+            return [
+                'success' => true, 'user_id' => $result['user_id'] ?? null, 'email' => $data['email'],
+                'first_name' => $firstName, 'last_name' => $lastName, 'role' => 'adopter',
+            ];
+        });
     }
 
-    // Handles login by validating input, loading the user through the bridge layer, and verifying the password hash.
+    // Checks lockouts, verifies the password, and issues a session token.
     public function handleLogin(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleLogin: " . ($data['email'] ?? 'no email') . "\n";
-            try {
-                if (empty($data['email']) || empty($data['password'])) {
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'email and password are required'], $corrId);
-                    return;
-                }
-                $srcIp = (string)($data['clientIp'] ?? 'unknown');
-                if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
-                $srcIp = preg_replace('/[^a-zA-Z0-9._:-]/', '', $srcIp);
+        $this->handle($msg, $corrId, 'response.auth.login', 'Login failed', function (MessageBus $mq, callable $after) use ($data, $corrId) {
+            if (empty($data['email']) || empty($data['password'])) return self::fail('email and password are required');
 
-                // Lockouts are enforced before the password is checked, per IP and per account.
-                $throttle = new LoginThrottle();
-                $keys     = ['ip:' . $srcIp, 'acct:' . strtolower(trim((string)$data['email']))];
-                $locked   = max(array_map(fn ($k) => $throttle->lockedUntil($k) ?? 0, $keys));
-                if ($locked > 0) {
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Too many failed attempts. Try again later.', 'locked_until' => $locked], $corrId);
-                    return;
-                }
+            $srcIp = (string)($data['clientIp'] ?? 'unknown');
+            if (str_starts_with($srcIp, '::ffff:')) $srcIp = substr($srcIp, 7);
+            $srcIp = preg_replace('/[^a-zA-Z0-9._:-]/', '', $srcIp);
 
-                // Retrieves the user record through the bridge layer before local password verification.
-                $result = $mq->publishAndWait('bridge.auth.login', ['email' => $data['email']], $corrId);
-                if (!$result) {
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Service temporarily unavailable. Please try again in a moment.'], $corrId);
-                    return;
-                }
-                $user = ($result['success'] ?? false) === true ? ($result['user'] ?? null) : null;
-
-                // Unknown emails and wrong passwords get the same answer so accounts cannot be enumerated.
-                if (!$user || !password_verify((string)$data['password'], (string)$user['password_hash'])) {
-                    // The src_ip field is what Fail2Ban matches on (infra/fail2ban).
-                    echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . " src_ip=" . $srcIp . "\n";
-                    $attempts  = max(array_map(fn ($k) => $throttle->fail($k), $keys));
-                    $remaining = max(0, LoginThrottle::MAX_ATTEMPTS - $attempts);
-                    if ($remaining === 0) {
-                        $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Locked out for 1 hour.', 'locked_until' => time() + LoginThrottle::WINDOW], $corrId);
-                        return;
-                    }
-                    $errMsg = "Invalid email or password. {$remaining} attempt" . ($remaining === 1 ? '' : 's') . " remaining.";
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => $errMsg], $corrId);
-                    return;
-                }
-                if (isset($user['email_verified']) && (int)$user['email_verified'] === 0) {
-                    $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Please verify your email before logging in. Check your inbox for the verification link.'], $corrId);
-                    return;
-                }
-                foreach ($keys as $k) $throttle->clear($k);
-                unset($user['password_hash']);
-                $user['first_name'] = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : '';
-                $user['last_name']  = isset($user['last_name'])  && $user['last_name']  !== '' ? $this->dec($user['last_name'])  : '';
-                $user['phone']      = isset($user['phone'])      && $user['phone']      !== '' ? $this->dec($user['phone'])      : '';
-                $user['address']    = isset($user['address'])    && $user['address']    !== '' ? $this->dec($user['address'])    : '';
-                $token = SessionToken::issue(SessionToken::TYPE_SESSION, [
-                    'uid'   => (int)$user['user_id'],
-                    'role'  => (string)($user['role'] ?? 'adopter'),
-                    'email' => (string)$user['email'],
-                ], SessionToken::SESSION_TTL);
-                $this->respond($mq, 'response.auth.login', $replyTo, ['success' => true, 'user' => $user, 'token' => $token], $corrId);
-                if (!empty($user['login_notifications'])) {
-                    Mailer::loginAlert($user['email'] ?? $data['email'], $user['first_name']);
-                }
-            } catch (\Throwable $e) {
-                echo "[FrontendWorker][ERROR] handleLogin: {$e->getMessage()}\n";
-                $this->respond($mq, 'response.auth.login', $replyTo, ['success' => false, 'error' => 'Login failed'], $corrId);
+            // Lockouts are enforced before the password is checked, per IP and per account.
+            $keys   = ['ip:' . $srcIp, 'acct:' . strtolower(trim((string)$data['email']))];
+            $locked = max(array_map(fn ($k) => $this->throttle->lockedUntil($k) ?? 0, $keys));
+            if ($locked > 0) {
+                return ['success' => false, 'error' => 'Too many failed attempts. Try again later.', 'locked_until' => $locked];
             }
-        }, $msg);
+
+            $result = $mq->publishAndWait('bridge.auth.login', ['email' => $data['email']], (string)$corrId);
+            if (!$result) return self::fail('Service temporarily unavailable. Please try again in a moment.');
+            $user = ($result['success'] ?? false) === true ? ($result['user'] ?? null) : null;
+
+            // Unknown emails and wrong passwords get the same answer so accounts cannot be enumerated.
+            if (!$user || !password_verify((string)$data['password'], (string)$user['password_hash'])) {
+                // The src_ip field is what Fail2Ban matches on (infra/fail2ban).
+                echo "[SECURITY_ALERT] Auth failure for: " . $data['email'] . " src_ip=" . $srcIp . "\n";
+                $attempts  = max(array_map(fn ($k) => $this->throttle->fail($k), $keys));
+                $remaining = max(0, LoginThrottle::MAX_ATTEMPTS - $attempts);
+                if ($remaining === 0) {
+                    return ['success' => false, 'error' => 'Locked out for 1 hour.', 'locked_until' => time() + LoginThrottle::WINDOW];
+                }
+                return self::fail("Invalid email or password. {$remaining} attempt" . ($remaining === 1 ? '' : 's') . ' remaining.');
+            }
+            if (isset($user['email_verified']) && (int)$user['email_verified'] === 0) {
+                return self::fail('Please verify your email before logging in. Check your inbox for the verification link.');
+            }
+            foreach ($keys as $k) $this->throttle->clear($k);
+
+            unset($user['password_hash']);
+            foreach (['first_name', 'last_name', 'phone', 'address'] as $field) {
+                $user[$field] = $this->dec((string)($user[$field] ?? ''));
+            }
+            $token = SessionToken::issue(SessionToken::TYPE_SESSION, [
+                'uid'   => (int)$user['user_id'],
+                'role'  => (string)($user['role'] ?? 'adopter'),
+                'email' => (string)$user['email'],
+            ], SessionToken::SESSION_TTL);
+
+            if (!empty($user['login_notifications'])) {
+                $after(fn () => Mailer::loginAlert((string)$user['email'], $user['first_name']));
+            }
+            return ['success' => true, 'user' => $user, 'token' => $token];
+        });
     }
 
     public function handleVerifyEmail(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                if (empty($data['token'])) {
-                    $this->respond($mq, 'response.auth.verify', $replyTo, ['success' => false, 'error' => 'Verification token is required'], $corrId);
-                    return;
-                }
-                $result = $mq->publishAndWait('bridge.auth.verify', ['token' => $data['token']], $corrId);
-                $this->respond($mq, 'response.auth.verify', $replyTo, $result ?? ['success' => false, 'error' => 'Verification failed'], $corrId);
-            } catch (\Throwable $e) {
-                echo "[FrontendWorker][ERROR] handleVerifyEmail: {$e->getMessage()}\n";
-                $this->respond($mq, 'response.auth.verify', $replyTo, ['success' => false, 'error' => 'Verification failed'], $corrId);
-            }
-        }, $msg);
+        if (empty($data['token'])) {
+            $this->reject($msg, $corrId, 'response.auth.verify', 'Verification token is required');
+            return;
+        }
+        $this->relay($msg, $corrId, 'bridge.auth.verify', ['token' => $data['token']], 'response.auth.verify', 'Verification failed');
     }
 
+    // Changes the password of the logged-in user (email comes from the session).
     public function handleResetPassword(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleResetPassword: " . ($data['email'] ?? 'no email') . "\n";
-            try {
-                if (empty($data['email']) || empty($data['oldPassword']) || empty($data['newPassword'])) {
-                    $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'All fields are required'], $corrId);
-                    return;
-                }
-                $result = $mq->publishAndWait('bridge.auth.login', ['email' => $data['email']], $corrId);
-                if (!$result || empty($result['user'])) {
-                    $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'User not found'], $corrId);
-                    return;
-                }
-                $user = $result['user'];
-                if (!password_verify($data['oldPassword'], $user['password_hash'])) {
-                    $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'Old password is incorrect'], $corrId);
-                    return;
-                }
-                $result2 = $mq->publishAndWait('bridge.auth.resetPassword', [
-                    'email'         => $data['email'],
-                    'password_hash' => $this->enc->hashPassword($data['newPassword']),
-                ], $corrId . '_reset');
-                if (!$result2 || empty($result2['success'])) {
-                    $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => $result2['error'] ?? 'Reset failed'], $corrId);
-                    return;
-                }
-                $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => true, 'message' => 'Password updated successfully'], $corrId);
-                $fn = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : 'there';
-                Mailer::passwordReset($data['email'], $fn);
-            } catch (\Throwable $e) {
-                echo "[FrontendWorker][ERROR] handleResetPassword: {$e->getMessage()}\n";
-                $this->respond($mq, 'response.auth.resetPassword', $replyTo, ['success' => false, 'error' => 'Reset failed'], $corrId);
-            }
-        }, $msg);
+        $this->handle($msg, $corrId, 'response.auth.resetPassword', 'Reset failed', function (MessageBus $mq, callable $after) use ($data, $corrId) {
+            if (empty($data['email']) || empty($data['oldPassword']) || empty($data['newPassword'])) return self::fail('All fields are required');
+            if (strlen((string)$data['newPassword']) < 8) return self::fail('Password must be at least 8 characters');
+
+            $result = $mq->publishAndWait('bridge.auth.login', ['email' => $data['email']], (string)$corrId);
+            $user = $result['user'] ?? null;
+            if (!$user) return self::fail('User not found');
+            if (!password_verify((string)$data['oldPassword'], (string)$user['password_hash'])) return self::fail('Old password is incorrect');
+
+            $reset = $mq->publishAndWait('bridge.auth.resetPassword', [
+                'email'         => $data['email'],
+                'password_hash' => $this->enc->hashPassword((string)$data['newPassword']),
+            ], $corrId . '_reset');
+            if (!$reset || empty($reset['success'])) return self::fail($reset['error'] ?? 'Reset failed');
+
+            $firstName = $this->dec((string)($user['first_name'] ?? '')) ?: 'there';
+            $after(fn () => Mailer::passwordReset((string)$data['email'], $firstName));
+            return ['success' => true, 'message' => 'Password updated successfully'];
+        });
     }
 
+    // Emails a single-use reset link. Answers success before looking the account up, so neither
+    // the reply nor its timing reveals whether an account exists.
     public function handleForgotPassword(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleForgotPassword: " . ($data['email'] ?? 'no email') . "\n";
-            try {
-                $email  = $data['email']   ?? '';
-                $appUrl = $this->appUrl();
-                if (empty($email)) {
-                    $this->respond($mq, 'response.auth.forgotPassword', $replyTo, ['success' => false, 'error' => 'Email is required'], $corrId);
-                    return;
-                }
-                // Always respond success to prevent email enumeration
-                $this->respond($mq, 'response.auth.forgotPassword', $replyTo, ['success' => true], $corrId);
-
-                $result = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId);
-                if (!$result || empty($result['user'])) return;
-
-                $user      = $result['user'];
-                $firstName = isset($user['first_name']) && $user['first_name'] !== '' ? $this->dec($user['first_name']) : 'there';
+        $email = (string)($data['email'] ?? '');
+        if ($email === '') {
+            $this->reject($msg, $corrId, 'response.auth.forgotPassword', 'Email is required');
+            return;
+        }
+        $this->handle($msg, $corrId, 'response.auth.forgotPassword', '', function (MessageBus $mq, callable $after) use ($email, $corrId) {
+            $after(function () use ($mq, $email, $corrId) {
+                $user = $mq->publishAndWait('bridge.auth.login', ['email' => $email], (string)$corrId)['user'] ?? null;
+                if (!$user) return;
                 $token = SessionToken::issue(SessionToken::TYPE_RESET, [
                     'email' => $email,
                     'pv'    => $this->passwordVersion((string)$user['password_hash']),
                 ], SessionToken::RESET_TTL);
-                $resetUrl = "{$appUrl}/reset-password?token=" . rawurlencode($token);
-
-                Mailer::send(
-                    $email,
-                    'Reset Your Password - Canine Connections',
-                    "<div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
-                        <h1 style='color:#b45309'>Reset Your Password</h1>
-                        <p>Hi {$firstName},</p>
-                        <p>We received a request to reset your password. Click the button below to choose a new one.</p>
-                        <p style='color:#999;font-size:13px'>This link expires in 1 hour.</p>
-                        <div style='text-align:center;margin:32px 0'>
-                            <a href='{$resetUrl}' style='background:#d97706;color:white;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block'>Reset Password</a>
-                        </div>
-                        <p style='color:#999;font-size:13px'>If the button doesn't work, paste this into your browser:<br>{$resetUrl}</p>
-                        <p style='color:#999;font-size:13px'>If you didn't request a reset, you can safely ignore this email.</p>
-                        <br><p style='color:#666'>The Canine Connections Team</p>
-                    </div>"
-                );
-            } catch (\Throwable $e) {
-                echo "[FrontendWorker][ERROR] handleForgotPassword: {$e->getMessage()}\n";
-            }
-        }, $msg);
+                $firstName = $this->dec((string)($user['first_name'] ?? '')) ?: 'there';
+                Mailer::resetPasswordLink($email, $firstName, $this->appUrl() . '/reset-password?token=' . rawurlencode($token));
+            });
+            return ['success' => true];
+        });
     }
 
+    // Sets a new password from a reset link. Links are single-use: they carry a fingerprint of the
+    // password they were issued against and stop working once it changes.
     public function handleSetNewPassword(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleSetNewPassword\n";
-            try {
-                $token       = $data['token']       ?? '';
-                $newPassword = $data['newPassword'] ?? '';
-                if (empty($token) || empty($newPassword)) {
-                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Token and password are required'], $corrId);
-                    return;
-                }
-                $claims = SessionToken::verify($token, SessionToken::TYPE_RESET);
-                if ($claims === null) {
-                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Invalid or expired link. Please request a new one.'], $corrId);
-                    return;
-                }
-                $email = (string)$claims['email'];
-                // The link is only valid while the password it was issued against is unchanged,
-                // so each link works once.
-                $current = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId . '_check');
-                $currentHash = (string)($current['user']['password_hash'] ?? '');
-                if ($currentHash === '' || !hash_equals($this->passwordVersion($currentHash), (string)($claims['pv'] ?? ''))) {
-                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'This reset link has already been used. Please request a new one.'], $corrId);
-                    return;
-                }
-                $result = $mq->publishAndWait('bridge.auth.resetPassword', [
-                    'email'              => $email,
-                    'password_hash'      => $this->enc->hashPassword($newPassword),
-                    'new_password_plain' => $newPassword,
-                ], $corrId . '_reset');
-                if (!$result || empty($result['success'])) {
-                    $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => $result['error'] ?? 'Could not update password'], $corrId);
-                    return;
-                }
-                $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => true], $corrId);
-                $userResult = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId . '_lookup');
-                if ($userResult && !empty($userResult['user'])) {
-                    $fn = isset($userResult['user']['first_name']) && $userResult['user']['first_name'] !== '' ? $this->dec($userResult['user']['first_name']) : 'there';
-                    Mailer::passwordReset($email, $fn);
-                }
-            } catch (\Throwable $e) {
-                echo "[FrontendWorker][ERROR] handleSetNewPassword: {$e->getMessage()}\n";
-                $this->respond($mq, 'response.auth.setNewPassword', $replyTo, ['success' => false, 'error' => 'Reset failed'], $corrId);
+        $this->handle($msg, $corrId, 'response.auth.setNewPassword', 'Reset failed', function (MessageBus $mq, callable $after) use ($data, $corrId) {
+            $newPassword = (string)($data['newPassword'] ?? '');
+            if (empty($data['token']) || $newPassword === '') return self::fail('Token and password are required');
+            if (strlen($newPassword) < 8) return self::fail('Password must be at least 8 characters');
+
+            $claims = SessionToken::verify((string)$data['token'], SessionToken::TYPE_RESET);
+            if ($claims === null) return self::fail('Invalid or expired link. Please request a new one.');
+            $email = (string)$claims['email'];
+
+            $current = $mq->publishAndWait('bridge.auth.login', ['email' => $email], $corrId . '_check');
+            $currentHash = (string)($current['user']['password_hash'] ?? '');
+            if ($currentHash === '' || !hash_equals($this->passwordVersion($currentHash), (string)($claims['pv'] ?? ''))) {
+                return self::fail('This reset link has already been used. Please request a new one.');
             }
-        }, $msg);
+
+            $result = $mq->publishAndWait('bridge.auth.resetPassword', [
+                'email'              => $email,
+                'password_hash'      => $this->enc->hashPassword($newPassword),
+                'new_password_plain' => $newPassword,
+            ], $corrId . '_reset');
+            if (!$result || empty($result['success'])) return self::fail($result['error'] ?? 'Could not update password');
+
+            $firstName = $this->dec((string)($current['user']['first_name'] ?? '')) ?: 'there';
+            $after(fn () => Mailer::passwordReset($email, $firstName));
+            return ['success' => true];
+        });
     }
 
+    // Answers success before doing anything, so accounts cannot be enumerated.
     public function handleResendVerification(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleResendVerification: " . ($data['email'] ?? 'no email') . "\n";
-            $email  = $data['email']   ?? '';
-            $appUrl = $this->appUrl();
-            // Always respond success to prevent email enumeration
-            $this->respond($mq, 'response.auth.resendVerification', $replyTo, ['success' => true], $corrId);
-            if (empty($email)) return;
-            $result = $mq->publishAndWait('bridge.auth.refreshVerification', ['email' => $email], $corrId);
-            if (!$result || empty($result['success'])) return;
-            $token     = $result['verification_token'];
-            $firstName = $result['first_name'] ?? '';
-            if ($firstName) $firstName = $this->dec($firstName);
-            Mailer::verifyEmail($email, $firstName, "{$appUrl}/verify-email?token={$token}");
-        }, $msg);
+        $email = (string)($data['email'] ?? '');
+        $this->handle($msg, $corrId, 'response.auth.resendVerification', '', function (MessageBus $mq, callable $after) use ($email, $corrId) {
+            if ($email !== '') {
+                $after(function () use ($mq, $email, $corrId) {
+                    $result = $mq->publishAndWait('bridge.auth.refreshVerification', ['email' => $email], (string)$corrId);
+                    if (empty($result['success'])) return;
+                    Mailer::verifyEmail($email, $this->dec((string)($result['first_name'] ?? '')),
+                        $this->appUrl() . '/verify-email?token=' . $result['verification_token']);
+                });
+            }
+            return ['success' => true];
+        });
     }
+
+    // ── Account ─────────────────────────────────────────────────────────────
 
     public function handleProfileUpdate(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            $userId = $data['user_id'] ?? null;
-            echo "[FrontendWorker] handleProfileUpdate: user_id={$userId}\n";
-            try {
-                if (empty($userId)) {
-                    $this->respond($mq, 'response.profile.update', $replyTo, ['success' => false, 'error' => 'user_id is required'], $corrId);
-                    return;
-                }
-                $payload = [
-                    'user_id'    => $userId,
-                    'first_name' => $this->encryptIfPresent($data['first_name'] ?? ''),
-                    'last_name'  => $this->encryptIfPresent($data['last_name']  ?? ''),
-                    'phone'      => $this->encryptIfPresent($data['phone']      ?? ''),
-                    'address'    => $this->encryptIfPresent($data['address']    ?? ''),
-                ];
-                if (array_key_exists('login_notifications', $data)) {
-                    $payload['login_notifications'] = $data['login_notifications'] ? 1 : 0;
-                }
-                $result = $mq->publishAndWait('bridge.profile.update', $payload, $corrId);
-                $this->respond($mq, 'response.profile.update', $replyTo, $result ?? ['success' => false, 'error' => 'Could not update profile'], $corrId);
-            } catch (\Throwable $e) {
-                echo "[FrontendWorker][ERROR] handleProfileUpdate: {$e->getMessage()}\n";
-                $this->respond($mq, 'response.profile.update', $replyTo, ['success' => false, 'error' => 'Could not update profile'], $corrId);
-            }
-        }, $msg);
+        $payload = [
+            'user_id'    => $data['user_id'],
+            'first_name' => $this->enc((string)($data['first_name'] ?? '')),
+            'last_name'  => $this->enc((string)($data['last_name']  ?? '')),
+            'phone'      => $this->enc((string)($data['phone']      ?? '')),
+            'address'    => $this->enc((string)($data['address']    ?? '')),
+        ];
+        if (array_key_exists('login_notifications', $data)) {
+            $payload['login_notifications'] = $data['login_notifications'] ? 1 : 0;
+        }
+        $this->relay($msg, $corrId, 'bridge.profile.update', $payload, 'response.profile.update', 'Could not update profile');
     }
+
+    public function handleAccountDelete(array $data, $msg, ?string $corrId): void
+    {
+        $this->relay($msg, $corrId, 'bridge.account.delete', ['user_id' => $data['user_id']], 'response.account.delete', 'Could not delete account');
+    }
+
+    // ── Shelters & dogs ─────────────────────────────────────────────────────
 
     public function handleSheltersList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.shelters.list', ['search' => $data['search'] ?? null, 'limit' => $data['limit'] ?? 50, 'offset' => $data['offset'] ?? 0], $corrId);
-                $this->respond($mq, 'response.shelters.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load shelters'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.shelters.list', $replyTo, ['success' => false, 'error' => 'Could not load shelters'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.shelters.list',
+            ['search' => $data['search'] ?? null, 'limit' => $data['limit'] ?? 50, 'offset' => $data['offset'] ?? 0],
+            'response.shelters.list', 'Could not load shelters');
     }
 
     public function handleSheltersGet(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                if (empty($data['shelter_id'])) { $this->respond($mq, 'response.shelters.get', $replyTo, ['success' => false, 'error' => 'shelter_id is required'], $corrId); return; }
-                $result = $mq->publishAndWait('bridge.shelters.get', ['shelter_id' => $data['shelter_id']], $corrId);
-                $this->respond($mq, 'response.shelters.get', $replyTo, $result ?? ['success' => false, 'error' => 'Shelter not found'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.shelters.get', $replyTo, ['success' => false, 'error' => 'Could not load shelter'], $corrId); }
-        }, $msg);
+        if (empty($data['shelter_id'])) {
+            $this->reject($msg, $corrId, 'response.shelters.get', 'shelter_id is required');
+            return;
+        }
+        $this->relay($msg, $corrId, 'bridge.shelters.get', ['shelter_id' => $data['shelter_id']], 'response.shelters.get', 'Could not load shelter');
     }
 
     public function handleApiKeyGet(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.api.key.get', ['shelter_id' => $data['shelter_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.api.key.get', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load API key'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.api.key.get', $replyTo, ['success' => false, 'error' => 'Could not load API key'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.api.key.get', ['shelter_id' => $data['shelter_id'] ?? null], 'response.api.key.get', 'Could not load API key');
     }
 
     public function handleApiKeyRegenerate(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $newKey = bin2hex(random_bytes(32));
-                $result = $mq->publishAndWait('bridge.api.key.regenerate', ['shelter_id' => $data['shelter_id'] ?? null, 'new_key' => $newKey], $corrId);
-                if (isset($result['success']) && $result['success']) $result['api_key'] = $newKey;
-                $this->respond($mq, 'response.api.key.regenerate', $replyTo, $result ?? ['success' => false, 'error' => 'Could not regenerate key'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.api.key.regenerate', $replyTo, ['success' => false, 'error' => 'Could not regenerate key'], $corrId); }
-        }, $msg);
+        $this->handle($msg, $corrId, 'response.api.key.regenerate', 'Could not regenerate key', function (MessageBus $mq) use ($data, $corrId) {
+            $newKey = bin2hex(random_bytes(32));
+            $result = $mq->publishAndWait('bridge.api.key.regenerate', ['shelter_id' => $data['shelter_id'] ?? null, 'new_key' => $newKey], (string)$corrId);
+            if (!empty($result['success'])) $result['api_key'] = $newKey;
+            return $result;
+        });
     }
 
     public function handleApiLogs(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.api.logs', ['shelter_id' => $data['shelter_id'] ?? null, 'limit' => $data['limit'] ?? 50, 'offset' => $data['offset'] ?? 0], $corrId);
-                $this->respond($mq, 'response.api.logs', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.api.logs', $replyTo, ['success' => false, 'error' => 'Could not load logs'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.api.logs',
+            ['shelter_id' => $data['shelter_id'] ?? null, 'limit' => $data['limit'] ?? 50, 'offset' => $data['offset'] ?? 0],
+            'response.api.logs', 'Could not load logs');
     }
 
     public function handleApiDogUpsert(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.api.dog.upsert', $data, $corrId);
-                $this->respond($mq, 'response.api.dog.upsert', $replyTo, $result ?? ['success' => false, 'error' => 'Could not update dog'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.api.dog.upsert', $replyTo, ['success' => false, 'error' => 'Could not update dog'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.api.dog.upsert', $data, 'response.api.dog.upsert', 'Could not update dog');
     }
 
     public function handleDogsList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleDogsList\n";
-            try {
-                $result = $mq->publishAndWait('bridge.dogs.list', [
-                    'status'       => $data['status']       ?? 'available',
-                    'breed'        => $data['breed']        ?? null,
-                    'size'         => $data['size']         ?? null,
-                    'energy_level' => $data['energy_level'] ?? null,
-                    'shelter_id'   => $data['shelter_id']   ?? null,
-                    'max_age'      => $data['max_age']      ?? null,
-                    'limit'        => $data['limit']        ?? 20,
-                    'offset'       => $data['offset']       ?? 0,
-                ], $corrId);
-                $this->respond($mq, 'response.dogs.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load dogs'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.dogs.list', $replyTo, ['success' => false, 'error' => 'Could not load dogs'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.dogs.list', [
+            'status'       => $data['status']       ?? 'available',
+            'breed'        => $data['breed']        ?? null,
+            'size'         => $data['size']         ?? null,
+            'energy_level' => $data['energy_level'] ?? null,
+            'shelter_id'   => $data['shelter_id']   ?? null,
+            'max_age'      => $data['max_age']      ?? null,
+            'limit'        => $data['limit']        ?? 20,
+            'offset'       => $data['offset']       ?? 0,
+        ], 'response.dogs.list', 'Could not load dogs');
     }
 
     public function handleDogsGet(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            $dogId = $data['dog_id'] ?? null;
-            echo "[FrontendWorker] handleDogsGet: dog_id={$dogId}\n";
-            try {
-                if ($dogId === null || $dogId === '') {
-                    $this->respond($mq, 'response.dogs.get', $replyTo, ['success' => false, 'error' => 'dog_id is required'], $corrId);
-                    return;
-                }
-                $result = $mq->publishAndWait('bridge.dogs.get', ['dog_id' => $dogId], $corrId);
-                $this->respond($mq, 'response.dogs.get', $replyTo, $result ?? ['success' => false, 'error' => 'Dog not found'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.dogs.get', $replyTo, ['success' => false, 'error' => 'Could not load dog'], $corrId); }
-        }, $msg);
+        if (($data['dog_id'] ?? null) === null || $data['dog_id'] === '') {
+            $this->reject($msg, $corrId, 'response.dogs.get', 'dog_id is required');
+            return;
+        }
+        $this->relay($msg, $corrId, 'bridge.dogs.get', ['dog_id' => $data['dog_id']], 'response.dogs.get', 'Could not load dog');
     }
 
-    // Handles adoption application submission and triggers notifications when submission succeeds.
+    // ── Applications & adoptions ────────────────────────────────────────────
+
     public function handleApplicationSubmit(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                if (empty($data['user_id']) || empty($data['dog_id'])) { $this->respond($mq, 'response.application.submit', $replyTo, ['success' => false, 'error' => 'user_id and dog_id are required'], $corrId); return; }
-                $result = $mq->publishAndWait('bridge.application.submit', [
-                    'user_id' => $data['user_id'], 'dog_id' => $data['dog_id'],
-                    'full_name' => $this->enc($data['full_name'] ?? ''), 'address' => $this->enc($data['address'] ?? ''), 'phone' => $this->enc($data['phone'] ?? ''),
-                    'housing_type' => $data['housing_type'] ?? null, 'has_yard' => $data['has_yard'] ?? false, 'has_other_pets' => $data['has_other_pets'] ?? false,
-                    'other_pets_description' => $data['other_pets_description'] ?? null, 'has_children' => $data['has_children'] ?? false,
-                    'children_ages' => $data['children_ages'] ?? null, 'prior_pet_experience' => $data['prior_pet_experience'] ?? null,
-                    'reason_for_adopting' => $data['reason_for_adopting'] ?? null, 'vet_reference' => $data['vet_reference'] ?? null,
-                ], $corrId);
-                $this->respond($mq, 'response.application.submit', $replyTo, $result ?? ['success' => false, 'error' => 'Could not submit application'], $corrId);
-                if (isset($result['success']) && $result['success']) {
+        $this->handle($msg, $corrId, 'response.application.submit', 'Could not submit application', function (MessageBus $mq, callable $after) use ($data, $corrId) {
+            if (empty($data['dog_id'])) return self::fail('dog_id is required');
+            $result = $mq->publishAndWait('bridge.application.submit', [
+                'user_id' => $data['user_id'], 'dog_id' => $data['dog_id'],
+                'full_name' => $this->enc((string)($data['full_name'] ?? '')),
+                'address'   => $this->enc((string)($data['address'] ?? '')),
+                'phone'     => $this->enc((string)($data['phone'] ?? '')),
+                'housing_type' => $data['housing_type'] ?? null, 'has_yard' => $data['has_yard'] ?? false,
+                'has_other_pets' => $data['has_other_pets'] ?? false, 'other_pets_description' => $data['other_pets_description'] ?? null,
+                'has_children' => $data['has_children'] ?? false, 'children_ages' => $data['children_ages'] ?? null,
+                'prior_pet_experience' => $data['prior_pet_experience'] ?? null,
+                'reason_for_adopting' => $data['reason_for_adopting'] ?? null, 'vet_reference' => $data['vet_reference'] ?? null,
+            ], (string)$corrId);
+            if (!empty($result['success'])) {
+                $after(function () use ($mq, $data) {
                     $mq->publish('notifications', ['event' => 'application_received', 'user_id' => $data['user_id'], 'message' => 'Your adoption application has been received.']);
-                    Mailer::applicationReceived($data['email'] ?? '', $data['first_name'] ?? '', $data['dog_name'] ?? 'your chosen dog');
-                }
-            } catch (\Throwable $e) { $this->respond($mq, 'response.application.submit', $replyTo, ['success' => false, 'error' => 'Could not submit application'], $corrId); }
-        }, $msg);
+                    Mailer::applicationReceived((string)$data['email'], (string)($data['first_name'] ?? ''), (string)($data['dog_name'] ?? 'your chosen dog'));
+                });
+            }
+            return $result;
+        });
     }
 
     public function handleApplicationStatus(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.application.status', ['application_id' => $data['application_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                if (isset($result['application']['full_name']) && $result['application']['full_name'] !== '') $result['application']['full_name'] = $this->dec($result['application']['full_name']);
-                $this->respond($mq, 'response.application.status', $replyTo, $result ?? ['success' => false, 'error' => 'Could not fetch status'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.application.status', $replyTo, ['success' => false, 'error' => 'Could not fetch status'], $corrId); }
-        }, $msg);
+        $this->handle($msg, $corrId, 'response.application.status', 'Could not fetch status', function (MessageBus $mq) use ($data, $corrId) {
+            $result = $mq->publishAndWait('bridge.application.status', ['application_id' => $data['application_id'] ?? null, 'user_id' => $data['user_id']], (string)$corrId);
+            if (isset($result['application']['full_name'])) {
+                $result['application']['full_name'] = $this->dec((string)$result['application']['full_name']);
+            }
+            return $result;
+        });
     }
 
     public function handleApplicationList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.application.list', ['user_id' => $data['user_id'] ?? null, 'status' => $data['status'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null], $corrId);
-                if (isset($result['applications']) && is_array($result['applications'])) {
-                    foreach ($result['applications'] as &$app) {
-                        $app['full_name']  = isset($app['full_name'])  && $app['full_name']  !== '' ? $this->dec($app['full_name'])  : '';
-                        $app['phone']      = isset($app['phone'])      && $app['phone']      !== '' ? $this->dec($app['phone'])      : '';
-                        $app['first_name'] = isset($app['first_name']) && $app['first_name'] !== '' ? $this->dec($app['first_name']) : '';
-                        $app['last_name']  = isset($app['last_name'])  && $app['last_name']  !== '' ? $this->dec($app['last_name'])  : '';
-                    }
+        $this->handle($msg, $corrId, 'response.application.list', 'Could not fetch applications', function (MessageBus $mq) use ($data, $corrId) {
+            $result = $mq->publishAndWait('bridge.application.list',
+                ['user_id' => $data['user_id'] ?? null, 'status' => $data['status'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null], (string)$corrId);
+            foreach ($result['applications'] ?? [] as $i => $app) {
+                foreach (['full_name', 'phone', 'first_name', 'last_name'] as $field) {
+                    $result['applications'][$i][$field] = $this->dec((string)($app[$field] ?? ''));
                 }
-                $this->respond($mq, 'response.application.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not fetch applications'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.application.list', $replyTo, ['success' => false, 'error' => 'Could not fetch applications'], $corrId); }
-        }, $msg);
+            }
+            return $result;
+        });
     }
 
     public function handleApplicationApprove(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                if (empty($data['application_id'])) { $this->respond($mq, 'response.application.decision', $replyTo, ['success' => false, 'error' => 'application_id is required'], $corrId); return; }
-                $result = $mq->publishAndWait('bridge.application.approve', ['application_id' => $data['application_id'], 'reviewed_by' => $data['reviewed_by'] ?? null, 'reviewer_notes' => $data['reviewer_notes'] ?? null], $corrId);
-                $this->respond($mq, 'response.application.decision', $replyTo, $result ?? ['success' => false, 'error' => 'Could not approve'], $corrId);
-                if (isset($result['success']) && $result['success'] && isset($result['user_id'])) {
-                    $mq->publish('notifications', ['event' => 'application_approved', 'user_id' => $result['user_id'], 'message' => 'Your adoption application has been approved.']);
-                    Mailer::applicationApproved($result['email'] ?? '', $result['first_name'] ?? '', $result['dog_name'] ?? 'your chosen dog');
-                }
-            } catch (\Throwable $e) { $this->respond($mq, 'response.application.decision', $replyTo, ['success' => false, 'error' => 'Could not approve'], $corrId); }
-        }, $msg);
+        $this->decideApplication($data, $msg, $corrId, 'approve');
     }
 
     public function handleApplicationReject(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                if (empty($data['application_id'])) { $this->respond($mq, 'response.application.decision', $replyTo, ['success' => false, 'error' => 'application_id is required'], $corrId); return; }
-                $result = $mq->publishAndWait('bridge.application.reject', ['application_id' => $data['application_id'], 'reviewed_by' => $data['reviewed_by'] ?? null, 'reviewer_notes' => $data['reviewer_notes'] ?? null], $corrId);
-                $this->respond($mq, 'response.application.decision', $replyTo, $result ?? ['success' => false, 'error' => 'Could not reject'], $corrId);
-                if (isset($result['success']) && $result['success'] && isset($result['user_id'])) {
-                    $mq->publish('notifications', ['event' => 'application_rejected', 'user_id' => $result['user_id'], 'message' => 'Your adoption application was not successful.']);
-                    Mailer::applicationRejected($result['email'] ?? '', $result['first_name'] ?? '', $result['dog_name'] ?? 'your chosen dog');
-                }
-            } catch (\Throwable $e) { $this->respond($mq, 'response.application.decision', $replyTo, ['success' => false, 'error' => 'Could not reject'], $corrId); }
-        }, $msg);
+        $this->decideApplication($data, $msg, $corrId, 'reject');
+    }
+
+    private function decideApplication(array $data, $msg, ?string $corrId, string $decision): void
+    {
+        $this->handle($msg, $corrId, 'response.application.decision', "Could not {$decision}", function (MessageBus $mq, callable $after) use ($data, $corrId, $decision) {
+            if (empty($data['application_id'])) return self::fail('application_id is required');
+            $result = $mq->publishAndWait("bridge.application.{$decision}", [
+                'application_id' => $data['application_id'], 'reviewed_by' => $data['reviewed_by'], 'reviewer_notes' => $data['reviewer_notes'] ?? null,
+            ], (string)$corrId);
+            if (!empty($result['success']) && isset($result['user_id'])) {
+                $after(function () use ($mq, $result, $decision) {
+                    $approved = $decision === 'approve';
+                    $mq->publish('notifications', [
+                        'event'   => $approved ? 'application_approved' : 'application_rejected',
+                        'user_id' => $result['user_id'],
+                        'message' => $approved ? 'Your adoption application has been approved.' : 'Your adoption application was not successful.',
+                    ]);
+                    // first_name is stored encrypted; the old code emailed the ciphertext.
+                    $firstName = $this->dec((string)($result['first_name'] ?? ''));
+                    $to        = (string)($result['email'] ?? '');
+                    $dogName   = (string)($result['dog_name'] ?? 'your chosen dog');
+                    $approved ? Mailer::applicationApproved($to, $firstName, $dogName) : Mailer::applicationRejected($to, $firstName, $dogName);
+                });
+            }
+            return $result;
+        });
     }
 
     public function handleAdoptionsList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.adoptions.list', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.adoptions.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load adoptions'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.adoptions.list', $replyTo, ['success' => false, 'error' => 'Could not load adoptions'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.adoptions.list', ['user_id' => $data['user_id']], 'response.adoptions.list', 'Could not load adoptions');
     }
 
     public function handleAdoptionsGet(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.adoptions.get', ['adoption_id' => $data['adoption_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.adoptions.get', $replyTo, $result ?? ['success' => false, 'error' => 'Not found'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.adoptions.get', $replyTo, ['success' => false, 'error' => 'Could not load adoption'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.adoptions.get', ['adoption_id' => $data['adoption_id'] ?? null, 'user_id' => $data['user_id']], 'response.adoptions.get', 'Could not load adoption');
     }
 
     public function handleAdoptionsFinalize(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                if (empty($data['application_id'])) { $this->respond($mq, 'response.adoptions.finalize', $replyTo, ['success' => false, 'error' => 'application_id is required'], $corrId); return; }
-                $result = $mq->publishAndWait('bridge.adoptions.finalize', ['application_id' => $data['application_id'], 'finalized_by' => $data['finalized_by'] ?? null, 'notes' => $data['notes'] ?? null], $corrId);
-                $this->respond($mq, 'response.adoptions.finalize', $replyTo, $result ?? ['success' => false, 'error' => 'Could not finalize adoption'], $corrId);
-                if (isset($result['success']) && $result['success'] && isset($result['user_id'])) {
+        $this->handle($msg, $corrId, 'response.adoptions.finalize', 'Could not finalize adoption', function (MessageBus $mq, callable $after) use ($data, $corrId) {
+            if (empty($data['application_id'])) return self::fail('application_id is required');
+            $result = $mq->publishAndWait('bridge.adoptions.finalize',
+                ['application_id' => $data['application_id'], 'finalized_by' => $data['finalized_by'], 'notes' => $data['notes'] ?? null], (string)$corrId);
+            if (!empty($result['success']) && isset($result['user_id'])) {
+                $after(function () use ($mq, $result) {
                     $mq->publish('notifications', ['event' => 'adoption_finalized', 'user_id' => $result['user_id'], 'message' => 'Your adoption is now complete!']);
-                    Mailer::adoptionComplete($result['email'] ?? '', $result['first_name'] ?? '', $result['dog_name'] ?? 'your dog');
-                }
-            } catch (\Throwable $e) { $this->respond($mq, 'response.adoptions.finalize', $replyTo, ['success' => false, 'error' => 'Could not finalize adoption'], $corrId); }
-        }, $msg);
+                    Mailer::adoptionComplete((string)($result['email'] ?? ''), $this->dec((string)($result['first_name'] ?? '')), (string)($result['dog_name'] ?? 'your dog'));
+                });
+            }
+            return $result;
+        });
     }
+
+    // ── Quiz & journal ──────────────────────────────────────────────────────
 
     public function handleQuizQuestions(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.quiz.questions', [], $corrId);
-                $this->respond($mq, 'response.quiz.questions', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load quiz'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.quiz.questions', $replyTo, ['success' => false, 'error' => 'Could not load quiz'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.quiz.questions', [], 'response.quiz.questions', 'Could not load quiz');
     }
 
     public function handleQuiz(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.quiz.submit', ['user_id' => $data['user_id'] ?? null, 'answers' => $data['answers'] ?? []], $corrId);
-                $this->respond($mq, 'response.quiz.result', $replyTo, $result ?? ['success' => false, 'error' => 'Quiz failed'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.quiz.result', $replyTo, ['success' => false, 'error' => 'Quiz failed'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.quiz.submit', ['user_id' => $data['user_id'], 'answers' => $data['answers'] ?? []], 'response.quiz.result', 'Quiz failed');
     }
 
     public function handleQuizResults(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.quiz.results', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.quiz.results', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load results'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.quiz.results', $replyTo, ['success' => false, 'error' => 'Could not load results'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.quiz.results', ['user_id' => $data['user_id']], 'response.quiz.results', 'Could not load results');
     }
 
     public function handleAdoptionLogCreate(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.adoption.log.create', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'log_type' => $data['log_type'] ?? 'general', 'title' => $data['title'] ?? '', 'notes' => $data['notes'] ?? '', 'log_date' => $data['log_date'] ?? date('Y-m-d')], $corrId);
-                $this->respond($mq, 'response.adoption.log.create', $replyTo, $result ?? ['success' => false, 'error' => 'Could not save log'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.adoption.log.create', $replyTo, ['success' => false, 'error' => 'Could not save log'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.adoption.log.create', [
+            'user_id' => $data['user_id'], 'dog_id' => $data['dog_id'] ?? null, 'log_type' => $data['log_type'] ?? 'general',
+            'title' => $data['title'] ?? '', 'notes' => $data['notes'] ?? '', 'log_date' => $data['log_date'] ?? date('Y-m-d'),
+        ], 'response.adoption.log.create', 'Could not save log');
     }
 
     public function handleAdoptionLogList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.adoption.log.list', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'log_type' => $data['log_type'] ?? null], $corrId);
-                $this->respond($mq, 'response.adoption.log.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load logs'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.adoption.log.list', $replyTo, ['success' => false, 'error' => 'Could not load logs'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.adoption.log.list',
+            ['user_id' => $data['user_id'], 'dog_id' => $data['dog_id'] ?? null, 'log_type' => $data['log_type'] ?? null],
+            'response.adoption.log.list', 'Could not load logs');
     }
 
     public function handleAdoptionLogDelete(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                if (empty($data['log_id'])) { $this->respond($mq, 'response.adoption.log.delete', $replyTo, ['success' => false, 'error' => 'log_id is required'], $corrId); return; }
-                $result = $mq->publishAndWait('bridge.adoption.log.delete', ['log_id' => $data['log_id'], 'user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.adoption.log.delete', $replyTo, $result ?? ['success' => false, 'error' => 'Could not delete log'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.adoption.log.delete', $replyTo, ['success' => false, 'error' => 'Could not delete log'], $corrId); }
-        }, $msg);
+        if (empty($data['log_id'])) {
+            $this->reject($msg, $corrId, 'response.adoption.log.delete', 'log_id is required');
+            return;
+        }
+        $this->relay($msg, $corrId, 'bridge.adoption.log.delete', ['log_id' => $data['log_id'], 'user_id' => $data['user_id']], 'response.adoption.log.delete', 'Could not delete log');
     }
+
+    // ── Fostering, parks, content ───────────────────────────────────────────
 
     public function handleFosterApply(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.foster.apply', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'sponsorship_amount' => $data['sponsorship_amount'] ?? 0, 'start_date' => $data['start_date'] ?? date('Y-m-d')], $corrId);
-                $this->respond($mq, 'response.foster.apply', $replyTo, $result ?? ['success' => false, 'error' => 'Foster failed'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.foster.apply', $replyTo, ['success' => false, 'error' => 'Foster failed'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.foster.apply', [
+            'user_id' => $data['user_id'], 'dog_id' => $data['dog_id'] ?? null,
+            'sponsorship_amount' => $data['sponsorship_amount'] ?? 0, 'start_date' => $data['start_date'] ?? date('Y-m-d'),
+        ], 'response.foster.apply', 'Foster failed');
     }
 
     public function handleFosterList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.foster.list', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.foster.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load sponsorships'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.foster.list', $replyTo, ['success' => false, 'error' => 'Could not load sponsorships'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.foster.list', ['user_id' => $data['user_id']], 'response.foster.list', 'Could not load sponsorships');
     }
 
     public function handleFosterCancel(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.foster.cancel', ['foster_id' => $data['foster_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.foster.cancel', $replyTo, $result ?? ['success' => false, 'error' => 'Could not cancel'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.foster.cancel', $replyTo, ['success' => false, 'error' => 'Could not cancel sponsorship'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.foster.cancel', ['foster_id' => $data['foster_id'] ?? null, 'user_id' => $data['user_id']], 'response.foster.cancel', 'Could not cancel sponsorship');
     }
 
     public function handleParksList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.parks.list', ['shelter_id' => $data['shelter_id'] ?? null, 'lat' => $data['lat'] ?? null, 'lng' => $data['lng'] ?? null, 'radius_km' => $data['radius_km'] ?? 10], $corrId);
-                $this->respond($mq, 'response.parks.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load parks'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.parks.list', $replyTo, ['success' => false, 'error' => 'Could not load parks'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.parks.list', [
+            'shelter_id' => $data['shelter_id'] ?? null, 'lat' => $data['lat'] ?? null, 'lng' => $data['lng'] ?? null, 'radius_km' => $data['radius_km'] ?? 10,
+        ], 'response.parks.list', 'Could not load parks');
     }
 
     public function handleResourcesList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.resources.list', ['topic' => $data['topic'] ?? null, 'type' => $data['type'] ?? null, 'search' => $data['search'] ?? null, 'limit' => $data['limit'] ?? 20, 'offset' => $data['offset'] ?? 0], $corrId);
-                $this->respond($mq, 'response.resources.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load resources'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.resources.list', $replyTo, ['success' => false, 'error' => 'Could not load resources'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.resources.list', [
+            'topic' => $data['topic'] ?? null, 'type' => $data['type'] ?? null, 'search' => $data['search'] ?? null,
+            'limit' => $data['limit'] ?? 20, 'offset' => $data['offset'] ?? 0,
+        ], 'response.resources.list', 'Could not load resources');
     }
 
     public function handleResourcesGet(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.resources.get', ['resource_id' => $data['resource_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.resources.get', $replyTo, $result ?? ['success' => false, 'error' => 'Not found'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.resources.get', $replyTo, ['success' => false, 'error' => 'Could not load resource'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.resources.get', ['resource_id' => $data['resource_id'] ?? null], 'response.resources.get', 'Could not load resource');
     }
 
+    // Admins also receive pending stories so they can review them (flag set by AccessPolicy).
     public function handleStoriesList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.stories.list', [
-                    'limit'           => $data['limit'] ?? 10,
-                    'offset'          => $data['offset'] ?? 0,
-                    'include_pending' => !empty($data['_viewer_is_admin']),
-                ], $corrId);
-                $this->respond($mq, 'response.stories.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load stories'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.stories.list', $replyTo, ['success' => false, 'error' => 'Could not load stories'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.stories.list', [
+            'limit' => $data['limit'] ?? 10, 'offset' => $data['offset'] ?? 0, 'include_pending' => !empty($data['_viewer_is_admin']),
+        ], 'response.stories.list', 'Could not load stories');
     }
 
     public function handleStoriesSubmit(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.stories.submit', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'title' => $data['title'] ?? '', 'story' => $data['story'] ?? '', 'photo_url' => $data['photo_url'] ?? null], $corrId);
-                $this->respond($mq, 'response.stories.submit', $replyTo, $result ?? ['success' => false, 'error' => 'Could not submit story'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.stories.submit', $replyTo, ['success' => false, 'error' => 'Could not submit story'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.stories.submit', [
+            'user_id' => $data['user_id'], 'dog_id' => $data['dog_id'] ?? null, 'title' => $data['title'] ?? '',
+            'story' => $data['story'] ?? '', 'photo_url' => $data['photo_url'] ?? null,
+        ], 'response.stories.submit', 'Could not submit story');
     }
 
     public function handleStoriesApprove(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                if (empty($data['story_id'])) { $this->respond($mq, 'response.stories.approve', $replyTo, ['success' => false, 'error' => 'story_id is required'], $corrId); return; }
-                $result = $mq->publishAndWait('bridge.stories.approve', ['story_id' => $data['story_id'], 'approved_by' => $data['approved_by'] ?? null], $corrId);
-                $this->respond($mq, 'response.stories.approve', $replyTo, $result ?? ['success' => false, 'error' => 'Could not approve story'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.stories.approve', $replyTo, ['success' => false, 'error' => 'Could not approve story'], $corrId); }
-        }, $msg);
+        if (empty($data['story_id'])) {
+            $this->reject($msg, $corrId, 'response.stories.approve', 'story_id is required');
+            return;
+        }
+        $this->relay($msg, $corrId, 'bridge.stories.approve', ['story_id' => $data['story_id'], 'approved_by' => $data['approved_by']], 'response.stories.approve', 'Could not approve story');
     }
 
     public function handleBadgesList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.badges.list', [], $corrId);
-                $this->respond($mq, 'response.badges.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load badges'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.badges.list', $replyTo, ['success' => false, 'error' => 'Could not load badges'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.badges.list', [], 'response.badges.list', 'Could not load badges');
     }
 
     public function handleBadgesMine(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.badges.mine', ['user_id' => $data['user_id'] ?? null, 'auto_award' => null], $corrId);
-                $this->respond($mq, 'response.badges.mine', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load badges'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.badges.mine', $replyTo, ['success' => false, 'error' => 'Could not load badges'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.badges.mine', ['user_id' => $data['user_id']], 'response.badges.mine', 'Could not load badges');
     }
+
+    // ── Messaging, meet & greets, notifications, saved dogs ─────────────────
 
     public function handleEnquiry(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.enquiry.send', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null, 'message' => $data['message'] ?? ''], $corrId);
-                $this->respond($mq, 'response.enquiry.reply', $replyTo, $result ?? ['success' => false, 'error' => 'Could not send message'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.enquiry.reply', $replyTo, ['success' => false, 'error' => 'Could not send message'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.enquiry.send', [
+            'user_id' => $data['user_id'], 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null, 'message' => $data['message'] ?? '',
+        ], 'response.enquiry.reply', 'Could not send message');
     }
 
     public function handleChatStart(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.chat.start', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.chat.start', $replyTo, $result ?? ['success' => false, 'error' => 'Could not start chat'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.chat.start', $replyTo, ['success' => false, 'error' => 'Could not start chat'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.chat.start',
+            ['user_id' => $data['user_id'], 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null],
+            'response.chat.start', 'Could not start chat');
     }
 
     public function handleChatMessage(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.chat.message', ['session_id' => $data['session_id'] ?? null, 'sender_id' => $data['sender_id'] ?? null, 'message' => $data['message'] ?? ''], $corrId);
-                $this->respond($mq, 'response.chat.message', $replyTo, $result ?? ['success' => false, 'error' => 'Could not send message'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.chat.message', $replyTo, ['success' => false, 'error' => 'Could not send message'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.chat.message',
+            ['session_id' => $data['session_id'] ?? null, 'sender_id' => $data['sender_id'], 'message' => $data['message'] ?? ''],
+            'response.chat.message', 'Could not send message');
     }
 
     public function handleChatHistory(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.chat.history', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.chat.history', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load chat'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.chat.history', $replyTo, ['success' => false, 'error' => 'Could not load chat'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.chat.history', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id']], 'response.chat.history', 'Could not load chat');
     }
 
     public function handleChatSessions(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.chat.sessions', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.chat.sessions', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load sessions'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.chat.sessions', $replyTo, ['success' => false, 'error' => 'Could not load sessions'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.chat.sessions', ['user_id' => $data['user_id']], 'response.chat.sessions', 'Could not load sessions');
     }
 
     public function handleMeetGreetSchedule(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.meetgreet.schedule', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null, 'scheduled_date' => $data['scheduled_date'] ?? '', 'scheduled_time' => $data['scheduled_time'] ?? '', 'video_link' => $data['video_link'] ?? null], $corrId);
-                $this->respond($mq, 'response.meetgreet.schedule', $replyTo, $result ?? ['success' => false, 'error' => 'Could not schedule meeting'], $corrId);
-                if (isset($result['success']) && $result['success'] && isset($data['user_id'])) {
-                    $mq->publish('notifications', ['event' => 'meetgreet_scheduled', 'user_id' => $data['user_id'], 'message' => "Your meet & greet is confirmed for {$data['scheduled_date']} at {$data['scheduled_time']}."]);
-                    Mailer::meetGreetConfirmed($data['email'] ?? '', $data['first_name'] ?? '', $data['dog_name'] ?? 'your chosen dog', $data['scheduled_date'] ?? '', $data['scheduled_time'] ?? '');
-                }
-            } catch (\Throwable $e) { $this->respond($mq, 'response.meetgreet.schedule', $replyTo, ['success' => false, 'error' => 'Could not schedule meeting'], $corrId); }
-        }, $msg);
+        $this->handle($msg, $corrId, 'response.meetgreet.schedule', 'Could not schedule meeting', function (MessageBus $mq, callable $after) use ($data, $corrId) {
+            $date = (string)($data['scheduled_date'] ?? '');
+            $time = (string)($data['scheduled_time'] ?? '');
+            $result = $mq->publishAndWait('bridge.meetgreet.schedule', [
+                'user_id' => $data['user_id'], 'dog_id' => $data['dog_id'] ?? null, 'shelter_id' => $data['shelter_id'] ?? null,
+                'scheduled_date' => $date, 'scheduled_time' => $time, 'video_link' => $data['video_link'] ?? null,
+            ], (string)$corrId);
+            if (!empty($result['success'])) {
+                $after(function () use ($mq, $data, $date, $time) {
+                    $mq->publish('notifications', ['event' => 'meetgreet_scheduled', 'user_id' => $data['user_id'], 'message' => "Your meet & greet is confirmed for {$date} at {$time}."]);
+                    Mailer::meetGreetConfirmed((string)$data['email'], (string)($data['first_name'] ?? ''), (string)($data['dog_name'] ?? 'your chosen dog'), $date, $time);
+                });
+            }
+            return $result;
+        });
     }
 
     public function handleMeetGreetList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.meetgreet.list', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.meetgreet.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load meetings'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.meetgreet.list', $replyTo, ['success' => false, 'error' => 'Could not load meetings'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.meetgreet.list', ['user_id' => $data['user_id']], 'response.meetgreet.list', 'Could not load meetings');
     }
 
     public function handleMeetGreetCancel(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.meetgreet.cancel', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.meetgreet.cancel', $replyTo, $result ?? ['success' => false, 'error' => 'Could not cancel meeting'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.meetgreet.cancel', $replyTo, ['success' => false, 'error' => 'Could not cancel meeting'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.meetgreet.cancel', ['session_id' => $data['session_id'] ?? null, 'user_id' => $data['user_id']], 'response.meetgreet.cancel', 'Could not cancel meeting');
     }
 
     public function handleNotificationsList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.notifications.list', ['user_id' => $data['user_id'] ?? null, 'unread' => $data['unread'] ?? false], $corrId);
-                $this->respond($mq, 'response.notifications.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load notifications'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.notifications.list', $replyTo, ['success' => false, 'error' => 'Could not load notifications'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.notifications.list', ['user_id' => $data['user_id'], 'unread' => $data['unread'] ?? false], 'response.notifications.list', 'Could not load notifications');
     }
 
     public function handleNotificationsRead(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            try {
-                $result = $mq->publishAndWait('bridge.notifications.read', ['user_id' => $data['user_id'] ?? null, 'notification_id' => $data['notification_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.notifications.read', $replyTo, $result ?? ['success' => false, 'error' => 'Could not mark as read'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.notifications.read', $replyTo, ['success' => false, 'error' => 'Could not mark as read'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.notifications.read', ['user_id' => $data['user_id'], 'notification_id' => $data['notification_id'] ?? null], 'response.notifications.read', 'Could not mark as read');
     }
 
     public function handleSavedDogsList(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleSavedDogsList\n";
-            try {
-                $result = $mq->publishAndWait('bridge.saved_dogs.list', ['user_id' => $data['user_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.saved_dogs.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load saved dogs'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.saved_dogs.list', $replyTo, ['success' => false, 'error' => 'Could not load saved dogs'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.saved_dogs.list', ['user_id' => $data['user_id']], 'response.saved_dogs.list', 'Could not load saved dogs');
     }
 
     public function handleSavedDogsAdd(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleSavedDogsAdd\n";
-            try {
-                $result = $mq->publishAndWait('bridge.saved_dogs.add', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.saved_dogs.add', $replyTo, $result ?? ['success' => false, 'error' => 'Could not save dog'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.saved_dogs.add', $replyTo, ['success' => false, 'error' => 'Could not save dog'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.saved_dogs.add', ['user_id' => $data['user_id'], 'dog_id' => $data['dog_id'] ?? null], 'response.saved_dogs.add', 'Could not save dog');
     }
 
     public function handleSavedDogsRemove(array $data, $msg, ?string $corrId): void
     {
-        $replyTo = $this->replyTo($msg);
-        $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
-            echo "[FrontendWorker] handleSavedDogsRemove\n";
-            try {
-                $result = $mq->publishAndWait('bridge.saved_dogs.remove', ['user_id' => $data['user_id'] ?? null, 'dog_id' => $data['dog_id'] ?? null], $corrId);
-                $this->respond($mq, 'response.saved_dogs.remove', $replyTo, $result ?? ['success' => false, 'error' => 'Could not remove saved dog'], $corrId);
-            } catch (\Throwable $e) { $this->respond($mq, 'response.saved_dogs.remove', $replyTo, ['success' => false, 'error' => 'Could not remove saved dog'], $corrId); }
-        }, $msg);
+        $this->relay($msg, $corrId, 'bridge.saved_dogs.remove', ['user_id' => $data['user_id'], 'dog_id' => $data['dog_id'] ?? null], 'response.saved_dogs.remove', 'Could not remove saved dog');
     }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
 
     // Base URL for links in emails. Comes from server config, never from the request: a
     // client-supplied URL would let an attacker send real reset emails that leak tokens to their site.
@@ -1128,7 +848,7 @@ final class FrontendWorker
         return substr(hash('sha256', $passwordHash), 0, 16);
     }
 
-    // Helper methods below wrap encryption and decryption behavior for personal fields.
+    // Personal fields are stored encrypted; empty values stay empty.
     private function enc(string $value): string
     {
         return $value !== '' ? $this->enc->encrypt($value) : '';
@@ -1137,10 +857,5 @@ final class FrontendWorker
     private function dec(string $value): string
     {
         return $value !== '' ? $this->enc->decrypt($value) : '';
-    }
-
-    private function encryptIfPresent($value): string
-    {
-        return ($value !== null && $value !== '') ? $this->enc->encrypt($value) : '';
     }
 }

@@ -12,6 +12,7 @@
     </testsuites>
     <php>
         <env name="APP_KEY" value="test-app-key-0123456789abcdef" force="true"/>
+        <env name="MAIL_DRIVER" value="log" force="true"/>
     </php>
     <source>
         <include>

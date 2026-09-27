@@ -170,13 +170,23 @@ final class QueryHandlerTest extends DatabaseTestCase
 
     public function testListLimitIsCapped(): void
     {
-        $shelter = $this->shelter();
-        for ($i = 0; $i < 105; $i++) {
-            $this->db()->query("INSERT INTO dogs (shelter_id, name, status) VALUES ({$shelter}, 'Dog{$i}', 'available')");
-        }
+        $user = $this->user();
+        $this->db()->query('INSERT INTO success_stories (user_id, title, story, status) VALUES '
+            . implode(',', array_fill(0, 105, "({$user}, 't', 's', 'approved')")));
 
-        $this->assertCount(100, $this->ok('db.dogs.list', ['limit' => 1000000])['dogs']);
-        $this->assertCount(1, $this->ok('db.dogs.list', ['limit' => -5])['dogs']);
+        $this->assertCount(100, $this->ok('db.stories.list', ['limit' => 1000000])['stories']);
+        $this->assertCount(1, $this->ok('db.stories.list', ['limit' => -5])['stories']);
+    }
+
+    // The browse and admin pages load the whole dog catalogue in one request (limit 500).
+    public function testDogListAllowsTheWholeCatalogueButNoMore(): void
+    {
+        $shelter = $this->shelter();
+        $this->db()->query('INSERT INTO dogs (shelter_id, name, status) VALUES '
+            . implode(',', array_fill(0, 505, "({$shelter}, 'Dog', 'available')")));
+
+        $this->assertCount(500, $this->ok('db.dogs.list', ['limit' => 500])['dogs']);
+        $this->assertCount(500, $this->ok('db.dogs.list', ['limit' => 1000000])['dogs']);
     }
 
     public function testPublicStoriesExcludePendingButAdminsSeeThem(): void

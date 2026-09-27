@@ -9,7 +9,7 @@ use PhpAmqpLib\Wire\AMQPTable;
 
 // Central RabbitMQ client used by backend workers.
 // Handles connection setup, queue declaration, message publishing, consuming, and request/response messaging.
-final class RabbitMqClient
+final class RabbitMqClient implements MessageBus
 {
     // Exchange the browser publishes request.* messages to (see frontend/src/services/messaging.js).
     public const WEB_EXCHANGE = 'canine.requests';

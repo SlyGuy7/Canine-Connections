@@ -7,8 +7,22 @@ use PHPMailer\PHPMailer\SMTP;
 
 final class Mailer
 {
+    /** Emails captured when MAIL_DRIVER=log (used by tests and local development). */
+    public static array $sent = [];
+
     public static function send(string $to, string $subject, string $body): bool
     {
+        if (!filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            echo "[Mailer][WARN] Skipped email with invalid recipient\n";
+            return false;
+        }
+        // MAIL_DRIVER=log records emails instead of sending them over SMTP.
+        if (($_ENV['MAIL_DRIVER'] ?? getenv('MAIL_DRIVER')) === 'log') {
+            self::$sent[] = ['to' => $to, 'subject' => $subject, 'body' => $body];
+            echo "[Mailer] (log) {$subject} -> {$to}\n";
+            return true;
+        }
+
         $attempts = 3;
         $lastError = '';
         for ($i = 1; $i <= $attempts; $i++) {
@@ -43,8 +57,38 @@ final class Mailer
         return false;
     }
 
+    // Values inserted into the HTML templates below come from users (names) or the database,
+    // so they are escaped to keep them from injecting markup or links into our emails.
+    private static function escape(string $value): string
+    {
+        return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    }
+
+    public static function resetPasswordLink(string $to, string $firstName, string $resetUrl): bool
+    {
+        $firstName = self::escape($firstName);
+        $resetUrl = self::escape($resetUrl);
+        return self::send(
+            $to,
+            'Reset Your Password - Canine Connections',
+            "<div style='font-family:sans-serif;max-width:600px;margin:auto;padding:20px'>
+                <h1 style='color:#b45309'>Reset Your Password</h1>
+                <p>Hi {$firstName},</p>
+                <p>We received a request to reset your password. Click the button below to choose a new one.</p>
+                <p style='color:#999;font-size:13px'>This link expires in 1 hour and can only be used once.</p>
+                <div style='text-align:center;margin:32px 0'>
+                    <a href='{$resetUrl}' style='background:#d97706;color:white;padding:14px 36px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:16px;display:inline-block'>Reset Password</a>
+                </div>
+                <p style='color:#999;font-size:13px'>If the button doesn't work, paste this into your browser:<br>{$resetUrl}</p>
+                <p style='color:#999;font-size:13px'>If you didn't request a reset, you can safely ignore this email.</p>
+                <br><p style='color:#666'>The Canine Connections Team</p>
+            </div>"
+        );
+    }
+
     public static function welcome(string $to, string $firstName): bool
     {
+        $firstName = self::escape($firstName);
         return self::send(
             $to,
             'Welcome to Canine Connections',
@@ -63,6 +107,8 @@ final class Mailer
 
     public static function verifyEmail(string $to, string $firstName, string $verifyUrl): bool
     {
+        $firstName = self::escape($firstName);
+        $verifyUrl = self::escape($verifyUrl);
         return self::send(
             $to,
             'Verify Your Email -Canine Connections',
@@ -85,6 +131,7 @@ final class Mailer
 
     public static function loginAlert(string $to, string $firstName): bool
     {
+        $firstName = self::escape($firstName);
         $time = date('F j, Y \a\t g:i A T');
         return self::send(
             $to,
@@ -105,6 +152,7 @@ final class Mailer
 
     public static function passwordReset(string $to, string $firstName): bool
     {
+        $firstName = self::escape($firstName);
         return self::send(
             $to,
             'Password Reset Successful -Canine Connections',
@@ -123,6 +171,8 @@ final class Mailer
 
     public static function applicationReceived(string $to, string $firstName, string $dogName): bool
     {
+        $firstName = self::escape($firstName);
+        $dogName = self::escape($dogName);
         return self::send(
             $to,
             'Application Received -Canine Connections',
@@ -141,6 +191,8 @@ final class Mailer
 
     public static function applicationApproved(string $to, string $firstName, string $dogName): bool
     {
+        $firstName = self::escape($firstName);
+        $dogName = self::escape($dogName);
         return self::send(
             $to,
             'Application Approved -Canine Connections',
@@ -159,6 +211,8 @@ final class Mailer
 
     public static function applicationRejected(string $to, string $firstName, string $dogName): bool
     {
+        $firstName = self::escape($firstName);
+        $dogName = self::escape($dogName);
         return self::send(
             $to,
             'Application Update -Canine Connections',
@@ -177,6 +231,10 @@ final class Mailer
 
     public static function meetGreetConfirmed(string $to, string $firstName, string $dogName, string $date, string $time): bool
     {
+        $firstName = self::escape($firstName);
+        $dogName = self::escape($dogName);
+        $date = self::escape($date);
+        $time = self::escape($time);
         return self::send(
             $to,
             'Meet & Greet Confirmed -Canine Connections',
@@ -195,6 +253,8 @@ final class Mailer
 
     public static function adoptionComplete(string $to, string $firstName, string $dogName): bool
     {
+        $firstName = self::escape($firstName);
+        $dogName = self::escape($dogName);
         return self::send(
             $to,
             'Adoption Complete -Canine Connections',

@@ -13,7 +13,10 @@ use mysqli_stmt;
 // the verified session), so a user can only read or change their own rows.
 final class QueryHandler
 {
-    private const MAX_LIMIT = 100;
+    // Largest page a list request may ask for. The dog list is larger because the browse and
+    // admin pages load the whole catalogue (up to ~500 imported dogs) in one request.
+    private const MAX_LIMIT      = 100;
+    private const MAX_DOGS_LIMIT = 500;
 
     // MySQL errors that mean the connection or node is unusable (gone away, lost, read-only
     // secondary after a failover). These are rethrown so db_worker.php can fail over.
@@ -242,7 +245,7 @@ final class QueryHandler
         }
         if (!empty($d['shelter_id'])) { $where[] = 'd.shelter_id = ?'; $params[] = (int)$d['shelter_id']; }
         if (isset($d['max_age']) && $d['max_age'] !== '') { $where[] = 'd.age_years <= ?'; $params[] = (int)$d['max_age']; }
-        $params[] = $this->limit($d, 20);
+        $params[] = $this->limit($d, 20, self::MAX_DOGS_LIMIT);
         $params[] = $this->offset($d);
 
         $dogs = $this->all(
@@ -863,9 +866,9 @@ final class QueryHandler
         return ['success' => false, 'error' => $error];
     }
 
-    private function limit(array $d, int $default): int
+    private function limit(array $d, int $default, int $max = self::MAX_LIMIT): int
     {
-        return max(1, min(self::MAX_LIMIT, (int)($d['limit'] ?? $default)));
+        return max(1, min($max, (int)($d['limit'] ?? $default)));
     }
 
     private function offset(array $d): int
