@@ -28,6 +28,12 @@ final class Response
         );
     }
 
+    // 303 See Other: after a form POST, the browser follows up with a GET to $location.
+    public static function redirect(string $location, int $status = 303): self
+    {
+        return new self('', $status, ['Location' => $location]);
+    }
+
     public function send(): void
     {
         http_response_code($this->status);
