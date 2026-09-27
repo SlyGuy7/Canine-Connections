@@ -16,15 +16,6 @@ export default function ShelterDetails() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  // Effect event: always calls the latest version without re-running the effect.
-  const onShelterChangeInfo = useEffectEvent(() => loadShelter());
-  // Effect event: always calls the latest version without re-running the effect.
-  const onShelterChangeDogs = useEffectEvent(() => loadDogs());
-  useEffect(() => {
-    onShelterChangeInfo()
-    onShelterChangeDogs()
-  }, [id])
-
   async function loadShelter() {
     try {
       const result = await sendMessage("request.shelters.get", { shelter_id: parseInt(id) })
@@ -49,6 +40,8 @@ export default function ShelterDetails() {
     }
   }
 
+  // Effect event: always calls the latest version without re-running the effect.
+  const onShelterChangeInfo = useEffectEvent(() => loadShelter());
   async function loadDogs() {
     try {
       const result = await sendMessage("request.dogs.list", {
@@ -63,6 +56,13 @@ export default function ShelterDetails() {
       setLoading(false)
     }
   }
+
+  // Effect event: always calls the latest version without re-running the effect.
+  const onShelterChangeDogs = useEffectEvent(() => loadDogs());
+  useEffect(() => {
+    onShelterChangeInfo()
+    onShelterChangeDogs()
+  }, [id])
 
   if (loading) {
     return (

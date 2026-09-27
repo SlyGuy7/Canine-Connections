@@ -3,7 +3,7 @@
 // Notification and privacy toggles are stored client-side only (except loginAlerts which also
 // calls request.profile.update). Both a tab-switch guard and a React Router blocker warn the
 // user before they lose unsaved changes.
-import React, { useState, useRef } from 'react'
+import React, { useState } from 'react'
 import { useNavigate, useBlocker } from 'react-router-dom'
 import { sendMessage } from '../services/messaging'
 import { useToast } from '../context/toast'
@@ -100,7 +100,7 @@ export default function Settings() {
       if (`${firstName} ${lastName}`.trim()) localStorage.setItem('userFullName', `${firstName} ${lastName}`.trim())
       if (phone)   localStorage.setItem('userPhone',   phone)
       if (address) localStorage.setItem('userAddress', address)
-      savedInfo.current = { firstName, lastName, phone, address }
+      setSavedInfo({ firstName, lastName, phone, address })
       addToast('Account info saved!', 'success')
     } catch {
       addToast('Could not save. Try again.', 'error')
@@ -115,16 +115,17 @@ export default function Settings() {
     shareProfile: true,
     usageData: false,
   })
-  const savedNotifs  = useRef({ applicationUpdates: true, newMatches: true, meetGreetReminders: false, newsletter: false })
-  const savedPrivacy = useRef({ loginAlerts: localStorage.getItem('loginAlerts') === 'true', shareProfile: true, usageData: false })
-  const savedInfo    = useRef({ firstName: localStorage.getItem('userFirstName') || '', lastName: localStorage.getItem('userLastName') || '', phone: localStorage.getItem('userPhone') || '', address: localStorage.getItem('userAddress') || '' })
+  // Last-saved values; the unsaved-changes guards compare against these.
+  const [savedNotifs, setSavedNotifs]   = useState({ applicationUpdates: true, newMatches: true, meetGreetReminders: false, newsletter: false })
+  const [savedPrivacy, setSavedPrivacy] = useState({ loginAlerts: localStorage.getItem('loginAlerts') === 'true', shareProfile: true, usageData: false })
+  const [savedInfo, setSavedInfo]       = useState({ firstName: localStorage.getItem('userFirstName') || '', lastName: localStorage.getItem('userLastName') || '', phone: localStorage.getItem('userPhone') || '', address: localStorage.getItem('userAddress') || '' })
   const [pendingTab, setPendingTab] = useState(null)
 
   // Track dirty state per-section so the tab-switch guard only fires for the currently active tab,
   // while the React Router blocker fires if any section has unsaved changes.
-  const isNotifsDirty  = JSON.stringify(notifs)   !== JSON.stringify(savedNotifs.current)
-  const isPrivacyDirty = JSON.stringify(privacy)  !== JSON.stringify(savedPrivacy.current)
-  const isInfoDirty    = firstName !== savedInfo.current.firstName || lastName !== savedInfo.current.lastName || phone !== savedInfo.current.phone || address !== savedInfo.current.address
+  const isNotifsDirty  = JSON.stringify(notifs)   !== JSON.stringify(savedNotifs)
+  const isPrivacyDirty = JSON.stringify(privacy)  !== JSON.stringify(savedPrivacy)
+  const isInfoDirty    = firstName !== savedInfo.firstName || lastName !== savedInfo.lastName || phone !== savedInfo.phone || address !== savedInfo.address
   const isCurrentTabDirty = (activeTab === 'notifications' && isNotifsDirty) || (activeTab === 'privacy' && isPrivacyDirty) || (activeTab === 'account' && isInfoDirty)
 
   const blocker = useBlocker(isNotifsDirty || isPrivacyDirty || isInfoDirty)
@@ -136,13 +137,13 @@ export default function Settings() {
   }
 
   function confirmTabSwitch() {
-    if (activeTab === 'notifications') setNotifs(savedNotifs.current)
-    if (activeTab === 'privacy') setPrivacy(savedPrivacy.current)
+    if (activeTab === 'notifications') setNotifs(savedNotifs)
+    if (activeTab === 'privacy') setPrivacy(savedPrivacy)
     if (activeTab === 'account') {
-      setFirstName(savedInfo.current.firstName)
-      setLastName(savedInfo.current.lastName)
-      setPhone(savedInfo.current.phone)
-      setAddress(savedInfo.current.address)
+      setFirstName(savedInfo.firstName)
+      setLastName(savedInfo.lastName)
+      setPhone(savedInfo.phone)
+      setAddress(savedInfo.address)
     }
     setActiveTab(pendingTab)
     setPendingTab(null)
@@ -156,6 +157,8 @@ export default function Settings() {
     try {
       const result = await sendMessage('request.profile.update', { user_id: parseInt(userId), login_notifications: val })
       if (!result?.success) throw new Error(result?.error)
+      // Saved immediately, so it is not an unsaved change.
+      setSavedPrivacy(p => ({ ...p, loginAlerts: val }))
     } catch {
       // Put the switch back so it reflects what is actually saved.
       setPrivacy(p => ({ ...p, loginAlerts: !val }))
@@ -390,7 +393,7 @@ export default function Settings() {
                 <ToggleRow label='New Dog Matches' description='Dogs that match your quiz and profile preferences' checked={notifs.newMatches} onChange={v => setNotifs(n => ({ ...n, newMatches: v }))} />
                 <ToggleRow label='Meet & Greet Reminders' description='Reminders before scheduled shelter visits' checked={notifs.meetGreetReminders} onChange={v => setNotifs(n => ({ ...n, meetGreetReminders: v }))} />
                 <ToggleRow label='Shelter Newsletter' description='Monthly updates from partner shelters' checked={notifs.newsletter} onChange={v => setNotifs(n => ({ ...n, newsletter: v }))} />
-                <button onClick={() => { savedNotifs.current = { ...notifs }; addToast('Notification preferences saved!', 'success') }} style={{ marginTop: '24px', padding: '11px 24px', borderRadius: '10px', border: 'none', background: '#d97706', color: 'white', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
+                <button onClick={() => { setSavedNotifs({ ...notifs }); addToast('Notification preferences saved!', 'success') }} style={{ marginTop: '24px', padding: '11px 24px', borderRadius: '10px', border: 'none', background: '#d97706', color: 'white', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
                   Save Preferences
                 </button>
               </div>
@@ -456,7 +459,7 @@ export default function Settings() {
                 </div>
                 <ToggleRow label='Share profile with shelters' description='Lets partner shelters see your basic adoption profile' checked={privacy.shareProfile} onChange={v => setPrivacy(p => ({ ...p, shareProfile: v }))} />
                 <ToggleRow label='Anonymous usage data' description='Help improve Canine Connections with anonymised analytics' checked={privacy.usageData} onChange={v => setPrivacy(p => ({ ...p, usageData: v }))} />
-                <button onClick={() => { savedPrivacy.current = { ...privacy }; addToast('Privacy settings saved!', 'success') }} style={{ marginTop: '24px', padding: '11px 24px', borderRadius: '10px', border: 'none', background: '#d97706', color: 'white', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
+                <button onClick={() => { setSavedPrivacy({ ...privacy }); addToast('Privacy settings saved!', 'success') }} style={{ marginTop: '24px', padding: '11px 24px', borderRadius: '10px', border: 'none', background: '#d97706', color: 'white', fontWeight: '700', fontSize: '14px', cursor: 'pointer' }}>
                   Save Privacy Settings
                 </button>
               </div>

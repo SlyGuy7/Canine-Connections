@@ -52,8 +52,6 @@ export default function AdminApplications() {
   // Map of application_id → reviewer notes text, kept in state so typing in one row doesn't reset others.
   const [notes, setNotes]               = useState({})
 
-  useEffect(() => { loadApplications() }, [])
-
   // Fetches all applications from the backend via RabbitMQ on page load.
   async function loadApplications() {
     setLoading(true)
@@ -62,6 +60,8 @@ export default function AdminApplications() {
       setApplications(result?.applications || [])
     } catch { setApplications([]) } finally { setLoading(false) }
   }
+
+  useEffect(() => { loadApplications() }, [])
 
   // Sends an approve or reject decision to the backend. Updates the local list on success
   // to avoid needing a full reload.

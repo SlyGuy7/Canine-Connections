@@ -163,14 +163,6 @@ export default function BrowseDogs() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
-  // Effect event: always calls the latest version without re-running the effect.
-  const onShelterFilterChange = useEffectEvent(() => loadDogs());
-  useEffect(() => {
-    onShelterFilterChange();
-  }, [shelterIdParam]);
-
-  useEffect(() => { setPage(1); }, [searchTerm, filters]);
-
   async function loadDogs() {
     try {
       if (!shelterIdParam) {
@@ -195,6 +187,15 @@ export default function BrowseDogs() {
       setLoading(false);
     }
   }
+
+  // Effect event: always calls the latest version without re-running the effect.
+  const onShelterFilterChange = useEffectEvent(() => loadDogs());
+  useEffect(() => {
+    onShelterFilterChange();
+  }, [shelterIdParam]);
+
+  useEffect(() => { setPage(1); }, [searchTerm, filters]);
+
     // Optimistic save/unsave: updates localStorage and the heart icon immediately, then fires
   // the backend call in the background so the change persists across devices.
   const handleSaveDog = (dog) => {

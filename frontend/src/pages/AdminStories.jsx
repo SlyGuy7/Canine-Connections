@@ -33,8 +33,6 @@ export default function AdminStories() {
   // Map of story_id → boolean for "Read more / Show less" toggle per card.
   const [expanded, setExpanded]     = useState({})
 
-  useEffect(() => { loadStories() }, [])
-
   async function loadStories() {
     setLoading(true)
     try {
@@ -42,6 +40,8 @@ export default function AdminStories() {
       setStories(result?.stories || [])
     } catch { setStories([]) } finally { setLoading(false) }
   }
+
+  useEffect(() => { loadStories() }, [])
 
   // Sends the approval request and updates the story's status in local state on success.
   const handleApprove = async (storyId) => {

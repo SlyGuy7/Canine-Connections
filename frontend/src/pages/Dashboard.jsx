@@ -37,36 +37,18 @@ export default function Dashboard() {
   const [selectedDogId, setSelectedDogId] = useState(null)     // Which adopted dog's journal is being viewed.
   const [logs, setLogs]           = useState([])               // Journal entries for the selected adopted dog.
   const [loadingLogs, setLoadingLogs] = useState(false)
-  const [stats, setStats]         = useState({ saved: 0, applications: 0, journalCount: 0 })
-  const [matchedDogs, setMatchedDogs] = useState([])           // Top 3 quiz-scored dogs.
-
-  // Reload everything on each navigation so stats stay fresh when returning from other pages.
-  // Effect event: always calls the latest version without re-running the effect.
-  const onNavigate = useEffectEvent(() => loadAll());
-  useEffect(() => { onNavigate() }, [location])
-
-  async function loadAll() {
-    loadUser()
-    loadStats()
-    await Promise.all([loadFeaturedDog(), loadAdoptions(), loadMatchedDogs()])
-  }
-
-  // Scores all cached dogs against the user's profile prefs and picks the top 3.
-  // Skipped entirely if the user has not set any preferences.
-  async function loadMatchedDogs() {
+  async function loadLogs(dogId) {
+    const userId = localStorage.getItem("userId")
+    if (!userId || !dogId) return
+    setLoadingLogs(true)
     try {
-      const profile = JSON.parse(localStorage.getItem("userProfile") || "{}")
-      const prefs = profile.prefs || {}
-      if (!Object.keys(prefs).length) return
-      const dogs = await getDogs()
-      const scored = dogs
-        .map(d => ({ ...d, _score: calcMatchScore(d, prefs) }))
-        .sort((a, b) => b._score - a._score)
-        .slice(0, 3)
-      setMatchedDogs(scored)
-    } catch { /* recommendations are optional; the section just stays hidden */ }
+      const result = await sendMessage("request.adoption.log.list", { user_id: parseInt(userId), dog_id: dogId })
+      setLogs(result?.success && result.logs ? result.logs : [])
+    } catch { setLogs([]) }
+    finally  { setLoadingLogs(false) }
   }
 
+  const [stats, setStats]         = useState({ saved: 0, applications: 0, journalCount: 0 })
   // Resolves the user's first name from localStorage in order of preference.
   // Falls back through full name, email prefix, and finally "Friend".
   function loadUser() {
@@ -118,19 +100,36 @@ export default function Dashboard() {
     } catch { setAdoptedDogs([]) }
   }
 
-  async function loadLogs(dogId) {
-    const userId = localStorage.getItem("userId")
-    if (!userId || !dogId) return
-    setLoadingLogs(true)
+  // Scores all cached dogs against the user's profile prefs and picks the top 3.
+  // Skipped entirely if the user has not set any preferences.
+  async function loadMatchedDogs() {
     try {
-      const result = await sendMessage("request.adoption.log.list", { user_id: parseInt(userId), dog_id: dogId })
-      setLogs(result?.success && result.logs ? result.logs : [])
-    } catch { setLogs([]) }
-    finally  { setLoadingLogs(false) }
+      const profile = JSON.parse(localStorage.getItem("userProfile") || "{}")
+      const prefs = profile.prefs || {}
+      if (!Object.keys(prefs).length) return
+      const dogs = await getDogs()
+      const scored = dogs
+        .map(d => ({ ...d, _score: calcMatchScore(d, prefs) }))
+        .sort((a, b) => b._score - a._score)
+        .slice(0, 3)
+      setMatchedDogs(scored)
+    } catch { /* recommendations are optional; the section just stays hidden */ }
   }
 
-  const handleDogSelect = (dogId) => { setSelectedDogId(dogId); loadLogs(dogId) }
+  const [matchedDogs, setMatchedDogs] = useState([])           // Top 3 quiz-scored dogs.
 
+  async function loadAll() {
+    loadUser()
+    loadStats()
+    await Promise.all([loadFeaturedDog(), loadAdoptions(), loadMatchedDogs()])
+  }
+
+  // Reload everything on each navigation so stats stay fresh when returning from other pages.
+  // Effect event: always calls the latest version without re-running the effect.
+  const onNavigate = useEffectEvent(() => loadAll());
+  useEffect(() => { onNavigate() }, [location])
+
+  const handleDogSelect = (dogId) => { setSelectedDogId(dogId); loadLogs(dogId) }
 
   const nextSteps = useMemo(() => [
     { label: "Complete your profile",         icon: "👤", done: (() => { try { const p = JSON.parse(localStorage.getItem("userProfile") || "{}"); const keys = ["homeType","ownership","household","otherPets","activityLevel","hoursHome","experience","allergies"]; return keys.every(k => p.prefs?.[k]) && (p.bio?.trim()?.length ?? 0) > 0; } catch { return false; } })(), path: "/profile" },
@@ -158,7 +157,6 @@ export default function Dashboard() {
   const featuredPhoto = featuredDog?.photos
     ? (Array.isArray(featuredDog.photos) ? featuredDog.photos[0] : featuredDog.photos.split(",")[0])
     : null
-
 
   const quickActions = [
     { label: "Browse Dogs",   icon: "🔍", desc: "Find your match",       path: "/browse-dogs"  },

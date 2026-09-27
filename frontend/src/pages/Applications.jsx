@@ -50,14 +50,6 @@ export default function Applications() {
   // Prevents double-fetching when React StrictMode mounts the component twice in dev.
   const hasFetched = useRef(false);
 
-  // Effect event: always calls the latest version without re-running the effect.
-  const onMountLoad = useEffectEvent(() => loadApplications());
-  useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-    onMountLoad();
-  }, []);
-
   async function loadApplications() {
     const userId = localStorage.getItem("userId");
     if (!userId) { setLoading(false); return; }
@@ -76,6 +68,14 @@ export default function Applications() {
       setLoading(false);
     }
   }
+
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadApplications());
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    onMountLoad();
+  }, []);
 
   // Build a per-status count map for the summary strip at the top of the page.
   const statusCounts = applications.reduce((acc, a) => {

@@ -52,14 +52,6 @@ export default function QuizResults() {
   const savedAnswers = JSON.parse(localStorage.getItem("quizAnswers") || "{}")
   const answerValues = Object.values(savedAnswers).map(String)
 
-  // Effect event: always calls the latest version without re-running the effect.
-  const onMountLoad = useEffectEvent(() => loadMatches());
-  useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-    onMountLoad();
-  }, [])
-
   async function loadMatches() {
     setLoading(true)
     setError("")
@@ -83,6 +75,14 @@ export default function QuizResults() {
       setLoading(false)
     }
   }
+
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadMatches());
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    onMountLoad();
+  }, [])
 
   // Optimistic save/unsave: updates localStorage and the heart icon immediately, then fires
   // the backend call in the background so the change persists across devices.

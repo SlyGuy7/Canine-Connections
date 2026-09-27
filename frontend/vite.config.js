@@ -2,20 +2,35 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
+// Splits the production bundle into named chunks so browsers can cache heavy libraries
+// (React, Leaflet, STOMP) independently from app code.
+const CHUNKS = {
+  vendor: ['react', 'react-dom', 'react-router', 'react-router-dom', 'scheduler'],
+  stomp: ['@stomp/stompjs'],
+  map: ['leaflet', 'react-leaflet', '@react-leaflet/core'],
+}
+
+function chunkFor(id) {
+  const match = id.match(/[\\/]node_modules[\\/]((?:@[^\\/]+[\\/])?[^\\/]+)/)
+  if (!match) return undefined
+  const pkg = match[1].replace('\\', '/')
+  return Object.keys(CHUNKS).find((name) => CHUNKS[name].includes(pkg))
+}
+
 export default defineConfig({
   // Enables React JSX transform and fast-refresh during development.
   plugins: [react()],
 
+  // Unit tests (npm test) run in a simulated browser.
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.js'],
+  },
+
   build: {
     rollupOptions: {
       output: {
-        // Splits the production bundle into named chunks so browsers can cache
-        // heavy libraries (React, Leaflet, STOMP) independently from app code.
-        manualChunks: {
-          vendor: ['react', 'react-dom', 'react-router-dom'],
-          stomp: ['@stomp/stompjs'],
-          map: ['leaflet', 'react-leaflet'],
-        }
+        manualChunks: chunkFor,
       }
     }
   },

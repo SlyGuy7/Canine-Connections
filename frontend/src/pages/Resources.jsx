@@ -31,8 +31,6 @@ export default function Resources() {
   const [activeCategory, setActiveCategory] = useState("all")
   const [search, setSearch]       = useState("")
 
-  useEffect(() => { loadResources() }, [])
-
   async function loadResources() {
     setLoading(true)
     setError("")
@@ -49,6 +47,8 @@ export default function Resources() {
       setLoading(false)
     }
   }
+
+  useEffect(() => { loadResources() }, [])
 
   const filtered = resources.filter(r => {
     const matchCat    = activeCategory === "all" || r.category === activeCategory

@@ -38,14 +38,6 @@ export default function DogProfile() {
   // Reset the fetch guard whenever the dog ID in the URL changes.
   useEffect(() => { hasFetched.current = false; }, [id]);
 
-  // Effect event: always calls the latest version without re-running the effect.
-  const onDogChange = useEffectEvent(() => load());
-  useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-    onDogChange();
-  }, [id]);
-
   // Fires both the dog fetch and the application list fetch concurrently.
   // The shelter info is fetched as a non-blocking follow-up after the dog loads.
   async function load() {
@@ -79,6 +71,14 @@ export default function DogProfile() {
       setLoading(false);
     }
   }
+
+  // Effect event: always calls the latest version without re-running the effect.
+  const onDogChange = useEffectEvent(() => load());
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    onDogChange();
+  }, [id]);
 
   // Optimistic save/unsave: flips the heart and updates localStorage immediately, then fires
   // the backend call in the background so the change persists across devices.
@@ -140,7 +140,6 @@ export default function DogProfile() {
 
   return (
     <div style={{ maxWidth: "1000px", margin: "0 auto", padding: "0 0 60px 0", fontFamily: "'Inter', sans-serif" }}>
-
 
       <div style={{ display: "flex", gap: "36px", alignItems: "flex-start", flexDirection: isMobile ? "column" : "row" }}>
 

@@ -38,8 +38,6 @@ export default function AdminUsers() {
   // Tracks the hovered row ID to apply a subtle hover background.
   const [hoveredRow, setHoveredRow] = useState(null)
 
-  useEffect(() => { loadUsers() }, [])
-
   async function loadUsers() {
     setLoading(true)
     try {
@@ -69,6 +67,8 @@ export default function AdminUsers() {
       setUsers(extracted)
     } catch { setUsers([]) } finally { setLoading(false) }
   }
+
+  useEffect(() => { loadUsers() }, [])
 
   const filtered = users.filter(u => {
     const q = search.toLowerCase()

@@ -44,10 +44,6 @@ export default function AdminDashboard() {
   const [recentApps, setRecentApps] = useState([])
   const [loading, setLoading]       = useState(true)
 
-  // Effect event: always calls the latest version without re-running the effect.
-  const onMountLoad = useEffectEvent(() => loadData())
-  useEffect(() => { onMountLoad() }, [])
-
   // Fires three RabbitMQ requests concurrently so the page loads in one round-trip.
   async function loadData() {
     setLoading(true)
@@ -72,6 +68,10 @@ export default function AdminDashboard() {
       addToast("Could not load dashboard data.", "error")
     } finally { setLoading(false) }
   }
+
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadData())
+  useEffect(() => { onMountLoad() }, [])
 
   const adminName = localStorage.getItem("adminFirstName") || localStorage.getItem("adminEmail") || "Admin"
 

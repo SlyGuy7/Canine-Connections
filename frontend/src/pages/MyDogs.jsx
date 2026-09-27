@@ -31,15 +31,6 @@ export default function MyDogs() {
   const { addToast } = useToast();
   const hasFetched = useRef(false);
 
-  // hasFetched prevents a double-fetch when React StrictMode mounts the component twice in dev.
-  // Effect event: always calls the latest version without re-running the effect.
-  const onMountLoad = useEffectEvent(() => loadSavedDogs());
-  useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-    onMountLoad();
-  }, []);
-
   async function loadSavedDogs() {
     const userId = localStorage.getItem("userId");
     if (!userId) { setLoading(false); return; }
@@ -63,6 +54,15 @@ export default function MyDogs() {
       setLoading(false);
     }
   }
+
+  // hasFetched prevents a double-fetch when React StrictMode mounts the component twice in dev.
+  // Effect event: always calls the latest version without re-running the effect.
+  const onMountLoad = useEffectEvent(() => loadSavedDogs());
+  useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    onMountLoad();
+  }, []);
 
   function handleRemoveDog(dog) {
     const userId = localStorage.getItem("userId");
