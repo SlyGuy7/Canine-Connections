@@ -51,6 +51,8 @@ jobs:
       - run: composer install --no-interaction --no-progress
       - name: Unit tests
         run: vendor/bin/phpunit
+      - name: Static analysis (unknown classes/methods, wrong calls)
+        run: vendor/bin/phpstan analyse --no-progress
       - name: Syntax-check every PHP file in the repo
         working-directory: .
         run: git ls-files '*.php' | xargs -n1 php -l > /dev/null
@@ -85,6 +87,8 @@ jobs:
           coverage: none
 
       - run: composer install --no-interaction --no-progress
+      - name: Static analysis (unknown classes/methods, wrong calls)
+        run: vendor/bin/phpstan analyse --no-progress
       - name: Query tests against a database built from sql/schema.sql
         env:
           TEST_DB_HOST: 127.0.0.1

@@ -1,0 +1,8 @@
+parameters:
+    level: 0
+    paths:
+        - src
+        - frontend.php
+        - dbridge.php
+        - notification_worker.php
+        - public
