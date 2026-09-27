@@ -114,7 +114,15 @@ jobs:
         run: node e2e/stack.mjs http://localhost:8080
       - name: Container logs
         if: always()
-        run: docker compose logs --no-color --tail 200
+        run: |
+          docker compose ps -a
+          docker compose logs --no-color --tail 200
+          # Surface worker errors as annotations so they are visible without opening the log.
+          for svc in frontend-worker dbridge-worker db-worker; do
+            errs=$(docker compose logs --no-color --no-log-prefix "$svc" 2>&1 | grep -iE "error|exception|fatal|denied|refused" | tail -8 | sed 's/%/%25/g' | awk 'BEGIN{ORS="%0A"} {print}')
+            [ -n "$errs" ] && echo "::warning title=$svc log::$errs"
+          done
+          true
 
   scripts:
     runs-on: ubuntu-latest

@@ -9,9 +9,18 @@ const WS = BASE.replace(/^http/, "ws") + "/ws";
 const LOGIN = { login: "canine_web", passcode: "canine-dev-web", host: "/" };
 
 let failures = 0;
+const results = [];
 function check(name, ok, detail = "") {
-  console.log(`${ok ? "PASS" : "FAIL"}  ${name}${ok || !detail ? "" : `  -> ${detail}`}`);
+  const line = `${ok ? "PASS" : "FAIL"}  ${name}${ok || !detail ? "" : `  -> ${detail}`}`;
+  console.log(line);
+  results.push(line);
   if (!ok) failures++;
+}
+// In GitHub Actions, also publish the results as an annotation on the run.
+function annotate() {
+  if (!process.env.GITHUB_ACTIONS) return;
+  const esc = (t) => t.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+  console.log(`::${failures ? "error" : "notice"} title=End-to-end results::${esc(results.join("\n"))}`);
 }
 
 function connect() {
