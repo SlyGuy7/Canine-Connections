@@ -56,7 +56,11 @@ final class AccessPolicy
         unset($data['_token']);
 
         if (in_array($queue, self::PUBLIC, true)) {
-            return ['ok' => true, 'data' => $data, 'session' => null];
+            // Public requests may still come from a logged-in admin (e.g. the admin stories page,
+            // which also needs pending stories). The flag is always set here, never from the payload.
+            $session = is_string($token) && $token !== '' ? SessionToken::verify($token, SessionToken::TYPE_SESSION) : null;
+            $data['_viewer_is_admin'] = $session !== null && self::isAdminRole($session['role'] ?? null);
+            return ['ok' => true, 'data' => $data, 'session' => $session];
         }
 
         $session = SessionToken::verify(is_string($token) ? $token : null, SessionToken::TYPE_SESSION);

@@ -1,6 +1,13 @@
-DROP DATABASE IF EXISTS adoption_center;
+-- Full schema for a FRESH install. It drops and recreates every table, so never run it
+-- against a database that holds real data. database/scripts/start_db.sh only loads it
+-- when the adoption_center database does not exist yet. Schema changes for existing
+-- databases go in database/sql/migrations/.
 CREATE DATABASE IF NOT EXISTS adoption_center;
 USE adoption_center;
+
+-- Tables are created in alphabetical order, so some foreign keys point at tables that
+-- do not exist yet; checks are re-enabled at the end of the file.
+SET FOREIGN_KEY_CHECKS = 0;
 
 -- Table structure for table `adoption_applications`
 
@@ -99,7 +106,7 @@ CREATE TABLE `api_logs` (
   KEY `idx_key` (`key_id`),
   KEY `idx_called_at` (`called_at`),
   KEY `idx_response_status` (`response_status`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- Table structure for table `badges`
 
@@ -127,7 +134,7 @@ CREATE TABLE `chat_messages` (
   KEY `idx_session` (`session_id`),
   KEY `idx_sender` (`sender_id`),
   KEY `idx_sent_at` (`sent_at`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
 -- Table structure for table `chat_sessions`
@@ -254,7 +261,7 @@ CREATE TABLE `notifications` (
   KEY `idx_user_read` (`user_id`,`is_read`),
   KEY `idx_created_at` (`created_at`),
   KEY `idx_type` (`type`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
 -- Table structure for table `pet_parks`
@@ -490,3 +497,76 @@ CREATE TABLE `virtual_foster` (
   CONSTRAINT `virtual_foster_ibfk_2` FOREIGN KEY (`dog_id`) REFERENCES `dogs` (`dog_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+
+
+-- Table structure for table `saved_dogs`
+
+DROP TABLE IF EXISTS `saved_dogs`;
+CREATE TABLE `saved_dogs` (
+  `user_id` int NOT NULL,
+  `dog_id` int NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`user_id`,`dog_id`),
+  KEY `idx_dog` (`dog_id`),
+  CONSTRAINT `saved_dogs_ibfk_1` FOREIGN KEY (`user_id`) REFERENCES `users` (`user_id`) ON DELETE CASCADE,
+  CONSTRAINT `saved_dogs_ibfk_2` FOREIGN KEY (`dog_id`) REFERENCES `dogs` (`dog_id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+-- ---------------------------------------------------------------------------
+-- Columns the application uses that were added to production after the original
+-- dump above. Reconstructed from the queries in database/src/QueryHandler.php.
+-- To make this file exact, replace it with: mysqldump --no-data adoption_center
+-- ---------------------------------------------------------------------------
+
+ALTER TABLE `users`
+  ADD COLUMN `email_verified` tinyint(1) NOT NULL DEFAULT 0,
+  ADD COLUMN `verification_token` varchar(64) DEFAULT NULL,
+  ADD COLUMN `login_notifications` tinyint(1) NOT NULL DEFAULT 0,
+  ADD KEY `idx_verification_token` (`verification_token`);
+
+ALTER TABLE `adoption_applications`
+  MODIFY `status` enum('pending','under_review','approved','rejected','withdrawn','finalized') DEFAULT 'pending';
+
+ALTER TABLE `adoptions`
+  MODIFY `adoption_date` date DEFAULT NULL,
+  ADD COLUMN `finalized_by` int DEFAULT NULL,
+  ADD COLUMN `notes` text,
+  ADD COLUMN `adopted_at` datetime DEFAULT NULL;
+
+ALTER TABLE `chat_sessions`
+  MODIFY `dog_id` int DEFAULT NULL;
+
+ALTER TABLE `api_keys`
+  ADD COLUMN `updated_at` timestamp NULL DEFAULT NULL;
+
+ALTER TABLE `dogs`
+  RENAME COLUMN `external_dog_id` TO `external_id`;
+
+ALTER TABLE `shelters`
+  RENAME COLUMN `website_url` TO `website`,
+  ADD COLUMN `external_id` varchar(255) DEFAULT NULL,
+  ADD UNIQUE KEY `idx_external_id` (`external_id`);
+
+ALTER TABLE `meet_greet_sessions`
+  MODIFY `scheduled_at` datetime DEFAULT NULL,
+  RENAME COLUMN `meetup_id` TO `session_id`,
+  ADD COLUMN `scheduled_date` date DEFAULT NULL,
+  ADD COLUMN `scheduled_time` time DEFAULT NULL;
+
+ALTER TABLE `post_adoption_logs`
+  MODIFY `adoption_id` int DEFAULT NULL,
+  MODIFY `log_type` varchar(50) DEFAULT NULL,
+  ADD COLUMN `user_id` int DEFAULT NULL,
+  ADD COLUMN `dog_id` int DEFAULT NULL,
+  ADD COLUMN `notes` text,
+  ADD KEY `idx_user_dog` (`user_id`,`dog_id`);
+
+ALTER TABLE `success_stories`
+  RENAME COLUMN `content` TO `story`,
+  ADD COLUMN `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending';
+
+ALTER TABLE `virtual_foster`
+  MODIFY `status` enum('active','paused','ended','cancelled') DEFAULT 'active';
+
+SET FOREIGN_KEY_CHECKS = 1;

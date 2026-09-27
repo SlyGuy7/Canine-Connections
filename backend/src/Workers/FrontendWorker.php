@@ -910,7 +910,11 @@ final class FrontendWorker
         $replyTo = $this->replyTo($msg);
         $this->fork(function (RabbitMqClient $mq) use ($data, $corrId, $replyTo) {
             try {
-                $result = $mq->publishAndWait('bridge.stories.list', ['limit' => $data['limit'] ?? 10, 'offset' => $data['offset'] ?? 0], $corrId);
+                $result = $mq->publishAndWait('bridge.stories.list', [
+                    'limit'           => $data['limit'] ?? 10,
+                    'offset'          => $data['offset'] ?? 0,
+                    'include_pending' => !empty($data['_viewer_is_admin']),
+                ], $corrId);
                 $this->respond($mq, 'response.stories.list', $replyTo, $result ?? ['success' => false, 'error' => 'Could not load stories'], $corrId);
             } catch (\Throwable $e) { $this->respond($mq, 'response.stories.list', $replyTo, ['success' => false, 'error' => 'Could not load stories'], $corrId); }
         }, $msg);

@@ -23,7 +23,18 @@ final class AccessPolicyTest extends TestCase
         $result = AccessPolicy::check('request.dogs.list', ['size' => 'small']);
 
         $this->assertTrue($result['ok']);
-        $this->assertSame(['size' => 'small'], $result['data']);
+        $this->assertSame(['size' => 'small', '_viewer_is_admin' => false], $result['data']);
+    }
+
+    public function testViewerAdminFlagComesFromTokenOnly(): void
+    {
+        $spoofed = AccessPolicy::check('request.stories.list', ['_viewer_is_admin' => true]);
+        $adopter = AccessPolicy::check('request.stories.list', ['_token' => $this->token(5)]);
+        $admin   = AccessPolicy::check('request.stories.list', ['_token' => $this->token(2, 'super_admin')]);
+
+        $this->assertFalse($spoofed['data']['_viewer_is_admin']);
+        $this->assertFalse($adopter['data']['_viewer_is_admin']);
+        $this->assertTrue($admin['data']['_viewer_is_admin']);
     }
 
     public function testTokenIsStrippedFromForwardedData(): void
